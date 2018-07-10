@@ -1,7 +1,7 @@
 # OB1 Firmware
 
 The OB1 is the control card for the SC1a and DCR1a units, the first siacoin and
-decred miners shipped by Obelsik. This repo contains the files and instructions
+decred miners shipped by Obelisk. This repo contains the files and instructions
 needed to build and load firmware onto the ob1 control cards.
 
 The firmware is broken into two pieces. The first piece is the image that goes
