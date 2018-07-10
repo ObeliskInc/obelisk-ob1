@@ -9,5 +9,16 @@ dependencies:
 	cd buildroot && git checkout 2018.02
 
 release:
+	export OBELISK_OB1_DIR=$(shell pwd)
 	cd controlCardImage && make O=$(shell pwd)/controlCardImage BR2_EXTERNAL=$(shell pwd)/controlCardImage -C ../buildroot sama5d2_som_minimal_defconfig
 	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildroot sama5d2_som_minimal_defconfig
+
+control-menu:
+	export OBELISK_OB1_DIR=$(shell pwd)
+	cd controlCardImage && make O=$(shell pwd)/controlCardImage BR2_EXTERNAL=$(shell pwd)/controlCardImage -C ../buildroot sama5d2_som_minimal_defconfig && \
+		make menuconfig
+
+sd-menu:
+	export OBELISK_OB1_DIR=$(shell pwd)
+	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildroot sama5d2_som_minimal_defconfig && \
+		make menuconfig
