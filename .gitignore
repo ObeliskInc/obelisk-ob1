@@ -4,7 +4,7 @@ download
 
 # vim files
 *.swp
-*.swO
+*.swo
 
 # build process
 .br-external.mk
