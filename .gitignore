@@ -12,10 +12,14 @@ download
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
-controlCardImage/Makefile
 controlCardImage/build
+controlCardImage/host
+controlCardImage/staging
+controlCardImage/Makefile
 sdCardImage/.br-external.mk
 sdCardImage/.config
 sdCardImage/.config.old
-sdCardImage/Makefile
 sdCardImage/build
+sdCardImage/host
+sdCardImage/staging
+sdCardImage/Makefile
