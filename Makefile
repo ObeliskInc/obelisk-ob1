@@ -9,4 +9,5 @@ dependencies:
 	cd buildroot && git checkout 2018.02
 
 release:
-	cd controlCardImage && make O=$(pwd) BR2_EXTERNAL=$(pwd) -C ../buildroot sama5d2_som_minimal_defconfig
+	cd controlCardImage && make O=$(shell pwd)/controlCardImage BR2_EXTERNAL=$(shell pwd)/controlCardImage -C ../buildroot sama5d2_som_minimal_defconfig
+	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildroot sama5d2_som_minimal_defconfig
