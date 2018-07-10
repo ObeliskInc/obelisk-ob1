@@ -23,3 +23,11 @@ Finally, you can build the software fully with `make`.
 
 We attempt to use reproducable builds. Buildroot reproducible buidls are
 currently considered experimental.
+
+## System Requirements
+
+Most of our requirements come from the buildroot requirements. Generally
+speaking, there is nothing surprising or difficult to install that is required,
+almost everything is available directly from most linux package managers.
+
+https://buildroot.org/downloads/manual/manual.html#requirement
