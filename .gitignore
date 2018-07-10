@@ -7,6 +7,7 @@ download
 *.swo
 
 # build process
+*.tmp
 .br-external.mk
 controlCardImage/.br-external.mk
 controlCardImage/.config
