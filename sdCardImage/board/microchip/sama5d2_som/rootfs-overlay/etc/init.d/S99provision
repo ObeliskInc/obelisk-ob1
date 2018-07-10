@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Provision the flash card
+#
+
+case "$1" in
+  start)
+	/usr/sbin/provision.sh
+	;;
+  *)
+	echo "Usage: $0 {start}"
+	exit 1
+esac
+
+exit $?
