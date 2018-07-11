@@ -53,33 +53,109 @@
 	/delete-node/ chosen;
 
 	chosen {
-		 bootargs = "console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p2 rw rootwait rootfstype=ext4";
+		 bootargs = "console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p2 rw rootwait rootfstype=jffs2";
 		 stdout-path = "serial0:115200n8";
 	};
 
-	ahb {
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_led_gpio_default>;
+		status = "disabled"; /* Conflict with pwm0. */
+
+		red {
+			label = "red";
+			gpios = <&pioA PIN_PA10 GPIO_ACTIVE_HIGH>;
+		};
+
+		green {
+			label = "green";
+			gpios = <&pioA PIN_PB1 GPIO_ACTIVE_HIGH>;
+		};
+
+	};
+
+        ahb {
+                /delete-node/ sdio-host@a0000000;
+              /*  /delete-node/ sdmmc0; */
+                
 		apb {
+
+			qspi1: spi@f0024000 {
+		               pinctrl-names = "default";
+		               pinctrl-0 = <&pinctrl_qspi1_default>;
+
+		               /delete-node/ flash@0;
+
+		               flash@0 {
+		                       #address-cells = <1>;
+		                       #size-cells = <1>;
+		                       compatible = "jedec,spi-nor";
+		                       reg = <0>;
+		                       spi-max-frequency = <40000000>;
+		                       m25p,fast-read;
+
+/*
+		                       at91bootstrap@00000000 {
+			               label = "at91bootstrap";
+			               reg = <0x00000000 0x00010000>;
+		                       };
+
+		                       dtb@00010000 {
+			               label = "dtb";
+			               reg = <0x00010000 0x00010000>;
+		                       };
+
+		                       kernel@00020000 {
+			               label = "kernel";
+			               reg = <0x00020000 0x00300000>;
+		                       };
+*/
+		                       at91bootdtbkernel@00000000 {
+			               label = "at91bootdtbkernel";
+			               reg = <0x00000000 0x00300000>;
+		                       };
+                                       
+		                       rfs@00320000 {
+			               label = "rfs";
+			               reg = <0x00320000 0x01ce0000>;
+		                       };
+		               };
+
+                        };
+
+                        spi0: spi@f8000000 {
+			      pinctrl-names = "default";
+			      pinctrl-0 = <&pinctrl_spi0_default>;
+			      status = "okay";
+                              cs-gpios = <&pioA PIN_PA12 0>, <0>, <0>, <0>;
+
+                              device@0 {
+                                       compatible = "spidev";
+			               spi-max-frequency = <1000000>;
+			               reg = <0>;
+			      };
+                        };
+
+/*
 			flx4: flexcom@fc018000 {
+				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
+				status = "okay";
+
 				spi3: spi@400 {
 					#address-cells = <1>;
 					#size-cells = <0>;
-
-					cs-gpios = <&pioA PIN_PC31 0>, <&pioA PIN_PD0 0>, <0>, <0>;
+					cs-gpios = <&pioA PIN_PA12 0>, <&pioA PIN_PD0 0>, <0>, <0>;
 
 					device@0 {
 						compatible = "spidev";
-						spi-max-frequency = <50000000>;
+						spi-max-frequency = <1000000>;
 						reg = <0>;
 					};
 
-					device@1 {
-						compatible = "spidev";
-						spi-max-frequency = <50000000>;
-						reg = <1>;
-					};
 				};
 			};
-
+*/
 		};
 	};
 };

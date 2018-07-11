@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Start any modules
+#
+
+case "$1" in
+  start)
+	boot_mesg -n "Starting module: spidev"
+	/sbin/modprobe spidev
+	;;
+  *)
+	echo "Usage: $0 {start}"
+	exit 1
+esac
+
+exit $?
