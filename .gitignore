@@ -27,3 +27,6 @@ sdCardImage/images
 sdCardImage/staging
 sdCardImage/target
 sdCardImage/Makefile
+
+# for personal note taking
+*.notes
