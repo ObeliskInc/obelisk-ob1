@@ -5,15 +5,23 @@ clean:
 	@rm -rf .br-external.mk
 	@rm -rf buildroot
 	@rm -rf download
-	@rm -rf controlCardImage/build
 	@rm -rf controlCardImage/.br-external.mk
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
+	@rm -rf controlCardImage/build
+	@rm -rf controlCardImage/host
+	@rm -rf controlCardImage/images
+	@rm -rf controlCardImage/staging
+	@rm -rf controlCardImage/target
 	@rm -rf controlCardImage/Makefile
-	@rm -rf sdCardImage/build
 	@rm -rf sdCardImage/.br-external.mk
 	@rm -rf sdCardImage/.config
 	@rm -rf sdCardImage/.config.old
+	@rm -rf sdCardImage/build
+	@rm -rf sdCardImage/host
+	@rm -rf sdCardImage/images
+	@rm -rf sdCardImage/staging
+	@rm -rf sdCardImage/target
 	@rm -rf sdCardImage/Makefile
 
 # Fetch and set up any dependencies.
@@ -23,20 +31,19 @@ dependencies:
 
 # Fetch the configs and prepare them for a full build.
 configs:
-	
 	cd controlCardImage && make O=$(shell pwd)/controlCardImage BR2_EXTERNAL=$(shell pwd)/controlCardImage -C ../buildroot sama5d2_som_minimal_defconfig
 	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildroot sama5d2_som_minimal_defconfig
 
 # Perform the build. The first time it is run on a machine, it may take several
 # hours to complete.
-release:
+build:
 	export OBELISK_OB1_DIR=$(shell pwd); \
 		cd controlCardImage; \
 		make; \
-		cd sdCardImage; \
+		cd ../sdCardImage; \
 		make
 
-release-full: clean dependencies configs release
+release-full: clean dependencies configs build
 
 # Modify the config files for the control card by running 'make menuconfig'.
 # After making modifications, the resulting .config file needs to be copied to
