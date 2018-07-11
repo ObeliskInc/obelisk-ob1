@@ -46,6 +46,7 @@ initial-build:
 build-customization:
 	cp resources/spi_nor_ids.c controlCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
 	cp resources/spi_nor_ids.c sdCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
+	cp resources/sama5d27_som1_ek.c sdCardImage/build/at91bootstrap3-v3.8.10/board/sama5d27_som1_ek
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
 	rm controlCardImage/build/linux-linux4sam_5.8/.stamp_built
 	rm sdCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
