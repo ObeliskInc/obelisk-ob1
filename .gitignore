@@ -2,24 +2,28 @@
 buildroot
 download
 
-# vim files
+# temp files
 *.swp
 *.swo
+*.tmp
 
 # build process
-*.tmp
 .br-external.mk
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
 controlCardImage/build
 controlCardImage/host
+controlCardImage/images
 controlCardImage/staging
+controlCardImage/target
 controlCardImage/Makefile
 sdCardImage/.br-external.mk
 sdCardImage/.config
 sdCardImage/.config.old
 sdCardImage/build
 sdCardImage/host
+sdCardImage/images
 sdCardImage/staging
+sdCardImage/target
 sdCardImage/Makefile
