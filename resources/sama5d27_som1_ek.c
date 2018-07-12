@@ -324,6 +324,11 @@ static void at91_red_led_on(void)
 	pio_set_gpio_output(AT91C_PIN_PA(27), 0);
 }
 
+static void at91_red_led_off(void)
+{
+	pio_set_gpio_output(AT91C_PIN_PA(27), 1);
+}
+
 #if 1 // RTM - added boot fuse code
 typedef struct {
 	volatile unsigned int BUSRAM_LOWER[1024]; /**< \brief (Securam Offset: 0x0000) Lower 4KB auto-erased */
@@ -341,7 +346,8 @@ typedef struct {
 #define BSC        ((Bsc      *)0xF8048054U) /**< \brief (BSC       ) Base Address */
 #define BSC_CR_WPKEY_Pos 16
 #define BSC_CR_WPKEY_Msk (0xffffu << BSC_CR_WPKEY_Pos) /**< \brief (BSC_CR) Write Protect Key */
-#define   BSC_CR_WPKEY (0x6683u << 16) /**< \brief (BSC_CR) valid key to write BSC_CR register */
+#define BSC_CR_WPKEY (0x6683u << 16) /**< \brief (BSC_CR) valid key to write BSC_CR register */
+#define BSC_CR_BUREG_VALID (1 << 2) /**< \brief (BSC_CR) Validate the data in BUREG_INDEX field */
 
 typedef struct {
 	volatile unsigned int SFC_KR;     /**< \brief (Sfc Offset: 0x00) SFC Key Register */
@@ -379,12 +385,28 @@ typedef struct {
 #define BCW_JTAG_IO_SET_Pos 16
 #define BCW_JTAG_IO_SET_Msk (0x3u << BCW_JTAG_IO_SET_Pos)
 #define BCW_JTAG_IOSET_1 (0x0u << 16)
+#define BCW_JTAG_IOSET_2 (0x1u << 16)
+#define BCW_JTAG_IOSET_3 (0x2u << 16)
+#define BCW_JTAG_IOSET_4 (0x3u << 16)
 #define BCW_SDMMC_0_DISABLED (1 << 10)
 #define BCW_SDMMC_1_DISABLED (1 << 11)
 #define BCW_NFC_Pos 8
 #define BCW_NFC_Msk (0x3u << BCW_NFC_Pos)
 #define BCW_NFC(value) (BCW_NFC_Msk & ((value) << BCW_NFC_Pos)
 #define BCW_NFC_DISABLED (0x3u << 8)
+#define BCW_SPI_0_Pos 4
+#define BCW_SPI_0_Msk (0x3u << BCW_SPI_0_Pos)
+#define BCW_SPI_0(value) (BCW_SPI_0_Msk & ((value) << BCW_SPI_0_Pos)
+#define   BCW_SPI_0_IOSET_1 (0x0u << 4)
+#define   BCW_SPI_0_IOSET_2 (0x1u << 4)
+#define   BCW_SPI_0_DISABLED (0x3u << 4)
+#define BCW_SPI_1_Pos 6
+#define BCW_SPI_1_Msk (0x3u << BCW_SPI_1_Pos)
+#define BCW_SPI_1(value) (BCW_SPI_1_Msk & ((value) << BCW_SPI_1_Pos)
+#define   BCW_SPI_1_IOSET_1 (0x0u << 6)
+#define   BCW_SPI_1_IOSET_2 (0x1u << 6)
+#define   BCW_SPI_1_IOSET_3 (0x2u << 6)
+#define   BCW_SPI_1_DISABLED (0x3u << 6)
 #define BCW_QSPI_0_Pos 0
 #define BCW_QSPI_0_Msk (0x3u << BCW_QSPI_0_Pos)
 #define BCW_QSPI_0(value) (BCW_QSPI_0_Msk & ((value) << BCW_QSPI_0_Pos)
@@ -393,29 +415,32 @@ typedef struct {
 #define BCW_QSPI_1_Msk (0x3u << BCW_QSPI_1_Pos)
 #define BCW_QSPI_1(value) (BCW_QSPI_1_Msk & ((value) << BCW_QSPI_1_Pos)
 #define BCW_QSPI_1_IOSET_2 (0x1u << 2)
+#define BCW_DISABLE_BSCR (1 << 22)
 
 int burn_fuses(int flag);
 int burn_fuses(int flag)
 {
-    unsigned int bscr, bureg0, bureg1, bureg2, bureg3, fuse, newfuse, status;
+    unsigned int fuse, newfuse, status;
     unsigned int *pmcPtr;
 
     /* Read in the boot configuration values */
+#if 0
     bscr = BSC->BSC_CR;
     bureg0 = SECURAM->BUREG[0];
     bureg1 = SECURAM->BUREG[1];
     bureg2 = SECURAM->BUREG[2];
     bureg3 = SECURAM->BUREG[3];
+#endif
     fuse = SFC->SFC_DR[FUSE_BOOTCONFIG_WORD_POS];
 
     /* Write the values, and cause the fuse to be enabled */
     if(flag == 1)
     {
-        BSC->BSC_CR = (bscr & ~BSC_CR_WPKEY_Msk) | BSC_CR_WPKEY;
-        SECURAM->BUREG[0] = bureg0;
-        SECURAM->BUREG[1] = bureg1;
-        SECURAM->BUREG[2] = bureg2;
-        SECURAM->BUREG[3] = bureg3;
+        BSC->BSC_CR = 0;
+        SECURAM->BUREG[0] = 0;
+        SECURAM->BUREG[1] = 0;
+        SECURAM->BUREG[2] = 0;
+        SECURAM->BUREG[3] = 0;
     
         //pmc_enable_peripheral(ID_SFC);
         // select peripheral
@@ -439,34 +464,41 @@ int burn_fuses(int flag)
       "QSPI1_IOSET2,QSPI0_DISABLED"))
 
       Equates to:
-      value & BCW_EXT_MEM_BOOT_ENABLE
-      value & BCW_UART_CONSOLE_Msk = BCW_UART_CONSOLE_UART1_IOSET_1
-      value & BCW_JTAG_IO_SET_Msk = BCW_JTAG_IOSET_1
+      value & BCW_QSPI_0_Msk = BCW_QSPI0_DISABLED
+      value & BCW_QSPI_1_Msk = BCW_QSPI_1_IOSET_2
+      value & BCW_SPI_0_Msk = BCW_SPI_0_DISABLED
+      value & BCW_SPI_1_Msk = BCW_SPI_1_DISABLED
+      value & BCW_NFC_Msk = BCW_NFC_DISABLED
       value & BCW_SDMMC_0_DISABLED
-      value & BCW_SDMMC_1_DISABLED
-      value & BCW_NFC_Msk = 0?
-      value & BCW_QSPI_0_Msk = 0?
-      value & BCW_QSPI_1_Msk = 0?
-      value & BCW_QSPI_0_Msk = 0?
-      value & BCW_QSPI_1_Msk = BCW_QSPI_1_IOSET_2?
+      value & BCW_SDMMC_1_ENABLED - no define, leave as zero
+      value & BCW_UART_CONSOLE_Msk = BCW_UART_CONSOLE_UART1_IOSET_1
+      value & BCW_JTAG_IO_SET_Msk = BCW_JTAG_IOSET_3
+      value & BCW_EXT_MEM_BOOT_ENABLE
     */
-    // fuse = 0; // Should I set the fuse variable to zero to start here?
-    newfuse |= BCW_EXT_MEM_BOOT_ENABLE;
-    newfuse |= BCW_UART_CONSOLE_UART1_IOSET_1;
-    newfuse |= BCW_JTAG_IOSET_1;
-    newfuse |= BCW_SDMMC_0_DISABLED;
-    newfuse |= BCW_SDMMC_1_DISABLED;
-    newfuse |= BCW_NFC_DISABLED;
+    newfuse = 0;
     newfuse |= BCW_QSPI_0_DISABLED;
     newfuse |= BCW_QSPI_1_IOSET_2;
+    newfuse |= BCW_SPI_0_DISABLED;
+    newfuse |= BCW_SPI_1_DISABLED;
+    newfuse |= BCW_NFC_DISABLED;
+    newfuse |= BCW_SDMMC_0_DISABLED;
+    //newfuse |= BCW_SDMMC_1_ENABLED; - no define, leave as zero
+    newfuse |= BCW_UART_CONSOLE_UART1_IOSET_1;
+    newfuse |= BCW_JTAG_IOSET_3;
+    newfuse |= BCW_EXT_MEM_BOOT_ENABLE;
+    newfuse |= BCW_DISABLE_BSCR;
 
     //printf("Fuse value to be set: %#X\n", fuse);
-    if(newfuse != fuse) {
-	return -1;
-    }
+    //if(newfuse == fuse) {
+    //return 0;
+    //}
 
     if((flag == 1) && (newfuse != fuse))
     {
+#if 0
+        SECURAM->BUREG[0] = newfuse;
+#else
+    	//usart_puts("Burning new boot fuses\n");
         SFC->SFC_DR[FUSE_BOOTCONFIG_WORD_POS] = newfuse;
 
         /* wait for completion */
@@ -480,6 +512,7 @@ int burn_fuses(int flag)
 
         // disable it but keep previous configuration
         *pmcPtr = (*pmcPtr & ~PMC_PCR_EN) | PMC_PCR_CMD;
+#endif
     }
     
     return 0;
@@ -493,7 +526,7 @@ void hw_init(void)
 
 	at91_red_led_on();
 
-	if(burn_fuses(0) != 0) {
+	if(burn_fuses(1) != 0) {
 	    at91_red_led_off();
 	}
 
