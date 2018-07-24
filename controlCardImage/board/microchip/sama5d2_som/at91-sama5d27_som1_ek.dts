@@ -57,31 +57,28 @@
 		 stdout-path = "serial0:115200n8";
 	};
 
-	leds {
-		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_led_gpio_default>;
-		status = "disabled"; /* Conflict with pwm0. */
-
-		red {
-			label = "red";
-			gpios = <&pioA PIN_PA10 GPIO_ACTIVE_HIGH>;
-		};
-
-		green {
-			label = "green";
-			gpios = <&pioA PIN_PB1 GPIO_ACTIVE_HIGH>;
-		};
-
-	};
-
+        /delete-node/ leds;
+        
         ahb {
                 /delete-node/ sdio-host@a0000000;
               /*  /delete-node/ sdmmc0; */
                 
 		apb {
+/*
+                         pwm0: pwm@f802c000 {
+                                 pinctrl-names = "default";
+                                 pinctrl-0 = <&pinctrl_mikrobus1_pwm &pinctrl_mikrobus2_pwm>;
+                                 status = "okay";
+                         };
+*/
 
-			qspi1: spi@f0024000 {
+                         pwm0: pwm@f802c000 {
+                                 pinctrl-names = "default";
+                                 pinctrl-0 = <&pinctrl_mikrobus2_pwm>;
+                                 status = "okay";
+                         };
+                         
+			 qspi1: spi@f0024000 {
 		               pinctrl-names = "default";
 		               pinctrl-0 = <&pinctrl_qspi1_default>;
 
@@ -128,7 +125,7 @@
 			      pinctrl-names = "default";
 			      pinctrl-0 = <&pinctrl_spi0_default>;
 			      status = "okay";
-                              cs-gpios = <&pioA PIN_PA12 0>, <0>, <0>, <0>;
+                              cs-gpios = <0>, <0>, <0>, <0>;
 
                               device@0 {
                                        compatible = "spidev";
@@ -137,25 +134,6 @@
 			      };
                         };
 
-/*
-			flx4: flexcom@fc018000 {
-				atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_SPI>;
-				status = "okay";
-
-				spi3: spi@400 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					cs-gpios = <&pioA PIN_PA12 0>, <&pioA PIN_PD0 0>, <0>, <0>;
-
-					device@0 {
-						compatible = "spidev";
-						spi-max-frequency = <1000000>;
-						reg = <0>;
-					};
-
-				};
-			};
-*/
 		};
 	};
 };
