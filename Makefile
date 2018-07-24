@@ -47,6 +47,7 @@ initial-build:
 	# Prepare the control card image for the sd card.
 	./controlCardImage/prepareForSDCard.sh
 	# Move the control card image to the sd card rootfs.
+	mkdir -p sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root
 	cp controlCardImage/images/imgPart1.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 	cp controlCardImage/images/imgPart2.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
 	cp controlCardImage/images/files.md5 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
