@@ -36,7 +36,7 @@ fi
 if [ $? != 0 ]; then
     echo "MTD1 not empty, erasing" >> /root/provision.log;
     sync
-    /usr/sbin/flash_erase /dev/mtd1 0 462
+    /usr/sbin/flash_erase /dev/mtd1 0 190
     # Re-test to ensure flash is erased
     /usr/sbin/flash_check /dev/mtd1
     if [ $? != 0 ]; then
@@ -47,6 +47,42 @@ if [ $? != 0 ]; then
     fi
 else
     echo "MTD1 empty" >> /root/provision.log;
+    sync
+fi
+
+/usr/sbin/flash_check /dev/mtd2
+if [ $? != 0 ]; then
+    echo "MTD2 not empty, erasing" >> /root/provision.log;
+    sync
+    /usr/sbin/flash_erase /dev/mtd2 0 18
+    # Re-test to ensure flash is erased
+    /usr/sbin/flash_check /dev/mtd2
+    if [ $? != 0 ]; then
+        echo "MTD2 erase error" >> /root/provision.log;
+        sync
+        /usr/sbin/led_erase_error &
+        exit 1;
+    fi
+else
+    echo "MTD2 empty" >> /root/provision.log;
+    sync
+fi
+
+/usr/sbin/flash_check /dev/mtd3
+if [ $? != 0 ]; then
+    echo "MTD3 not empty, erasing" >> /root/provision.log;
+    sync
+    /usr/sbin/flash_erase /dev/mtd3 0 190
+    # Re-test to ensure flash is erased
+    /usr/sbin/flash_check /dev/mtd3
+    if [ $? != 0 ]; then
+        echo "MTD3 erase error" >> /root/provision.log;
+        sync
+        /usr/sbin/led_erase_error &
+        exit 1;
+    fi
+else
+    echo "MTD3 empty" >> /root/provision.log;
     sync
 fi
 

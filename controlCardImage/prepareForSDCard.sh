@@ -6,7 +6,7 @@ cd controlCardImage/images
 
 # Create two xff filled file images matching the MTD partition sizes
 `dd if=/dev/zero ibs=64k count=48 | tr "\000" "\377" > part1.img`
-`dd if=/dev/zero ibs=64k count=462 | tr "\000" "\377" > part2.img`
+`dd if=/dev/zero ibs=64k count=190 | tr "\000" "\377" > part2.img`
 
 # Copy in the bootloader to the first 64k section of part1.img
 `dd if=at91bootstrap.bin of=part1.img bs=64k count=1 conv=notrunc`
