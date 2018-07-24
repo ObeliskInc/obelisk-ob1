@@ -48,8 +48,8 @@ initial-build:
 	./controlCardImage/prepareForSDCard.sh
 	# Move the control card image to the sd card rootfs.
 	mkdir -p sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root
-	cp controlCardImage/images/imgPart1.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
-	cp controlCardImage/images/imgPart2.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
+	cp controlCardImage/images/part1.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
+	cp controlCardImage/images/part2.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
 	cp controlCardImage/images/files.md5 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
