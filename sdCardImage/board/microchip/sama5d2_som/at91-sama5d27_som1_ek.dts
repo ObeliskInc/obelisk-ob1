@@ -53,33 +53,70 @@
 	/delete-node/ chosen;
 
 	chosen {
-		 bootargs = "console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p2 rw rootwait rootfstype=ext4";
+		 bootargs = "console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p2 rw rootwait rootfstype=jffs2";
 		 stdout-path = "serial0:115200n8";
 	};
 
 	ahb {
+                /delete-node/ sdio-host@a0000000;
+              /*  /delete-node/ sdmmc0; */
+                
 		apb {
-			flx4: flexcom@fc018000 {
-				spi3: spi@400 {
-					#address-cells = <1>;
-					#size-cells = <0>;
+                        pwm0: pwm@f802c000 {
+                                pinctrl-names = "default";
+                                pinctrl-0 = <&pinctrl_mikrobus2_pwm>;
+                                status = "okay";
+                        };
+                         
+			qspi1: spi@f0024000 {
+		               pinctrl-names = "default";
+		               pinctrl-0 = <&pinctrl_qspi1_default>;
 
-					cs-gpios = <&pioA PIN_PC31 0>, <&pioA PIN_PD0 0>, <0>, <0>;
+		               /delete-node/ flash@0;
 
-					device@0 {
-						compatible = "spidev";
-						spi-max-frequency = <50000000>;
-						reg = <0>;
-					};
+		               flash@0 {
+		                       #address-cells = <1>;
+		                       #size-cells = <1>;
+		                       compatible = "jedec,spi-nor";
+		                       reg = <0>;
+		                       spi-max-frequency = <40000000>;
+		                       m25p,fast-read;
 
-					device@1 {
-						compatible = "spidev";
-						spi-max-frequency = <50000000>;
-						reg = <1>;
-					};
-				};
-			};
+		                       at91bootdtbkernel@00000000 {
+			               label = "at91bootdtbkernel";
+			               reg = <0x00000000 0x00300000>;
+		                       };
+                                       
+		                       rfs@00320000 {
+			               label = "rfs";
+			               reg = <0x00320000 0x00be0000>;
+		                       };
 
+		                       usrconfig@00f00000 {
+			               label = "usrconfig";
+			               reg = <0x00f00000 0x00100000>;
+		                       };
+
+		                       factory@001000000 {
+			               label = "factory";
+			               reg = <0x01000000 0x00be0000>;
+		                       };
+
+		               };
+	                };
+
+                        spi0: spi@f8000000 {
+			      pinctrl-names = "default";
+			      pinctrl-0 = <&pinctrl_spi0_default>;
+			      status = "okay";
+                              cs-gpios = <0>, <0>, <0>, <0>;
+
+                              device@0 {
+                                       compatible = "spidev";
+			               spi-max-frequency = <1000000>;
+			               reg = <0>;
+			      };
+                        };
 		};
 	};
 };
