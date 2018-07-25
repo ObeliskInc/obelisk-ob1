@@ -82,14 +82,19 @@
 		                       spi-max-frequency = <40000000>;
 		                       m25p,fast-read;
 
-		                       at91bootdtbkernel@00000000 {
-			               label = "at91bootdtbkernel";
-			               reg = <0x00000000 0x00300000>;
+		                       at91bootdtb@00000000 {
+			               label = "at91bootdtb";
+			               reg = <0x00000000 0x00020000>;
 		                       };
                                        
-		                       rfs@00320000 {
+		                       kernel@00020000 {
+			               label = "kernel";
+			               reg = <0x00020000 0x002e0000>;
+		                       };
+                                       
+		                       rfs@00300000 {
 			               label = "rfs";
-			               reg = <0x00320000 0x00be0000>;
+			               reg = <0x00300000 0x00c00000>;
 		                       };
 
 		                       usrconfig@00f00000 {
@@ -99,7 +104,7 @@
 
 		                       factory@001000000 {
 			               label = "factory";
-			               reg = <0x01000000 0x00be0000>;
+			               reg = <0x01000000 0x00c00000>;
 		                       };
 
 		               };

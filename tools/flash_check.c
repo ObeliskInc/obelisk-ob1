@@ -19,7 +19,7 @@ int main(int argc, char **argv)
         //printf("Usage: %s /dev/mtd# (# must be 0, 1, 2, or 3)\n", argv[0]);
         return -1;
     }
-
+#if 0
     if(strncmp(argv[1], "/dev/mtd0", 9) != 0)
     {
         if(strncmp(argv[1], "/dev/mtd1", 9) != 0)
@@ -34,7 +34,7 @@ int main(int argc, char **argv)
             }
         }
     }
-
+#endif
     /* Open /dev/mtd */
     if((handle = open(argv[1], O_RDONLY)) <= 0)
     {
