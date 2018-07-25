@@ -9,7 +9,7 @@ UTIL_DIR = $(SOURCE_DIR)/utils
 INCLUDE_DIR = $(BUILD_HOME)/include
 OBJECT_DIR = $(BUILD_HOME)/obj
 
-TOOLCHAIN_PATH = /home/rt/uC-buildroot-II/buildroot-builds/control_card_new/host/bin
+TOOLCHAIN_PATH = $(OBELISK_OB1_DIR)/controlCardImage/host/bin
 CC = $(TOOLCHAIN_PATH)/arm-linux-gcc
 CPP = $(TOOLCHAIN_PATH)/arm-linux-cpp
 CFLAGS = -I$(INCLUDE_DIR) -ggdb -O0 -Wformat=2 -Werror -Wall -Wextra -Wswitch-default -Wswitch-enum -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn
@@ -41,25 +41,25 @@ binaries = flash_check gpio_test led_alternate led_erase_error i2c_test spi_test
 all:	$(binaries)
 
 flash_check:	$(FLASH_CHECK_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 gpio_test:	$(BSP_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 led_alternate:	$(LED_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 led_erase_error:	$(LED_ERASE_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 i2c_test:	$(I2C_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 spi_test:	$(SPI_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 fan_speed:	$(FAN_OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY:	all
 
