@@ -23,6 +23,7 @@ sdCardImage/.config
 sdCardImage/.config.old
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
+sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
