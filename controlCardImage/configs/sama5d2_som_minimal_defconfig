@@ -161,7 +161,7 @@ BR2_XZCAT="xzcat"
 BR2_LZCAT="lzip -d -c"
 BR2_TAR_OPTIONS=""
 BR2_DEFCONFIG="$(BR2_EXTERNAL)/configs/buildroot_defconfig"
-BR2_DL_DIR="/home/rt/linux-sources"
+BR2_DL_DIR="$(OBELISK_OB1_DIR)/download"
 BR2_HOST_DIR="$(BASE_DIR)/host"
 
 #
@@ -259,7 +259,7 @@ BR2_TOOLCHAIN_BUILDROOT_LOCALE=y
 BR2_PTHREADS_NATIVE=y
 # BR2_PTHREADS is not set
 # BR2_PTHREADS_NONE is not set
-# BR2_PTHREAD_DEBUG is not set
+BR2_PTHREAD_DEBUG=y
 # BR2_TOOLCHAIN_BUILDROOT_USE_SSP is not set
 BR2_UCLIBC_INSTALL_UTILS=y
 BR2_UCLIBC_TARGET_ARCH="arm"
@@ -311,6 +311,7 @@ BR2_USE_WCHAR=y
 BR2_ENABLE_LOCALE=y
 BR2_INSTALL_LIBSTDCPP=y
 BR2_TOOLCHAIN_HAS_THREADS=y
+BR2_TOOLCHAIN_HAS_THREADS_DEBUG=y
 BR2_TOOLCHAIN_HAS_THREADS_NPTL=y
 BR2_TOOLCHAIN_HAS_SHADOW_PASSWORDS=y
 BR2_TOOLCHAIN_SUPPORTS_PIE=y
@@ -599,10 +600,9 @@ BR2_PACKAGE_BZIP2=y
 # BR2_PACKAGE_DUMA is not set
 # BR2_PACKAGE_FIO is not set
 BR2_PACKAGE_GDB_ARCH_SUPPORTS=y
-
-#
-# gdb/gdbserver needs a toolchain w/ threads, threads debug
-#
+BR2_PACKAGE_GDB=y
+BR2_PACKAGE_GDB_SERVER=y
+# BR2_PACKAGE_GDB_DEBUGGER is not set
 BR2_PACKAGE_GOOGLE_BREAKPAD_ARCH_SUPPORTS=y
 # BR2_PACKAGE_GOOGLE_BREAKPAD is not set
 # BR2_PACKAGE_IOZONE is not set
@@ -915,7 +915,20 @@ BR2_PACKAGE_QT5_JSCORE_AVAILABLE=y
 # BR2_PACKAGE_LINUXCONSOLETOOLS is not set
 # BR2_PACKAGE_LINUX_BACKPORTS is not set
 # BR2_PACKAGE_LIRC_TOOLS is not set
-# BR2_PACKAGE_LM_SENSORS is not set
+BR2_PACKAGE_LM_SENSORS=y
+
+#
+# lm-sensors tools
+#
+BR2_PACKAGE_LM_SENSORS_SENSORS=y
+# BR2_PACKAGE_LM_SENSORS_FANCONTROL is not set
+# BR2_PACKAGE_LM_SENSORS_ISADUMP is not set
+# BR2_PACKAGE_LM_SENSORS_ISASET is not set
+BR2_PACKAGE_LM_SENSORS_PWMCONFIG=y
+
+#
+# sensors-detect needs perl
+#
 # BR2_PACKAGE_LSHW is not set
 # BR2_PACKAGE_LSSCSI is not set
 # BR2_PACKAGE_LSUIO is not set
@@ -2945,6 +2958,6 @@ BR2_LINUX_KERNEL_CUSTOM_GIT_VERSION=""
 #
 
 #
-# sama5d2_som_ek (in /home/rt/uC-buildroot-II/buildroot-builds/sama5d2_som_minimal)
+# sama5d2_som_ek (in -builds/controlCardImage)
 #
-BR2_EXTERNAL_sama5d2_som_ek_PATH="/home/rt/uC-buildroot-II/buildroot-builds/sama5d2_som_minimal"
+BR2_EXTERNAL_sama5d2_som_ek_PATH="$(OBELISK_OB1_DIR)/controlCardImage"

@@ -161,7 +161,7 @@ BR2_XZCAT="xzcat"
 BR2_LZCAT="lzip -d -c"
 BR2_TAR_OPTIONS=""
 BR2_DEFCONFIG="$(BR2_EXTERNAL)/configs/buildroot_defconfig"
-BR2_DL_DIR="/home/rt/linux-sources"
+BR2_DL_DIR="$(OBELISK_OB1_DIR)/download"
 BR2_HOST_DIR="$(BASE_DIR)/host"
 
 #
@@ -2967,6 +2967,6 @@ BR2_LINUX_KERNEL_CUSTOM_GIT_VERSION=""
 #
 
 #
-# sama5d2_som_ek (in /home/rt/uC-buildroot-II/buildroot-builds/sdcard)
+# sama5d2_som_ek (in $(OBELISK_OB1_DIR)/sdCardImage)
 #
-BR2_EXTERNAL_sama5d2_som_ek_PATH="/home/rt/uC-buildroot-II/buildroot-builds/sdcard"
+BR2_EXTERNAL_sama5d2_som_ek_PATH="$(OBELISK_OB1_DIR)/sdCardImage"
