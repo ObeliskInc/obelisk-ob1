@@ -21,6 +21,7 @@ clean:
 	@rm -rf sdCardImage/.config.old
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
+	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
@@ -55,6 +56,7 @@ initial-build:
 	mkdir -p sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root
 	cp controlCardImage/images/part1.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 	cp controlCardImage/images/part2.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
+	cp controlCardImage/images/part3.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 	cp controlCardImage/images/files.md5 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)

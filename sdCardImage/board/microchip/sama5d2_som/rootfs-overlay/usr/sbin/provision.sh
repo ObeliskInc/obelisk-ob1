@@ -17,8 +17,7 @@ echo "Provisioning memory flash" >> /root/provision.log;
 /usr/sbin/flash_check /dev/mtd0
 if [ $? != 0 ]; then
     echo "MTD0 not empty, erasing" >> /root/provision.log;
-    sync
-    /usr/sbin/flash_erase /dev/mtd0 0 48
+    /usr/sbin/flash_erase /dev/mtd0 0 2
     # Re-test to ensure flash is erased
     /usr/sbin/flash_check /dev/mtd0
     if [ $? != 0 ]; then
@@ -29,14 +28,12 @@ if [ $? != 0 ]; then
     fi        
 else
     echo "MTD0 empty" >> /root/provision.log;
-    sync
 fi
 
 /usr/sbin/flash_check /dev/mtd1
 if [ $? != 0 ]; then
     echo "MTD1 not empty, erasing" >> /root/provision.log;
-    sync
-    /usr/sbin/flash_erase /dev/mtd1 0 190
+    /usr/sbin/flash_erase /dev/mtd1 0 46
     # Re-test to ensure flash is erased
     /usr/sbin/flash_check /dev/mtd1
     if [ $? != 0 ]; then
@@ -47,14 +44,12 @@ if [ $? != 0 ]; then
     fi
 else
     echo "MTD1 empty" >> /root/provision.log;
-    sync
 fi
 
 /usr/sbin/flash_check /dev/mtd2
 if [ $? != 0 ]; then
     echo "MTD2 not empty, erasing" >> /root/provision.log;
-    sync
-    /usr/sbin/flash_erase /dev/mtd2 0 18
+    /usr/sbin/flash_erase /dev/mtd2 0 192
     # Re-test to ensure flash is erased
     /usr/sbin/flash_check /dev/mtd2
     if [ $? != 0 ]; then
@@ -65,14 +60,12 @@ if [ $? != 0 ]; then
     fi
 else
     echo "MTD2 empty" >> /root/provision.log;
-    sync
 fi
 
 /usr/sbin/flash_check /dev/mtd3
 if [ $? != 0 ]; then
     echo "MTD3 not empty, erasing" >> /root/provision.log;
-    sync
-    /usr/sbin/flash_erase /dev/mtd3 0 190
+    /usr/sbin/flash_erase /dev/mtd3 0 16
     # Re-test to ensure flash is erased
     /usr/sbin/flash_check /dev/mtd3
     if [ $? != 0 ]; then
@@ -83,30 +76,48 @@ if [ $? != 0 ]; then
     fi
 else
     echo "MTD3 empty" >> /root/provision.log;
-    sync
+fi
+
+/usr/sbin/flash_check /dev/mtd4
+if [ $? != 0 ]; then
+    echo "MTD4 not empty, erasing" >> /root/provision.log;
+    /usr/sbin/flash_erase /dev/mtd4 0 192
+    # Re-test to ensure flash is erased
+    /usr/sbin/flash_check /dev/mtd4
+    if [ $? != 0 ]; then
+        echo "MTD4 erase error" >> /root/provision.log;
+        sync
+        /usr/sbin/led_erase_error &
+        exit 1;
+    fi
+else
+    echo "MTD4 empty" >> /root/provision.log;
 fi
 
 # Progam the flash memory segments
 echo "Writing MTD0" >> /root/provision.log;
-sync
 dd if=/root/part1.img of=/dev/mtd0 bs=64k
 echo "Result: $?" >> /root/provision.log;
+
 echo "Writing MTD1" >> /root/provision.log;
-sync
 dd if=/root/part2.img of=/dev/mtd1 bs=64k
 echo "Result: $?" >> /root/provision.log;
-sync
+
+echo "Writing MTD2" >> /root/provision.log;
+dd if=/root/part3.img of=/dev/mtd2 bs=64k
+echo "Result: $?" >> /root/provision.log;
 
 # Verify the flash memory segments
 echo "Reading MTD0" >> /root/provision.log;
-sync
 dd if=/dev/mtd0 of=/tmp/part1.img bs=64k
+
 echo "Reading MTD1" >> /root/provision.log;
-sync
 dd if=/dev/mtd1 of=/tmp/part2.img bs=64k
 
+echo "Reading MTD2" >> /root/provision.log;
+dd if=/dev/mtd2 of=/tmp/part3.img bs=64k
+
 echo "Verifying read-back files against MD5 sum file" >> /root/provision.log;
-sync
 cd /tmp
 /usr/bin/md5sum -s -c /root/files.md5
 
