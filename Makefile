@@ -63,7 +63,9 @@ initial-build:
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
 	mkdir -p images/
-	cp sdCardImage/images/sdcard.img images/sdcard.img
+	cp sdCardImage/images/sdcard.img images/sdCard.img
+	cp controlCardImage/images/part2.img images/controlCardZImage.img
+	cp controlCardImage/images/part3.img images/controlCardRootFS.img
 
 # Manually modify some of the built libraries and re-make.
 build-customization:
