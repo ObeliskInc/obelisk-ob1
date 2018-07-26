@@ -1,7 +1,3 @@
-# dependencies
-buildroot
-download
-
 # temp files
 *.swp
 *.swo
@@ -9,6 +5,7 @@ download
 
 # build process
 .br-external.mk
+buildroot
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
@@ -18,6 +15,8 @@ controlCardImage/images
 controlCardImage/staging
 controlCardImage/target
 controlCardImage/Makefile
+download
+images
 sdCardImage/.br-external.mk
 sdCardImage/.config
 sdCardImage/.config.old

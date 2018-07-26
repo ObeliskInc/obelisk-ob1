@@ -6,7 +6,6 @@ full: clean dependencies configs initial-build build-customization initial-build
 clean:
 	@rm -rf .br-external.mk
 	@rm -rf buildroot
-	@rm -rf download
 	@rm -rf controlCardImage/.br-external.mk
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
@@ -16,6 +15,8 @@ clean:
 	@rm -rf controlCardImage/staging
 	@rm -rf controlCardImage/target
 	@rm -rf controlCardImage/Makefile
+	@rm -rf download
+	@rm -rf images
 	@rm -rf sdCardImage/.br-external.mk
 	@rm -rf sdCardImage/.config
 	@rm -rf sdCardImage/.config.old
@@ -60,6 +61,9 @@ initial-build:
 	cp controlCardImage/images/files.md5 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
+	# Copy the sd card image to the images/ folder.
+	mkdir -p images/
+	cp sdCardImage/images/sdcard.img images/sdcard.img
 
 # Manually modify some of the built libraries and re-make.
 build-customization:
