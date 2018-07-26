@@ -11,14 +11,14 @@
 # Copy over the new rootfs, replacing the existing recovery rootfs. Do this
 # first since it's larger and less important.
 echo "Setting LED blink pattern to altenate"
-sshpass -p obelisk ssh root@${OB1_NETADDRESS} << !
-	/usr/sbin/led_alternate
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
+	/usr/sbin/led_alternate &
 	exit
 !
 echo "Beginning SCP of controlCardRootFS"
 sshpass -p ${OB1_PASSWORD} scp images/controlCardRootFS.img root@${OB1_NETADDRESS}:/tmp/newRootFS.img
 echo "Beginning DD of controlCardRootFS"
-sshpass -p obelisk ssh root@${OB1_NETADDRESS} << !
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
 	dd if=/tmp/newRootFS.img of=/dev/mtdblock4
 	rm /tmp/newRootFS.img
 	exit
@@ -30,14 +30,14 @@ sshpass -p obelisk ssh root@${OB1_NETADDRESS} << !
 echo "Beginning SCP of controlCardZImage"
 sshpass -p ${OB1_PASSWORD} scp images/controlCardZImage.img root@${OB1_NETADDRESS}:/tmp/newZImage.img
 echo "Beginning DD of controlCardZImage"
-sshpass -p obelisk ssh root@${OB1_NETADDRESS} << !
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
 	dd if=/tmp/newZImage.img of=/dev/mtdblock5
 	rm /tmp/newZImage.img
 	exit
 !
 echo "Setting LED blink pattern to green"
-sshpass -p obelisk ssh root@${OB1_NETADDRESS} << !
-	/usr/sbin/led_blink_green
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
+	/usr/sbin/led_blink_green &
 	exit
 !
 
