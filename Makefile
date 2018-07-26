@@ -64,8 +64,8 @@ build-customization:
 	cp resources/spi_nor_ids.c controlCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
 	cp resources/spi_nor_ids.c sdCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
 	cp resources/sama5d27_som1_ek.c sdCardImage/build/at91bootstrap3-v3.8.10/board/sama5d27_som1_ek
-	mkdir tools/bin
-	mkdir tools/obj
+	mkdir -p tools/bin
+	mkdir -p tools/obj
 	cd tools && make OBELISK_OB1_DIR=$(shell pwd)
 	cp tools/bin/flash_check sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 	cp tools/bin/led_alternate sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
