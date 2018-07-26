@@ -9,6 +9,7 @@ clean:
 	@rm -rf controlCardImage/.br-external.mk
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
 	@rm -rf controlCardImage/build
 	@rm -rf controlCardImage/host
 	@rm -rf controlCardImage/images
@@ -69,15 +70,26 @@ initial-build:
 
 # Manually modify some of the built libraries and re-make.
 build-customization:
+	# Move custom SPI stuff for the control card and sd card into the right
+	# place.
 	cp resources/spi_nor_ids.c controlCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
 	cp resources/spi_nor_ids.c sdCardImage/build/at91bootstrap3-v3.8.10/driver/spi_flash
 	cp resources/sama5d27_som1_ek.c sdCardImage/build/at91bootstrap3-v3.8.10/board/sama5d27_som1_ek
+	# Compile basic tools..
 	mkdir -p tools/bin
 	mkdir -p tools/obj
 	cd tools && make OBELISK_OB1_DIR=$(shell pwd)
+	# Move LED manipulation tools into control card rootfs.
+	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin
+	cp tools/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
+	cp tools/bin/led_blink_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_blink_green
+	cp tools/bin/led_blink_red controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_blink_red
+	# Move LED manipulation tools into sd card rootfs.
 	cp tools/bin/flash_check sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 	cp tools/bin/led_alternate sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	cp tools/bin/led_erase_error sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_erase_error
+	# Remove the .stamp_built so the images are rebuilt properly to include all
+	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
 	rm controlCardImage/build/linux-linux4sam_5.8/.stamp_built
 	rm sdCardImage/build/at91bootstrap3-v3.8.10/.stamp_built

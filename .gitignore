@@ -9,6 +9,7 @@ buildroot
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
 controlCardImage/build
 controlCardImage/host
 controlCardImage/images
