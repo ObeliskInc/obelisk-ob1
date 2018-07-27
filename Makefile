@@ -79,11 +79,6 @@ build-customization:
 	mkdir -p tools/bin
 	mkdir -p tools/obj
 	cd tools && make OBELISK_OB1_DIR=$(shell pwd)
-	# Move LED manipulation tools into control card rootfs.
-	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin
-	cp tools/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
-	cp tools/bin/led_blink_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_blink_green
-	cp tools/bin/led_blink_red controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_blink_red
 	# Move LED manipulation tools into sd card rootfs.
 	cp tools/bin/flash_check sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 	cp tools/bin/led_alternate sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate

@@ -24,10 +24,6 @@ _BSPOBJ = gpio_test.o
 BSP_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_BSPOBJ))
 _LEDOBJ = led_alternate.o
 LED_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_LEDOBJ))
-_LEDBGOBJ = led_blink_green.o
-LED_BLINK_GREEN_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_LEDBGOBJ))
-_LEDBROBJ = led_blink_red.o
-LED_BLINK_RED_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_LEDBROBJ))
 _LEDEROBJ = led_erase_error.o
 LED_ERASE_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_LEDEROBJ))
 _I2COBJ = i2c_test.o
@@ -40,7 +36,7 @@ FAN_OBJECTS = $(patsubst %,$(OBJECT_DIR)/%,$(_FANOBJ))
 $(OBJECT_DIR)/%.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-binaries = flash_check gpio_test led_alternate led_blink_green led_blink_red led_erase_error i2c_test spi_test fan_speed
+binaries = flash_check gpio_test led_alternate led_erase_error i2c_test spi_test fan_speed
 
 all:	$(binaries)
 
@@ -51,12 +47,6 @@ gpio_test:	$(BSP_OBJECTS)
 	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 led_alternate:	$(LED_OBJECTS)
-	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
-
-led_blink_green:	$(LED_OBJECTS)
-	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
-
-led_blink_red:	$(LED_OBJECTS)
 	$(CC) -o bin/$@ $^ $(CFLAGS) $(LIBS)
 
 led_erase_error:	$(LED_ERASE_OBJECTS)

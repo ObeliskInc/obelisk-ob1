@@ -10,11 +10,6 @@
 
 # Copy over the new rootfs, replacing the existing recovery rootfs. Do this
 # first since it's larger and less important.
-echo "Setting LED blink pattern to altenate"
-sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
-	/usr/sbin/led_alternate &
-	exit
-!
 echo "Beginning SCP of controlCardRootFS"
 sshpass -p ${OB1_PASSWORD} scp images/controlCardRootFS.img root@${OB1_NETADDRESS}:/tmp/newRootFS.img
 echo "Beginning DD of controlCardRootFS"
@@ -36,9 +31,5 @@ sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
 	exit
 !
 echo "Setting LED blink pattern to green"
-sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
-	/usr/sbin/led_blink_green &
-	exit
-!
 
 # Upgrade complete. Recovery partitions should now be altered.
