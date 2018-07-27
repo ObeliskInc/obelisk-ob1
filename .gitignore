@@ -5,7 +5,7 @@
 
 # build process
 .br-external.mk
-buildroot
+buildArtifacts
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
@@ -16,7 +16,7 @@ controlCardImage/images
 controlCardImage/staging
 controlCardImage/target
 controlCardImage/Makefile
-download
+buildArtifacts/downloads
 images
 sdCardImage/.br-external.mk
 sdCardImage/.config
@@ -34,8 +34,8 @@ sdCardImage/images
 sdCardImage/staging
 sdCardImage/target
 sdCardImage/Makefile
-tools/bin
-tools/obj
+src/sdCardUtils/bin
+src/sdCardUtils/obj
 
 # for personal note taking
 *.notes
