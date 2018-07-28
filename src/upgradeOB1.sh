@@ -8,6 +8,13 @@
 # of the remote machine, and you will need the environment variable
 # OB1_NETADDRESS to the network address of the remote machine.
 
+# Set the LEDs to alternating to indicate work in progress.
+echo "Beginning DD of controlCardRootFS"
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
+	/usr/sbin/led_alternate
+	exit
+!
+
 # Copy over the new rootfs, replacing the existing recovery rootfs. Do this
 # first since it's larger and less important.
 echo "Beginning SCP of controlCardRootFS"
@@ -31,5 +38,13 @@ sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
 	exit
 !
 echo "Setting LED blink pattern to green"
+
+# Set the LEDs to flasing green to indicate success
+echo "Beginning DD of controlCardRootFS"
+sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
+	kill $(pidof led_alternate)
+	/usr/sbin/led_flash_green
+	exit
+!
 
 # Upgrade complete. Recovery partitions should now be altered.

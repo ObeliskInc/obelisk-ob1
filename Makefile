@@ -79,7 +79,7 @@ build-customization:
 	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
 	# Move LED manipulation tools into control card.
 	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
-	cp src/controlCardUtils/bin/gpio_setup controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_setup
+	cp src/controlCardUtils/bin/gpio_init controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.

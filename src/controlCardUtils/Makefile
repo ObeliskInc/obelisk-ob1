@@ -13,6 +13,9 @@ obj/%.o: %.c $(DEPS)
 led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
 	$(CC) -o bin/$@ $^ $(CFLAGS)
 
-all: led_alternate
+gpio_init: obj/gpio.o
+	$(CC) -o bin/$@ $^ $(CFLAGS)
+
+all: led_alternate gpio_init
 
 .PHONY:	all
