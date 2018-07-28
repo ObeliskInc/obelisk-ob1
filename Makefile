@@ -76,11 +76,12 @@ build-customization:
 	# Compile the control card image utils.
 	mkdir -p src/controlCardUtils/bin
 	mkdir -p src/controlCardUtils/obj
-	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
+	cd src/controlCardUtils && make all OBELISK_OB1_DIR=$(shell pwd) # For some reason, just running 'make' is insufficient, need 'make all'
 	# Move LED manipulation tools into control card.
 	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
 	cp src/controlCardUtils/bin/gpio_init controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
+	cp src/controlCardUtils/bin/led_flash_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built

@@ -13,9 +13,12 @@ obj/%.o: %.c $(DEPS)
 led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
 	$(CC) -o bin/$@ $^ $(CFLAGS)
 
-gpio_init: obj/gpio.o
+led_flash_green: obj/gpio.o obj/led_control.o obj/led_flash_green.o
 	$(CC) -o bin/$@ $^ $(CFLAGS)
 
-all: led_alternate gpio_init
+gpio_init: obj/gpio.o obj/gpio_init.o
+	$(CC) -o bin/$@ $^ $(CFLAGS)
+
+all: led_alternate led_flash_green gpio_init
 
 .PHONY:	all
