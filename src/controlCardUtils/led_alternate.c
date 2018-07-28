@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-
+#include "gpio.h"
 #include "led_control.h"
 
 // led_alternate is a program which alternates between a green light and a red
@@ -13,7 +13,7 @@ int main(void) {
 	redLEDOff();
 	greenLEDOff();
 
-    while(1) {
+    while (1) {
         printf("Turn on green light.");
 		greenLEDOn();
         sleep(1);

@@ -12,7 +12,7 @@
 #include <string.h>
 #include <linux/gpio.h>
 #include <sys/ioctl.h>
-#include "gpio_setup.h"
+#include "gpio.h"
 
 /* Fundamental functions */
 
@@ -816,16 +816,4 @@ void print_flags(unsigned long flags)
             printed++;
         }
     }
-}
-
-/* Main test function */
-int main(void)
-{
-    if(gpio_init() != GPIO_RET_SUCCESS)
-    {
-        printf("Error initializing GPIO pins.\n");
-    } else {
-		printf("GPIO pins set correctly.\n");
-	}
-    return 0;
 }

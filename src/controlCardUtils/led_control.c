@@ -1,4 +1,4 @@
-#include "gpio_setup.h"
+#include "gpio.h"
 #include "led_control.h"
 
 // Turn on the green light.
