@@ -36,6 +36,8 @@ sdCardImage/target
 sdCardImage/Makefile
 src/sdCardUtils/bin
 src/sdCardUtils/obj
+src/controlCardUtils/bin
+src/controlCardUtils/obj
 
 # for personal note taking
 *.notes

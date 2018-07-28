@@ -36,6 +36,8 @@ clean:
 	@rm -rf sdCardImage/Makefile
 	@rm -rf src/sdCardUtils/bin
 	@rm -rf src/sdCardUtils/obj
+	@rm -rf src/controlCardUtils/bin
+	@rm -rf src/controlCardUtils/obj
 
 # Fetch and set up any dependencies.
 dependencies:
@@ -71,10 +73,14 @@ build-customization:
 	cp src/sdCardUtils/bin/flash_check sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 	cp src/sdCardUtils/bin/led_alternate sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	cp src/sdCardUtils/bin/led_erase_error sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_erase_error
+	# Compile the control card image utils.
+	mkdir -p src/controlCardUtils/bin
+	mkdir -p src/controlCardUtils/obj
+	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
 	# Move LED manipulation tools into control card.
 	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
-	cp src/sdCardUtils/bin/gpio_test controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_test
-	cp src/sdCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
+	cp src/controlCardUtils/bin/gpio_setup controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_setup
+	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
@@ -113,4 +119,10 @@ sd-menu:
 	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildroot sama5d2_som_minimal_defconfig && \
 		make menuconfig
 
-.PHONY: all full clean dependencies configs initial-build build-customization control-name sd-menu
+control-utils:
+	# Compile the control card image utils.
+	mkdir -p src/controlCardUtils/bin
+	mkdir -p src/controlCardUtils/obj
+	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
+
+.PHONY: all full clean dependencies configs initial-build build-customization control-menu sd-menu control-utils
