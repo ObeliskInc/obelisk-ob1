@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-#include "gpio.h"
 #include "led_control.h"
 
 // led_alternate is a program which alternates between a green light and a red
