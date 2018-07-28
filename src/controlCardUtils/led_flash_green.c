@@ -20,14 +20,6 @@ int main(void) {
 		printf("Turn off green light.");
 		greenLEDOff();
         sleep(1);
-
-		printf("Turn on red light.");
-		redLEDOn();
-        sleep(1);
-
-		printf("Turn off red light.");
-		redLEDOff();
-        sleep(1);
     }
     return 0;
 }

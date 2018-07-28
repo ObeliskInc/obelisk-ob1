@@ -11,7 +11,7 @@
 # Set the LEDs to alternating to indicate work in progress.
 echo "Beginning DD of controlCardRootFS"
 sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
-	/usr/sbin/led_alternate
+	/usr/sbin/led_alternate &
 	exit
 !
 
@@ -43,7 +43,7 @@ echo "Setting LED blink pattern to green"
 echo "Beginning DD of controlCardRootFS"
 sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
 	kill $(pidof led_alternate)
-	/usr/sbin/led_flash_green
+	/usr/sbin/led_flash_green &
 	exit
 !
 
