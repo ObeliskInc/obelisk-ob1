@@ -5,7 +5,7 @@
 
 case "$1" in
   start)
-	boot_mesg -n "Starting module: spidev"
+	boot_mesg -n "Initializing gpios"
 	/usr/sbin/gpio_init
 	;;
   *)
