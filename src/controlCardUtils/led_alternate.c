@@ -5,8 +5,6 @@
 // led_alternate is a program which alternates between a green light and a red
 // light, printing messages to let you know that the API is implemented
 // correctly.
-//
-// TODO: Error handling
 int main(void) {
 	printf("Turn off both lights.\n");
 	redLEDOff();
