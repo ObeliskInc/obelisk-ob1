@@ -42,7 +42,7 @@ echo "Setting LED blink pattern to green"
 # Set the LEDs to flasing green to indicate success
 echo "Beginning DD of controlCardRootFS"
 sshpass -p ${OB1_PASSWORD} ssh root@${OB1_NETADDRESS} << !
-	kill $(pidof led_alternate)
+	kill $(ps -C led_alternate -o pid=)
 	/usr/sbin/led_flash_green &
 	exit
 !
