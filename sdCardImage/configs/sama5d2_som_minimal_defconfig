@@ -161,7 +161,7 @@ BR2_XZCAT="xzcat"
 BR2_LZCAT="lzip -d -c"
 BR2_TAR_OPTIONS=""
 BR2_DEFCONFIG="$(BR2_EXTERNAL)/configs/buildroot_defconfig"
-BR2_DL_DIR="$(OBELISK_OB1_DIR)/download"
+BR2_DL_DIR="$(OBELISK_OB1_DIR)/buildArtifacts/downloads"
 BR2_HOST_DIR="$(BASE_DIR)/host"
 
 #

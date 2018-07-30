@@ -1,7 +1,3 @@
-# dependencies
-buildroot
-download
-
 # temp files
 *.swp
 *.swo
@@ -9,15 +5,19 @@ download
 
 # build process
 .br-external.mk
+buildArtifacts
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
 controlCardImage/build
 controlCardImage/host
 controlCardImage/images
 controlCardImage/staging
 controlCardImage/target
 controlCardImage/Makefile
+buildArtifacts/downloads
+images
 sdCardImage/.br-external.mk
 sdCardImage/.config
 sdCardImage/.config.old
@@ -34,8 +34,10 @@ sdCardImage/images
 sdCardImage/staging
 sdCardImage/target
 sdCardImage/Makefile
-tools/bin
-tools/obj
+src/sdCardUtils/bin
+src/sdCardUtils/obj
+src/controlCardUtils/bin
+src/controlCardUtils/obj
 
 # for personal note taking
 *.notes
