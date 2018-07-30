@@ -10,22 +10,23 @@ int main(void) {
 	redLEDOff();
 	greenLEDOff();
 
-    while (1) {
-        printf("Turn on green light.");
+	while (1) {
+		printf("Turn on green light.\n");
 		greenLEDOn();
-        sleep(1);
+		sleep(1);
 
-		printf("Turn off green light.");
+		printf("Turn off green light.\n");
 		greenLEDOff();
-        sleep(1);
+		sleep(1);
 
-		printf("Turn on red light.");
+		printf("Turn on red light.\n");
 		redLEDOn();
-        sleep(1);
+		sleep(1);
 
-		printf("Turn off red light.");
+		printf("Turn off red light.\n");
 		redLEDOff();
-        sleep(1);
-    }
-    return 0;
+		sleep(1);
+	}
+	return 0;
 }
+

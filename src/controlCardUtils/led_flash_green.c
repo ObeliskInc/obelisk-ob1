@@ -2,9 +2,7 @@
 #include <unistd.h>
 #include "led_control.h"
 
-// led_alternate is a program which alternates between a green light and a red
-// light, printing messages to let you know that the API is implemented
-// correctly.
+// led_flash_green strobes the green LED for 1 second intervals.
 //
 // TODO: Error handling
 int main(void) {
@@ -12,14 +10,14 @@ int main(void) {
 	redLEDOff();
 	greenLEDOff();
 
-    while (1) {
-        printf("Turn on green light.");
+	while (1) {
+		printf("Turn on green light.\n");
 		greenLEDOn();
-        sleep(1);
+		sleep(1);
 
-		printf("Turn off green light.");
+		printf("Turn off green light.\n");
 		greenLEDOff();
-        sleep(1);
-    }
-    return 0;
+		sleep(1);
+	}
+	return 0;
 }
