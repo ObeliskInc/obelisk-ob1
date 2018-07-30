@@ -9,16 +9,20 @@ DEPS = gpio.h led_control.h
 
 all: gpio_init led_flash_green led_alternate
 
+gpio_init: bin/gpio_init
+led_flash_green: bin/led_flash_green
+led_alternate: bin/led_alternate
+
 obj/%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
+bin/led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
 	$(CC) -o bin/$@ $^ $(CFLAGS)
 
-led_flash_green: obj/gpio.o obj/led_control.o obj/led_flash_green.o
-	$(CC) -o bin/$@ $^ $(CFLAGS)
+bin/led_flash_green: obj/gpio.o obj/led_control.o obj/led_flash_green.o
+	$(CC) -o $@ $^ $(CFLAGS)
 
-gpio_init: obj/gpio.o obj/gpio_init.o
-	$(CC) -o bin/$@ $^ $(CFLAGS)
+bin/gpio_init: obj/gpio.o obj/gpio_init.o
+	$(CC) -o $@ $^ $(CFLAGS)
 
 .PHONY:	all led_alternate led_flash_green gpio_init
