@@ -17,7 +17,7 @@ obj/%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 bin/led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
-	$(CC) -o bin/$@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 bin/led_flash_green: obj/gpio.o obj/led_control.o obj/led_flash_green.o
 	$(CC) -o $@ $^ $(CFLAGS)
