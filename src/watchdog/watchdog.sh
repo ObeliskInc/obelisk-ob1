@@ -1,8 +1,26 @@
 #!/bin/sh
 
-# Declare commands to check for.
-cmd1="sleep 30s &"
-cmd2="sleep 30s &"
+################################################################################
+# Config
+################################################################################
+
+# log related configs
+LOG_FOLDER=/var/log/         # Folder with logs. Will be searched recursively
+SAVELOG_BIN=/root/savelog    # Path to savelog binary
+MAX_LOG_SIZE=40960           # 40 kib
+NUM_LOGS=5                   # Max number of copies
+
+# watchdog related configs
+cmd1="sleep 30s &" # binary 1 to run and watch
+cmd2="sleep 30s &" # binary 2 to run and watch
+
+
+
+
+
+################################################################################
+# Run Watchdog
+################################################################################
 
 # Run first command and save pid.
 eval $cmd1
@@ -36,6 +54,16 @@ while true; do
 		echo "New pid $pid2"
 		echo ""
 	fi
+
+	# Archive large logs.
+	find $LOG_FOLDER -type f ! -regex '.*\.[0-9].*' | while read -r log ; do
+		# Get size of log.
+		size=`wc -c $log | cut -d' ' -f1`
+		# If size greater than 40kib call savelog.
+		if [ $size -ge $MAX_LOG_SIZE ] ; then
+			eval "$SAVELOG_BIN -c $NUM_LOGS -n $log"
+		fi
+	done
 
 	# Sleep for a second before trying again
 	sleep 1s
