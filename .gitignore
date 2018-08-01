@@ -39,5 +39,12 @@ src/sdCardUtils/obj
 src/controlCardUtils/bin
 src/controlCardUtils/obj
 
+# build artifacts
+*.o
+*.lo
+*.Po
+.deps
+.dirstamp
+
 # for personal note taking
 *.notes
