@@ -57,6 +57,8 @@ initial-build:
 	cd controlCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
+	# Create the cgminer Makefile
+	cd src/cgminer && OBELISK_OB1_DIR=$(shell pwd) ./build_cgminer_arm.sh && automake
 
 # Manually modify some of the built libraries and re-make.
 build-customization:
@@ -125,5 +127,9 @@ control-utils:
 	mkdir -p src/controlCardUtils/bin
 	mkdir -p src/controlCardUtils/obj
 	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
+
+# Build cgminer
+cgminer:
+	cd src/cgminer && make
 
 .PHONY: all full clean dependencies configs initial-build build-customization control-menu sd-menu control-utils
