@@ -9,7 +9,10 @@ clean:
 	@rm -rf controlCardImage/.br-external.mk
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
 	@rm -rf controlCardImage/build
 	@rm -rf controlCardImage/host
 	@rm -rf controlCardImage/images
@@ -82,6 +85,7 @@ build-customization:
 	cp src/controlCardUtils/bin/gpio_init controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	cp src/controlCardUtils/bin/led_flash_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
+	cp src/controlCardUtils/bin/led_flash_red controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built

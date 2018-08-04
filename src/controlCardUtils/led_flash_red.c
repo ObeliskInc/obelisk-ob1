@@ -8,10 +8,10 @@ int main(void) {
 	greenLEDOff();
 
 	while (1) {
-		greenLEDOn();
+		redLEDOn();
 		sleep(1);
 
-		greenLEDOff();
+		redLEDOff();
 		sleep(1);
 	}
 	return 0;
