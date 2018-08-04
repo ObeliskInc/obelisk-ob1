@@ -1,0 +1,10 @@
+{
+  "STATUS": [{
+    "STATUS": "W",
+    "When": 1325403071,
+    "Code": 124,
+    "Msg": "Lock stats not enabled",
+    "Description": "cgminer 4.10.0"
+  }],
+  "id": 1
+}

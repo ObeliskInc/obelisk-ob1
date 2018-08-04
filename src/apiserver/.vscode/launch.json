@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "apiserver",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceRoot}/bin/apiserver",
+      "preLaunchTask": "build",
+      "internalConsoleOptions": "openOnFirstSessionStart",
+      "stopOnEntry": false,
+      "cwd": "${workspaceRoot}/bin",
+      "terminal": "console",
+      "osx": {
+        "MIMode": "lldb"
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "STATUS": [{
+    "STATUS": "S",
+    "When": 1325402924,
+    "Code": 106,
+    "Msg": "ASC0",
+    "Description": "cgminer 4.10.0"
+  }],
+  "ASC": [{
+    "ASC": 0,
+    "Name": "Obelisk",
+    "ID": 0,
+    "Enabled": "Y",
+    "Status": "Alive",
+    "Temperature": 0,
+    "MHS av": 0,
+    "MHS 4s": 0,
+    "MHS 1m": 0,
+    "MHS 5m": 0,
+    "MHS 15m": 0,
+    "Accepted": 0,
+    "Rejected": 0,
+    "Hardware Errors": 0,
+    "Utility": 0,
+    "Last Share Pool": -1,
+    "Last Share Time": 0,
+    "Total MH": 0,
+    "Diff1 Work": 0,
+    "Difficulty Accepted": 0,
+    "Difficulty Rejected": 0,
+    "Last Share Difficulty": 0,
+    "Last Valid Work": 1325402715,
+    "Device Hardware%": 0,
+    "Device Rejected%": 0,
+    "Device Elapsed": 209
+  }],
+  "id": 1
+}

@@ -1,0 +1,17 @@
+{
+  "STATUS": [{
+    "STATUS": "S",
+    "When": 1325384048,
+    "Code": 78,
+    "Msg": "CGMiner coin",
+    "Description": "cgminer 4.10.0"
+  }],
+  "COIN": [{
+    "Hash Method": "sha256",
+    "Current Block Time": 0.000000,
+    "Current Block Hash": "000000000000000000000000000000000000",
+    "LP": true,
+    "Network Difficulty": 18446744073709553000.00000000
+  }],
+  "id": 1
+}

@@ -1,0 +1,20 @@
+{
+  "STATUS": [{
+    "STATUS": "S",
+    "When": 1325403235,
+    "Code": 33,
+    "Msg": "CGMiner config",
+    "Description": "cgminer 4.10.0"
+  }],
+  "CONFIG": [{
+    "ASC Count": 3,
+    "PGA Count": 0,
+    "Pool Count": 3,
+    "Strategy": "Failover",
+    "Log Interval": 4,
+    "Device Code": "",
+    "OS": "Linux",
+    "Hotplug": "None"
+  }],
+  "id": 1
+}
