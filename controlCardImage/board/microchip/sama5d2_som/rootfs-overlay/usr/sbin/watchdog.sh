@@ -5,18 +5,14 @@
 ################################################################################
 
 # log related configs
-LOG_FOLDER=/var/log/         # Folder with logs. Will be searched recursively
-SAVELOG_BIN=/root/savelog    # Path to savelog binary
-MAX_LOG_SIZE=40960           # 40 kib
-NUM_LOGS=5                   # Max number of copies
+LOG_FOLDER=/var/log/          # Folder with logs. Will be searched recursively
+SAVELOG_BIN=/usr/sbin/savelog # Path to savelog binary
+MAX_LOG_SIZE=40960            # 40 kib
+NUM_LOGS=5                    # Max number of copies
 
 # watchdog related configs
 cmd1="sleep 30s &" # binary 1 to run and watch
 cmd2="sleep 30s &" # binary 2 to run and watch
-
-
-
-
 
 ################################################################################
 # Run Watchdog
@@ -55,7 +51,7 @@ while true; do
 		echo ""
 	fi
 
-	# Archive large logs.
+	# Archive large logs in /var/log
 	find $LOG_FOLDER -type f ! -regex '.*\.[0-9].*' | while read -r log ; do
 		# Get size of log.
 		size=`wc -c $log | cut -d' ' -f1`
