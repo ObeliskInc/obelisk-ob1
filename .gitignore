@@ -9,6 +9,7 @@ buildArtifacts
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
@@ -28,7 +29,6 @@ sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
-sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_erase_error
