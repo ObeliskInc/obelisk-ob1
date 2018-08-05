@@ -1,7 +1,7 @@
 appname := apiserver
 
 CXX := $(OBELISK_OB1_DIR)/controlCardImage/host/bin/arm-linux-g++
-CXXFLAGS := -std=c++14 -Wno-psabi
+CXXFLAGS := -std=c++14 -Wno-psabi -s -Os
 LDLIBS := -lcrypt -lpthread -lboost_system
 
 # srcfiles := $(shell find src -name "*.cpp")
