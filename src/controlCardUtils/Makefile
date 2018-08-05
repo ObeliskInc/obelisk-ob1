@@ -7,10 +7,11 @@ CFLAGS = -ggdb -O0 -Wformat=2 -Werror -Wall -Wextra -Wswitch-default -Wswitch-en
 
 DEPS = gpio.h led_control.h
 
-all: gpio_init led_flash_green led_alternate
+all: gpio_init led_flash_green led_flash_red led_alternate
 
 gpio_init: bin/gpio_init
 led_flash_green: bin/led_flash_green
+led_flash_red: bin/led_flash_red
 led_alternate: bin/led_alternate
 
 obj/%.o: %.c $(DEPS)
@@ -22,7 +23,10 @@ bin/led_alternate: obj/gpio.o obj/led_control.o obj/led_alternate.o
 bin/led_flash_green: obj/gpio.o obj/led_control.o obj/led_flash_green.o
 	$(CC) -o $@ $^ $(CFLAGS)
 
+bin/led_flash_red: obj/gpio.o obj/led_control.o obj/led_flash_red.o
+	$(CC) -o $@ $^ $(CFLAGS)
+
 bin/gpio_init: obj/gpio.o obj/gpio_init.o
 	$(CC) -o $@ $^ $(CFLAGS)
 
-.PHONY:	all led_alternate led_flash_green gpio_init
+.PHONY:	all led_alternate led_flash_green led_flash_red gpio_init

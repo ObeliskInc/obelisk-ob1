@@ -6,24 +6,19 @@
 // light, printing messages to let you know that the API is implemented
 // correctly.
 int main(void) {
-	printf("Turn off both lights.\n");
 	redLEDOff();
 	greenLEDOff();
 
 	while (1) {
-		printf("Turn on green light.\n");
 		greenLEDOn();
 		sleep(1);
 
-		printf("Turn off green light.\n");
 		greenLEDOff();
 		sleep(1);
 
-		printf("Turn on red light.\n");
 		redLEDOn();
 		sleep(1);
 
-		printf("Turn off red light.\n");
 		redLEDOff();
 		sleep(1);
 	}
