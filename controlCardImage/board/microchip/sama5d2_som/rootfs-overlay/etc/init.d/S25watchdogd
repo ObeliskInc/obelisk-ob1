@@ -3,7 +3,7 @@
 # description: monitors and restarts essential processes.
 # processname: watchdog
 
-DAEMON_PATH="/root"
+DAEMON_PATH="/usr/sbin"
 
 DAEMON=./watchdog.sh
 DAEMONOPTS=""
