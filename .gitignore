@@ -25,6 +25,7 @@ sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
+sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/flash_check
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_erase_error
@@ -34,10 +35,13 @@ sdCardImage/images
 sdCardImage/staging
 sdCardImage/target
 sdCardImage/Makefile
-src/sdCardUtils/bin
-src/sdCardUtils/obj
+src/apiserver/src/*.o
+src/apiserver/src/*/*.o
+src/apiserver/.depend
 src/controlCardUtils/bin
 src/controlCardUtils/obj
+src/sdCardUtils/bin
+src/sdCardUtils/obj
 
 # for personal note taking
 *.notes

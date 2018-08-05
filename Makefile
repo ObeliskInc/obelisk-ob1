@@ -10,6 +10,7 @@ clean:
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
 	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 	@rm -rf controlCardImage/build
 	@rm -rf controlCardImage/host
 	@rm -rf controlCardImage/images
@@ -34,10 +35,14 @@ clean:
 	@rm -rf sdCardImage/staging
 	@rm -rf sdCardImage/target
 	@rm -rf sdCardImage/Makefile
-	@rm -rf src/sdCardUtils/bin
-	@rm -rf src/sdCardUtils/obj
+	@rm -rf src/apiserver/src/*.o
+	@rm -rf src/apiserver/src/util/s*.o
+	@rm -rf src/apiserver/src/handlers/*.o
+	@rm -rf src/apiserver/.depend
 	@rm -rf src/controlCardUtils/bin
 	@rm -rf src/controlCardUtils/obj
+	@rm -rf src/sdCardUtils/bin
+	@rm -rf src/sdCardUtils/obj
 
 # Fetch and set up any dependencies.
 dependencies:
@@ -82,6 +87,10 @@ build-customization:
 	cp src/controlCardUtils/bin/gpio_init controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	cp src/controlCardUtils/bin/led_flash_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
+	# Create the apiserver
+	mkdir -p src/apiserver/bin src/apiserver/obj
+	cd src/apiserver && make OBELISK_OB1_DIR=$(shell pwd)
+	cp src/apiserver/bin/apiserver controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
