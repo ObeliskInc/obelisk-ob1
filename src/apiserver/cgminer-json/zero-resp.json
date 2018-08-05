@@ -1,0 +1,10 @@
+{
+  "STATUS": [{
+    "STATUS": "S",
+    "When": 1325384621,
+    "Code": 97,
+    "Msg": "Zeroed All stats without summary",
+    "Description": "cgminer 4.10.0"
+  }],
+  "id": 1
+}
