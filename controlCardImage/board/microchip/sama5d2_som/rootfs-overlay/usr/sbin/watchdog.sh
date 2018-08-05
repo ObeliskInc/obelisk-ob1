@@ -11,7 +11,7 @@ MAX_LOG_SIZE=40960            # 40 kib
 NUM_LOGS=5                    # Max number of copies
 
 # watchdog related configs
-cmd1="sleep 30s &" # binary 1 to run and watch
+cmd1="/usr/sbin/apiserver &" # binary 1 to run and watch
 cmd2="sleep 30s &" # binary 2 to run and watch
 
 ################################################################################
