@@ -9,7 +9,10 @@ buildArtifacts
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
-controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
 controlCardImage/build
 controlCardImage/host
 controlCardImage/images
