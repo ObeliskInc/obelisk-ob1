@@ -9,6 +9,7 @@ buildArtifacts
 controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
@@ -37,10 +38,13 @@ sdCardImage/images
 sdCardImage/staging
 sdCardImage/target
 sdCardImage/Makefile
-src/sdCardUtils/bin
-src/sdCardUtils/obj
+src/apiserver/src/*.o
+src/apiserver/src/*/*.o
+src/apiserver/.depend
 src/controlCardUtils/bin
 src/controlCardUtils/obj
+src/sdCardUtils/bin
+src/sdCardUtils/obj
 
 # for personal note taking
 *.notes
