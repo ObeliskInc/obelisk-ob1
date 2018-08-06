@@ -34,7 +34,7 @@ const unsigned int SALT_PREFIX_LEN = 3;
 const unsigned int NUM_SALT_CHARS = 64;
 const unsigned int SESSION_ID_LEN = 32;
 
-const string CGMINER_CONFIG_FILE_PATH = "/root/.cgminer/cgminer.conf";
+const string CGMINER_CONFIG_FILE_PATH = "/root/config/cgminer.conf";
 
 static const unsigned char _xcrypt_itoa64[NUM_SALT_CHARS + 1] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -378,14 +378,14 @@ bool setDefaultGateway(string intfName, string defaultGateway) {
 
 bool setHostname(string hostname) {
   ostringstream cmd;
-  cmd << "echo " << hostname << " > /etc/hostname";
+  cmd << "echo " << hostname << " > /root/config/hostname";
   runCmd(cmd.str());
   return true;
 }
 
 bool setDns(string dnsServer) {
   ostringstream cmd;
-  cmd << "echo nameserver " << dnsServer << " > /etc/resolv.conf";
+  cmd << "echo nameserver " << dnsServer << " > /root/config/resolv.conf";
   runCmd(cmd.str());
   // TODO: Parse result to see if cmd worked
   return true;
@@ -410,7 +410,7 @@ bool setNetworkInfo(string intfName, string hostname, string ipAddress, string s
     }
 
     ostringstream cmd;
-    cmd << "printf \"" << config.str() << "\" > /etc/network/interfaces" << endl;
+    cmd << "printf \"" << config.str() << "\" > /root/config/interfaces" << endl;
     runCmd(cmd.str());
 
     // Set the hostname
@@ -461,7 +461,7 @@ string getDefaultGateway(string intfName) {
   // OLD COMMAND:
   // cmd << "cat /etc/network/interfaces | sed -En 's/\s+gateway([ ]+)(.*)/\2/p'";
   ostringstream cmd;
-  cmd << "cat /etc/network/interfaces | sed -En 's/\\s+gateway([ ]+)(.*)/\\2/p'";
+  cmd << "cat /root/config/interfaces | sed -En 's/\\s+gateway([ ]+)(.*)/\\2/p'";
   string result = runCmd(cmd.str());
   if (result.length() > 0) {
     result.pop_back(); // Remove trailing newline
@@ -471,7 +471,7 @@ string getDefaultGateway(string intfName) {
 
 bool getDhcpEnabled(string intfName) {
   ostringstream cmd;
-  cmd << "cat /etc/network/interfaces | sed -En 's/iface(.*) " << intfName << " inet (.*)/\\2/p'";
+  cmd << "cat /root/config/interfaces | sed -En 's/iface(.*) " << intfName << " inet (.*)/\\2/p'";
   string result = runCmd(cmd.str());
   if (result.length() > 0) {
     result.pop_back(); // Remove trailing newline
@@ -481,7 +481,7 @@ bool getDhcpEnabled(string intfName) {
 
 string getDns(string intfName) {
   ostringstream cmd;
-  cmd << "cat /etc/resolv.conf | sed -En 's/nameserver ([0-9.]+).*/\\1/p' | head -1";
+  cmd << "cat /root/config/resolv.conf | sed -En 's/nameserver ([0-9.]+).*/\\1/p' | head -1";
   string result = runCmd(cmd.str());
   if (result.length() > 0) {
     result.pop_back(); // Remove trailing newline
@@ -501,7 +501,7 @@ string getMACAddr(string intfName) {
 
 string getTimezone() {
   ostringstream cmd;
-  cmd << "cat /etc/timezone";
+  cmd << "cat /root/config/timezone";
   string result = runCmd(cmd.str());
   if (result.length() > 0) {
     result.pop_back(); // Remove trailing newline
@@ -521,11 +521,11 @@ string getUptime() {
 
 bool setTimezone(string timezone) {
   ostringstream cmd1;
-  cmd1 << "echo " << timezone << " > /etc/timezone";
+  cmd1 << "echo " << timezone << " > /root/config/timezone";
   runCmd(cmd1.str());
 
   ostringstream cmd2;
-  cmd2 << "ln -s -f /usr/share/zoneinfo/" << timezone << " /etc/localtime";
+  cmd2 << "ln -s -f /usr/share/zoneinfo/" << timezone << " /root/config/localtime";
   runCmd(cmd2.str());
   // TODO: Parse result to see if cmd worked
   return true;
