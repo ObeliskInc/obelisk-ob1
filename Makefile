@@ -101,6 +101,15 @@ apiserver:
 	cp src/apiserver/bin/apiserver controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
 
 webclient:
+	# Create the webclient
+	cd src/webclient && yarn
+	rm -rf src/webclient/node_modules/@types/*/node_modules
+	cd src/webclient && yarn build
+	cd src/webclient && ./optimize-build.sh
+	# Copy the build dir
+	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
+	cp -R src/webclient/build controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
+	sudo chown -R www-data:www-data controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
 
 cgminer:
 
