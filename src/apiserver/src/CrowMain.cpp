@@ -10,12 +10,19 @@
 #include <unordered_map>
 
 using namespace std;
+using namespace std::chrono_literals;
 
 typedef struct {
   time_t sessionExpirationTime;
 } SessionInfo;
 
+#define HASHRATE_POLL_PERIOD 1
+
+extern void sendCgMinerCmd(string command, string param, CgMiner::RequestCallback callback);
+
 static unordered_map<string, SessionInfo> activeSessions;
+
+extern void poll_for_hashrate();
 
 struct AuthMW {
   struct context {
@@ -69,6 +76,7 @@ void runCrow(int port) {
 
   CROW_LOG_DEBUG << "runCrow()";
   App<CookieParser, AuthMW> app;
+  app.tick(1s, poll_for_hashrate);
 
   int counter = 0;
   CROW_ROUTE(app, "/api/counter")
@@ -184,6 +192,7 @@ void runCrow(int port) {
 
         CROW_LOG_DEBUG << "path='" << path << "'";
         handleGet(path, req, resp);
+        CROW_LOG_DEBUG << "handleGet() DONE";
       });
 
   CROW_ROUTE(app, "/api/action/<path>")

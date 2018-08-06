@@ -52,6 +52,7 @@ public:
         CgMiner::Response resp = sendCommand(cmd.first, cmd.second);
         lastResp = &resp;
         CROW_LOG_DEBUG << "Send/receive complete";
+        CROW_LOG_DEBUG << "Data = " << resp.json;
         int i = 0;
         while (i < resp.json.length()) {
           CROW_LOG_DEBUG << resp.json.substr(i, 80);

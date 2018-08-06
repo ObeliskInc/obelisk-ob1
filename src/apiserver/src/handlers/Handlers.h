@@ -14,6 +14,12 @@ using namespace crow;
 
 #define SESSION_DURATION_SECS (15 * 60) // 15 minutes
 #define MAX_POOLS 3
+#define MAX_HASHBOARDS 3
+
+typedef struct hashrate_t {
+  time_t time;
+  uint32_t hashrates[MAX_HASHBOARDS];
+} hashrate_t;
 
 typedef std::function<void(std::string, query_string &, const crow::request &, crow::response &)>
     PathHandlerForGet;
