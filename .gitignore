@@ -86,6 +86,8 @@
 /src/cgminer/obelisk/.deps/
 /src/cgminer/obelisk/.dirstamp
 /src/cgminer/obelisk/*.o
+/src/cgminer/obelisk/siahash/bin/
+/src/cgminer/obelisk/siahash/obj/
 /src/cgminer/obelisk/siahash/.deps/
 /src/cgminer/obelisk/siahash/.dirstamp
 /src/cgminer/obelisk/siahash/*.o

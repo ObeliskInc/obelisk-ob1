@@ -65,6 +65,8 @@ clean:
 	@rm -rf src/cgminer/lib/.deps
 	@rm -rf src/cgminer/lib/*.a
 	@rm -rf src/cgminer/lib/*.o
+	@rm -rf src/cgminer/obelisk/siahash/bin/
+	@rm -rf src/cgminer/obelisk/siahash/obj/
 	@rm -rf src/cgminer/obelisk/.deps
 	@rm -rf src/cgminer/obelisk/.dirstamp
 	@rm -rf src/cgminer/obelisk/*.o
