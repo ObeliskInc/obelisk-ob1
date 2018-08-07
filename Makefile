@@ -147,6 +147,7 @@ webclient:
 
 cgminer:
 	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && automake && ./build_cgminer_arm.sh && automake && make'
+	cp src/cgminer/cgminer controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 
 create-image:
 	# Remove the .stamp_built so the images are rebuilt properly to include all
