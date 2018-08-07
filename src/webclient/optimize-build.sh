@@ -1,9 +1,9 @@
 #!/bin/bash
-rm build/service-worker.js
-rm build/static/media/*.eot
-rm build/static/media/*.svg
-rm build/static/media/*.woff
-rm build/static/media/*.png
-rm build/static/media/*.ttf
-rm build/static/css/*.map
-rm build/static/js/*.map
+rm -f build/service-worker.js
+rm -f build/static/media/*.eot
+rm -f build/static/media/*.svg
+rm -f build/static/media/*.woff
+rm -f build/static/media/*.png
+rm -f build/static/media/*.ttf
+rm -f build/static/css/*.map
+rm -f build/static/js/*.map
