@@ -12,7 +12,7 @@ NUM_LOGS=5                    # Max number of copies
 
 # watchdog related configs
 cmd1="/usr/sbin/apiserver &" # binary 1 to run and watch
-cmd2="sleep 30s &" # binary 2 to run and watch
+cmd2="/usr/sbin/cgminer &" # binary 2 to run and watch
 
 ################################################################################
 # Run Watchdog
