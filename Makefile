@@ -1,3 +1,5 @@
+IMAGEROOT = controlCardImage/board/microchip/sama5d2_som/rootfs-overlay
+
 all: initial-build build-patches sd-utils control-utils apiserver webclient cgminer create-image
 
 full: clean dependencies configs all
@@ -9,11 +11,11 @@ clean:
 	@rm -rf controlCardImage/.br-external.mk
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
-	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
+	@rm -rf $(IMAGEROOT)/usr/sbin/apiserver
+	@rm -rf $(IMAGEROOT)/usr/sbin/gpio_init
+	@rm -rf $(IMAGEROOT)/usr/sbin/led_alternate
+	@rm -rf $(IMAGEROOT)/usr/sbin/led_flash_green
+	@rm -rf $(IMAGEROOT)/usr/sbin/led_flash_red
 	@rm -rf controlCardImage/build
 	@rm -rf controlCardImage/host
 	@rm -rf controlCardImage/images
@@ -88,17 +90,17 @@ control-utils:
 	mkdir -p src/controlCardUtils/obj
 	cd src/controlCardUtils && make all OBELISK_OB1_DIR=$(shell pwd) # For some reason, just running 'make' is insufficient, need 'make all'
 	# Move LED manipulation tools into control card.
-	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
-	cp src/controlCardUtils/bin/gpio_init controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
-	cp src/controlCardUtils/bin/led_alternate controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
-	cp src/controlCardUtils/bin/led_flash_green controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
-	cp src/controlCardUtils/bin/led_flash_red controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
+	mkdir -p $(IMAGEROOT)/usr/sbin/
+	cp src/controlCardUtils/bin/gpio_init $(IMAGEROOT)/usr/sbin/gpio_init
+	cp src/controlCardUtils/bin/led_alternate $(IMAGEROOT)/usr/sbin/led_alternate
+	cp src/controlCardUtils/bin/led_flash_green $(IMAGEROOT)/usr/sbin/led_flash_green
+	cp src/controlCardUtils/bin/led_flash_red $(IMAGEROOT)/usr/sbin/led_flash_red
 
 apiserver:
 	# Create the apiserver
 	mkdir -p src/apiserver/bin src/apiserver/obj
 	cd src/apiserver && make OBELISK_OB1_DIR=$(shell pwd)
-	cp src/apiserver/bin/apiserver controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/
+	cp src/apiserver/bin/apiserver $(IMAGEROOT)/usr/sbin/
 
 webclient:
 	# Create the webclient
@@ -107,9 +109,9 @@ webclient:
 	cd src/webclient && yarn build
 	cd src/webclient && ./optimize-build.sh
 	# Copy the build dir
-	mkdir -p controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
-	cp -R src/webclient/build controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
-	sudo chown -R www-data:www-data controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var/www
+	mkdir -p $(IMAGEROOT)/var/www
+	cp -R src/webclient/build $(IMAGEROOT)/var/www
+	#chown -R www-data:www-data $(IMAGEROOT)/var/www
 
 cgminer:
 
