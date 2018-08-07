@@ -15,6 +15,7 @@ controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_red
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/var
 controlCardImage/build
 controlCardImage/host
 controlCardImage/images
@@ -92,6 +93,9 @@ src/controlCardUtils/bin
 src/controlCardUtils/obj
 src/sdCardUtils/bin
 src/sdCardUtils/obj
+src/webclient/build
+src/webclient/node_modules
+src/webclient/yarn.lock
 
 # for personal note taking
 *.notes
