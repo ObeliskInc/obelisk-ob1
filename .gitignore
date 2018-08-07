@@ -10,6 +10,7 @@ controlCardImage/.br-external.mk
 controlCardImage/.config
 controlCardImage/.config.old
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
+controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
@@ -42,7 +43,10 @@ src/apiserver/src/*.o
 src/apiserver/src/*/*.o
 src/apiserver/.depend
 src/cgminer/cgminer
+src/cgminer/confdefs.h
 src/cgminer/config.log
+src/cgminer/conftest.c
+src/cgminer/conftest.err
 src/cgminer/Makefile
 src/cgminer/Makefile.in
 src/cgminer/*.o

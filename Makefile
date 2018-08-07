@@ -10,6 +10,7 @@ clean:
 	@rm -rf controlCardImage/.config
 	@rm -rf controlCardImage/.config.old
 	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
+	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
 	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_alternate
 	@rm -rf controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/led_flash_green
@@ -43,7 +44,10 @@ clean:
 	@rm -rf src/apiserver/src/handlers/*.o
 	@rm -rf src/apiserver/.depend
 	@rm -rf src/cgminer/cgminer
+	@rm -rf src/cgminer/confdefs.h
 	@rm -rf src/cgminer/config.log
+	@rm -rf src/cgminer/conftest.c
+	@rm -rf src/cgminer/conftest.err
 	@rm -rf src/cgminer/Makefile
 	@rm -rf src/cgminer/Makefile.in
 	@rm -rf src/cgminer/*.o
