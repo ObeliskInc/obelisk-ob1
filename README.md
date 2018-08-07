@@ -12,7 +12,7 @@ the control card.
 
 The default root password for the OB1 control card is `obelisk`.
 
-## System Requirements
+## Buildroot Dependencies
 
 Most of our requirements come from the buildroot requirements. Generally
 speaking, there is nothing surprising or difficult to install that is required,
@@ -20,13 +20,39 @@ almost everything is available directly from most linux package managers.
 
 https://buildroot.org/downloads/manual/manual.html#requirement
 
-We also have an upgrade script, `upgradeOB1.sh`, which requires the package
-`sshpass` to work. The upgarde script is meant to be run from a linux machine.
-
 You do not need to be root or to have admin priviledges to create the firmware
 images. You can switch to a clean installation at any time by running `make
 clean`. You can get the dependencies (buildroot) by running `make dependencies`.
 Finally, you can build the software fully with `make`.
+
+## CGMiner Dependencies
+
+Building cgminer will require the debian packages `libtool`, `libtool-dev`, and
+`automake`.
+
+## Webclient Dependencies
+
+The ob1 board serves an api that can be used to control the miner. The apiserver
+binary serves a bunch of web pages which get built by a nodejs stack. To build
+the webclient, you will need a recent version of nodejs and npm, and then you
+will need yarn. You can get them with the following command:
+
+You will need a recent version of both nodejs and npm. You can get them on
+debian with the following commands:
+
+```
+sudo apt-get install curl software-properties-common
+curl -sL https://deb.nodesource.com/setup_10.x | sudo bash -
+sudo apt-get install nodejs
+sudo npm install -g yarn
+```
+
+## System upgrade dependencies
+
+We have an upgrade script, `upgradeOB1.sh`, which requires the package `sshpass`
+to work. The upgarde script is meant to be run from a linux machine. It will run
+a script on the control card that replaces binaries with upgraded versions, and
+then flashes lights to indicate success or failure.
 
 ## Building the Privisioning Firmware
 
