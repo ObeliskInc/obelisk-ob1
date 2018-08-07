@@ -22,7 +22,7 @@ controlCardImage/staging
 controlCardImage/target
 controlCardImage/Makefile
 buildArtifacts/downloads
-images
+/images
 sdCardImage/.br-external.mk
 sdCardImage/.config
 sdCardImage/.config.old
