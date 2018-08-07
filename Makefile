@@ -112,6 +112,9 @@ configs:
 # Perform the build. The first time it is run on a machine, it may take several
 # hours to complete.
 initial-build:
+	# Remove target files.
+	@rm -rf controlCardImage/target/usr/share/zoneinfo
+	@rm -rf controlCardImage/target/var/www
 	# Build the control card image.
 	cd controlCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Build the sd card image.
