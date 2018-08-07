@@ -4,6 +4,9 @@
 # Config
 ################################################################################
 
+# webclient related configs
+WEB_ROOT=/var/www/
+
 # log related configs
 LOG_FOLDER=/var/log/          # Folder with logs. Will be searched recursively
 SAVELOG_BIN=/usr/sbin/savelog # Path to savelog binary
@@ -17,6 +20,9 @@ cmd2="/usr/sbin/cgminer &" # binary 2 to run and watch
 ################################################################################
 # Run Watchdog
 ################################################################################
+
+# chown the webclient
+chown -R www-data:www-data $WEB_ROOT*
 
 # Run first command and save pid.
 eval $cmd1
