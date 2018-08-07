@@ -1093,7 +1093,13 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     add_hashes(ob, NONCE_RANGE_SIZE);
 
                     NonceSet nonce_set;
+                    nonce_set.count = 0;
                     error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
+                    if (error != SUCCESS) {
+                        applog(LOG_ERR, "Error reading nonces!!!");
+                        continue;
+                    }
+
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
                         if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
