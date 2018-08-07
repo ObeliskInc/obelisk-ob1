@@ -42,7 +42,49 @@ clean:
 	@rm -rf src/apiserver/src/util/s*.o
 	@rm -rf src/apiserver/src/handlers/*.o
 	@rm -rf src/apiserver/.depend
+	@rm -rf src/cgminer/cgminer
 	@rm -rf src/cgminer/config.log
+	@rm -rf src/cgminer/Makefile
+	@rm -rf src/cgminer/Makefile.in
+	@rm -rf src/cgminer/*.o
+	@rm -rf src/cgminer/.deps
+	@rm -rf src/cgminer/autom4te.cache/
+	@rm -rf src/cgminer/ccan/Makefile
+	@rm -rf src/cgminer/ccan/*.a
+	@rm -rf src/cgminer/ccan/opt/.deps
+	@rm -rf src/cgminer/ccan/opt/*.o
+	@rm -rf src/cgminer/compat/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/aclocal.m4
+	@rm -rf src/cgminer/compat/jansson-2.9/configure
+	@rm -rf src/cgminer/compat/jansson-2.9/jansson_private_config.h
+	@rm -rf src/cgminer/compat/jansson-2.9/jansson_private_config.h.in~
+	@rm -rf src/cgminer/compat/jansson-2.9/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/Makefile.in
+	@rm -rf src/cgminer/compat/jansson-2.9/autom4te.cache
+	@rm -rf src/cgminer/compat/jansson-2.9/config.log
+	@rm -rf src/cgminer/compat/jansson-2.9/config.status
+	@rm -rf src/cgminer/compat/jansson-2.9/doc/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/libtool
+	@rm -rf src/cgminer/compat/jansson-2.9/src/.deps
+	@rm -rf src/cgminer/compat/jansson-2.9/src/.libs
+	@rm -rf src/cgminer/compat/jansson-2.9/src/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/src/*.la
+	@rm -rf src/cgminer/compat/jansson-2.9/src/*.lo
+	@rm -rf src/cgminer/compat/jansson-2.9/src/*.o
+	@rm -rf src/cgminer/compat/jansson-2.9/test/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/test/bin/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/test/suites/Makefile
+	@rm -rf src/cgminer/compat/jansson-2.9/test/suites/api/Makefile
+	@rm -rf src/cgminer/lib/Makefile
+	@rm -rf src/cgminer/lib/.deps
+	@rm -rf src/cgminer/lib/*.a
+	@rm -rf src/cgminer/lib/*.o
+	@rm -rf src/cgminer/obelisk/.deps
+	@rm -rf src/cgminer/obelisk/.dirstamp
+	@rm -rf src/cgminer/obelisk/*.o
+	@rm -rf src/cgminer/obelisk/siahash/.deps
+	@rm -rf src/cgminer/obelisk/siahash/.dirstamp
+	@rm -rf src/cgminer/obelisk/siahash/*.o
 	@rm -rf src/controlCardUtils/bin
 	@rm -rf src/controlCardUtils/obj
 	@rm -rf src/sdCardUtils/bin
@@ -104,7 +146,7 @@ apiserver:
 webclient:
 
 cgminer:
-	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && ./build_cgminer_arm.sh && automake && make'
+	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && automake && ./build_cgminer_arm.sh && automake && make'
 
 create-image:
 	# Remove the .stamp_built so the images are rebuilt properly to include all
