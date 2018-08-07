@@ -7295,10 +7295,11 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 
     // coinbase2
     cg_memcpy(arb_tx + offset, pool->coinbase2, pool->coinbase2_len);
+    offset += pool->coinbase2_len;
 
     // Hash it to make the initial merkle root
     // int blake2b( void *out, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen );
-    blake2b(work->merkle_root, HASH_SIZE, arb_tx, ARB_TX_SIZE, NULL, 0);
+    blake2b(work->merkle_root, HASH_SIZE, arb_tx, offset, NULL, 0);
 
     // Generate the final merkle_root
     for (i = 0; i < pool->merkles; i++) {
@@ -7311,8 +7312,9 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 
         // Copy the current root in
         cg_memcpy(merkle_hash + offset, work->merkle_root, HASH_SIZE);
+	offset += HASH_SIZE;
 
-        blake2b(work->merkle_root, HASH_SIZE, merkle_hash, ARB_TX_SIZE, NULL, 0);
+        blake2b(work->merkle_root, HASH_SIZE, merkle_hash, offset, NULL, 0);
     }
 
     // Need to copy the prev_has from the pool to the work so it's available in calc_midstate()
