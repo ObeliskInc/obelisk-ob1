@@ -42,6 +42,7 @@ clean:
 	@rm -rf src/apiserver/src/util/s*.o
 	@rm -rf src/apiserver/src/handlers/*.o
 	@rm -rf src/apiserver/.depend
+	@rm -rf src/cgminer/config.log
 	@rm -rf src/controlCardUtils/bin
 	@rm -rf src/controlCardUtils/obj
 	@rm -rf src/sdCardUtils/bin
@@ -103,6 +104,7 @@ apiserver:
 webclient:
 
 cgminer:
+	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && ./build_cgminer_arm.sh && automake && make'
 
 create-image:
 	# Remove the .stamp_built so the images are rebuilt properly to include all

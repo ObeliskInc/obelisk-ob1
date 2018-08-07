@@ -41,6 +41,7 @@ sdCardImage/Makefile
 src/apiserver/src/*.o
 src/apiserver/src/*/*.o
 src/apiserver/.depend
+src/cgminer/config.log
 src/controlCardUtils/bin
 src/controlCardUtils/obj
 src/sdCardUtils/bin
