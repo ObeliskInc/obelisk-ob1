@@ -840,6 +840,19 @@ void __bin2hex(char* s, const unsigned char* p, size_t len)
     *s++ = '\0';
 }
 
+/* Adequate size s==len*2 + 1 must be alloced to use this variant */
+void __bin2hex2(char* s, const unsigned char* p, size_t len)
+{
+    int i;
+    static const char hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+    for (i = 0; i < (int)len; i++) {
+        *s++ = hex[p[len - i - 1] >> 4];
+        *s++ = hex[p[len - i - 1] & 0xF];
+    }
+    *s++ = '\0';
+}
+
 /* Returns a malloced array string of a binary value of arbitrary length. The
  * array is rounded up to a 4 byte size to appease architectures that need
  * aligned array  sizes */
@@ -2230,6 +2243,13 @@ static bool parse_notify(struct pool* pool, json_t* val)
     ntime = __json_array_string(val, 7);
     clean = json_is_true(json_array_get(val, 8));
 
+    // HACK: START
+    prev_hash = strdup("0000000000000004c42043d0ebeffbf13afdf842bb36db087d0f849a0df7ef26");
+    coinbase1 = strdup("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004e6f6e536961000000000000000000004c55584f5200005349503100007cbd820800000000000000");
+    coinbase2 = strdup("0000000000000000");
+    ntime = strdup("e950695b00000000");
+    // HACK: END
+
     if (!valid_ascii(job_id) || !valid_hex(prev_hash) || !valid_hex(coinbase1) || !valid_hex(coinbase2) || !valid_hex(bbversion) || !valid_hex(nbit) || !valid_hex(ntime)) {
         /* Annoying but we must not leak memory */
         free(job_id);
@@ -2268,6 +2288,8 @@ static bool parse_notify(struct pool* pool, json_t* val)
     for (i = 0; i < pool->merkles; i++)
         free(pool->swork.merkle_bin[i]);
 
+// HACK: START
+#if 0
     if (merkles) {
         pool->swork.merkle_bin = cgrealloc(pool->swork.merkle_bin,
             sizeof(char*) * merkles + 1);
@@ -2285,6 +2307,8 @@ static bool parse_notify(struct pool* pool, json_t* val)
             }
         }
     }
+#endif
+    // HACK: END
 
     pool->merkles = merkles;
     if (pool->merkles < 2)
@@ -2300,6 +2324,23 @@ static bool parse_notify(struct pool* pool, json_t* val)
 	/* nonce */		 8 +
 	/* workpadding */	 96;
 #endif
+
+    // HACK: START
+    pool->merkles = 2;
+    pool->swork.merkle_bin = cgrealloc(pool->swork.merkle_bin, sizeof(char*) * 3);
+    char* merkle_strs[2] = { "ab3c7a1e77b509ef3007f24a55e2335877330676b83b09229483007f5fc99516", "1ea43283583790dc0cd653ae920fc78a4edbce50a4c0fbe9ff7fd5581043e395" };
+    for (i = 0; i < 2; i++) {
+        char* merkle = strdup(merkle_strs[i]);
+
+        pool->swork.merkle_bin[i] = cgmalloc(32);
+        ret = hex2bin(pool->swork.merkle_bin[i], merkle, 32);
+        free(merkle);
+        if (unlikely(!ret)) {
+            applog(LOG_ERR, "Failed to convert merkle to merkle_bin in parse_notify");
+            goto out_unlock;
+        }
+    }
+// HACK: END
 
 #ifndef ALGO
     snprintf(header, 257,

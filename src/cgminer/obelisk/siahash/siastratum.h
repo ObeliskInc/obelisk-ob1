@@ -21,8 +21,8 @@ typedef struct SiaStratumInput {
 	// Extra nonce inputs.
 	uint16_t ExtraNonce1Size;
 	uint16_t ExtraNonce2Size;
-	uint8_t ExtraNonce1[256];
-	uint8_t ExtraNonce2[256];
+	uint8_t ExtraNonce1[8];
+	uint8_t ExtraNonce2[8];
 } SiaStratumInput;
 
 void siaCalculateStratumHeader(uint8_t* header, SiaStratumInput input);
