@@ -29,6 +29,9 @@ sudo apt-get install build-essential # debian only
 sudo apt-get install mtools
 
 # Installing cgminer
+sudo apt-get install pkg-config
+sudo apt-get install libtool
+sudo apt-get install automake
 
 # Installing nodejs and npm
 #
@@ -55,7 +58,7 @@ permissions to build a buildroot system.
 
 ## CGMiner Dependencies
 
-Building cgminer will require the debian packages `libtool`, `libtool-dev`, and
+Building cgminer will require the debian packages `pkg-config`, `libtool`, and
 `automake`.
 
 ## Webclient Dependencies

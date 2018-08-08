@@ -168,7 +168,7 @@ webclient:
 	cp -R src/webclient/build/* $(IMAGEROOT)/var/www
 
 cgminer:
-	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && automake && ./build_cgminer_arm.sh && automake && make'
+	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && autoreconf -i && automake && ./build_cgminer_arm.sh && make'
 	cp src/cgminer/cgminer controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 
 create-image:
