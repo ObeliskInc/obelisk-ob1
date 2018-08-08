@@ -6708,7 +6708,7 @@ static void* stratum_sthread(void* userdata)
         last_nonce = nonce;
         last_nonce2 = pool->nonce2;
         __bin2hex(noncehex, (const unsigned char*)&nonce, NONCE_SIZE);
-        __bin2hex(nonce2hex, (const unsigned char*)&(pool->nonce2), work->nonce2_len);
+        __bin2hex(nonce2hex, (const unsigned char*)&(work->nonce2), work->nonce2_len);
 
         applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
 
