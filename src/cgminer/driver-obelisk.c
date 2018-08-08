@@ -1116,12 +1116,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
-                        // HACK: Start
-                        nonce_set.nonces[0] = 0x2392ba4500000000;
-                        nonce_set.count = 1;
-                        continue;
-                        // HACK: End
-
                         if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool

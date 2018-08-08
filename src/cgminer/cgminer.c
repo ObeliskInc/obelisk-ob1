@@ -7274,11 +7274,6 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 
     // Update nonce2
     work->nonce2 = pool->nonce2++;
-
-    // HACK: START
-    work->nonce2 = 0;
-    // HACK: END
-
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
@@ -7315,24 +7310,16 @@ typedef struct SiaStratumInput {
     work->nonce1 = strdup(pool->nonce1); 
     work->ntime = strdup(pool->ntime);
 
-    // // HACK: START
-    free(pool->nonce1bin);
-    pool->nonce1bin = cgcalloc(pool->n1_len, 1);
-    hex2bin(pool->nonce1bin, "30000003", pool->n1_len);
-
-    work->nonce2 = 0;
-
     SiaStratumInput input;
+    memset(&input, 0, sizeof(SiaStratumInput));
+
     applog(LOG_ERR, "DBG1");
     hex2bin(input.PrevHash, pool->prev_hash, HASH_SIZE * 2);
     applog(LOG_ERR, "DBG2");
-    // HACK: START
-    uint64_t nonce = 0x2392ba4500000000;  // TODO: Switch back to 0
-    // HACK: END
+
+    // Nonce is zeroed out from the memset() above
+
     applog(LOG_ERR, "DBG3");
-    Nonce revNonce  = htonl(nonce);
-    memcpy(input.Nonce, &revNonce, NONCE_SIZE);
-    applog(LOG_ERR, "DBG4");
     hex2bin(input.Ntime, work->ntime, 16);
     applog(LOG_ERR, "DBG5");
     
@@ -7359,9 +7346,7 @@ typedef struct SiaStratumInput {
     memcpy(input.ExtraNonce1, pool->nonce1bin,  input.ExtraNonce1Size);
     applog(LOG_ERR, "DBG15");
     input.ExtraNonce2Size = 4;
-        // HACK: START
-    work->nonce2 = 0;
-    // HACK: END
+
 
     applog(LOG_ERR, "DBG16: nonce2=%lu", work->nonce2);
     memcpy(input.ExtraNonce2, &(work->nonce2), input.ExtraNonce2Size);
@@ -7380,8 +7365,6 @@ typedef struct SiaStratumInput {
     //     arb_tx[0]
     //     = 0;
     // int offset = 1;
-
-    // // HACK: END
 
     // // coinbase1
     // cg_memcpy(arb_tx + offset, pool->coinbase1, pool->coinbase1_len);
