@@ -7312,155 +7312,29 @@ typedef struct SiaStratumInput {
 
     SiaStratumInput input;
     memset(&input, 0, sizeof(SiaStratumInput));
-
-    applog(LOG_ERR, "DBG1");
     hex2bin(input.PrevHash, pool->prev_hash, HASH_SIZE * 2);
-    applog(LOG_ERR, "DBG2");
-
     // Nonce is zeroed out from the memset() above
-
-    applog(LOG_ERR, "DBG3");
     hex2bin(input.Ntime, work->ntime, 16);
-    applog(LOG_ERR, "DBG5");
     
     input.MerkleBranchesLen = pool->merkles;
-    applog(LOG_ERR, "DBG6: len=%d  swork=0x%08lx", input.MerkleBranchesLen, pool->swork);
-    applog(LOG_ERR, "DBG6.1: swork->mb[%d]0x%08lx", i, pool->swork.merkle_bin[i]);
     for (int i=0; i< input.MerkleBranchesLen; i++) {
-    applog(LOG_ERR, "DBG7");
         memcpy(input.MerkleBranches[i], pool->swork.merkle_bin[i], HASH_SIZE);
-    applog(LOG_ERR, "DBG8");
     }
-    applog(LOG_ERR, "DBG9");
+
     input.Coinbase1Size = pool->coinbase1_len;
-    applog(LOG_ERR, "DBG10");
     memcpy(input.Coinbase1, pool->coinbase1, input.Coinbase1Size);
-    applog(LOG_ERR, "DBG11");
     input.Coinbase2Size = pool->coinbase2_len;
-    applog(LOG_ERR, "DBG12");
     memcpy(input.Coinbase2, pool->coinbase2, input.Coinbase2Size);
-    applog(LOG_ERR, "DBG13");
 
     input.ExtraNonce1Size = 4;
-    applog(LOG_ERR, "DBG14");
     memcpy(input.ExtraNonce1, pool->nonce1bin,  input.ExtraNonce1Size);
-    applog(LOG_ERR, "DBG15");
     input.ExtraNonce2Size = 4;
-
-
-    applog(LOG_ERR, "DBG16: nonce2=%lu", work->nonce2);
     memcpy(input.ExtraNonce2, &(work->nonce2), input.ExtraNonce2Size);
-    applog(LOG_ERR, "DBG17: nonce2=%lu  input.ExtraNonce2=%02X%02X%02X%02X", work->nonce2, input.ExtraNonce2[0], input.ExtraNonce2[1], input.ExtraNonce2[2], input.ExtraNonce2[3]);
 
     siaCalculateStratumHeader(work->midstate, input);
-    
-    applog(LOG_ERR, "DBG18");
-    char* ss = bin2hex(work->midstate, SIA_HEADER_SIZE);
-    applog(LOG_ERR, "DBG19");
-    applog(LOG_ERR, "HEADER: %s", ss);
-    free(ss);
-    applog(LOG_ERR, "DBG20");
-
-    //     // Build the arbitrary transaction
-    //     arb_tx[0]
-    //     = 0;
-    // int offset = 1;
-
-    // // coinbase1
-    // cg_memcpy(arb_tx + offset, pool->coinbase1, pool->coinbase1_len);
-    // offset += pool->coinbase1_len;
-
-    // // extranonce1
-    // cg_memcpy(arb_tx + offset, pool->nonce1bin, EXTRANONCE_SIZE);
-    // offset += EXTRANONCE_SIZE;
-
-    // // extranonce2
-    // uint32_t n2rev = htonl(pool->nonce2);
-    // cg_memcpy(arb_tx + offset, &n2rev, EXTRANONCE_SIZE);
-    // offset += EXTRANONCE_SIZE;
-
-    // // coinbase2
-    // cg_memcpy(arb_tx + offset, pool->coinbase2, pool->coinbase2_len);
-    // offset += pool->coinbase2_len;
-    // //  000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004e6f6e536961000000000000000000004c55584f5200005349503100007cbd82080000000000000030000003000000000000000000000000
-    // //    0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004E6F6E536961000000000000000000004C
-    // // 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004E6F6E536961000000000000000000004C55584F5200005349503100007CBD8208000000000000003000
-
-    // applog(LOG_ERR, "offset=%d  coinbase1_len=%d  coinbase2_len=%d", offset, pool->coinbase1_len, pool->coinbase2_len);
-
-    // // Hash it to make the initial merkle root
-    // // int blake2b( void *out, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen );
-    // blake2b(work->merkle_root, HASH_SIZE, arb_tx, offset, NULL, 0);
-
-    // char* cb1_str = bin2hex(pool->coinbase1, pool->coinbase1_len);
-    // applog(LOG_ERR, "coinbase1 = %s", cb1_str);
-    // free(cb1_str);
-
-    // char* en1_str = bin2hex(pool->nonce1bin, EXTRANONCE_SIZE);
-    // applog(LOG_ERR, "extranonce1 = %s", en1_str);
-    // free(en1_str);
-
-    // char* en2_str = bin2hex((const unsigned char*)&work->nonce2, EXTRANONCE_SIZE);
-    // applog(LOG_ERR, "extranonce2 = %s", en2_str);
-    // free(en2_str);
-
-    // char* cb2_str = bin2hex(pool->coinbase2, pool->coinbase2_len);
-    // applog(LOG_ERR, "coinbase2 = %s", cb2_str);
-    // free(cb2_str);
-
-    // char* arb_tx_str = bin2hex(work->merkle_root, HASH_SIZE);
-    // applog(LOG_ERR, "arb_tx hash = %02X %02X...%02X %02X   %s", work->merkle_root[0], work->merkle_root[1], work->merkle_root[30], work->merkle_root[31], arb_tx_str);
-    // free(arb_tx_str);
-
-    // // Generate the final merkle_root
-    // for (i = 0; i < pool->merkles; i++) {
-    //     int offset = 1;
-    //     merkle_hash[0] = 1;
-
-    //     // Copy the next merkle branch in
-    //     cg_memcpy(merkle_hash + offset, pool->swork.merkle_bin[i], HASH_SIZE);
-    //     offset += HASH_SIZE;
-
-    //     // Copy the current root in
-    //     cg_memcpy(merkle_hash + offset, work->merkle_root, HASH_SIZE);
-    //     offset += HASH_SIZE;
-
-    //     char* arb_tx_str = bin2hex(work->merkle_root, HASH_SIZE);
-    //     applog(LOG_ERR, "mk md = %02X %02X...%02X %02X   %s", work->merkle_root[0], work->merkle_root[1], work->merkle_root[30], work->merkle_root[31], arb_tx_str);
-    //     free(arb_tx_str);
-
-    //     blake2b(work->merkle_root, HASH_SIZE, merkle_hash, offset, NULL, 0);
-    // }
-
-    // char* merkle_root_str = bin2hex(work->merkle_root, HASH_SIZE);
-    // applog(LOG_ERR, "merkle root = %s", merkle_root_str);
-    // free(merkle_root_str);
-
-    // // Need to copy the prev_has from the pool to the work so it's available in calc_midstate()
-    // // TODO: Should really just pass in the pool to calc_midstate() too.
-    // bool ret = hex2bin(work->prev_hash, pool->prev_hash, HASH_SIZE);
-    // TODO: Handle error (unlikely)
 
 #elif (ALGO == BLAKE256)
     // TODO: Build decred work
-#else
-    /* Generate merkle root */
-    gen_hash(pool->coinbase, merkle_root, pool->coinbase_len);
-    cg_memcpy(merkle_hash, merkle_root, 32);
-    for (i = 0; i < pool->merkles; i++) {
-        cg_memcpy(merkle_hash + 32, pool->swork.merkle_bin[i], 32);
-        gen_hash(merkle_hash, merkle_root, 64);
-        cg_memcpy(merkle_hash, merkle_root, 32);
-    }
-    data32 = (uint32_t*)merkle_hash;
-    swap32 = (uint32_t*)merkle_root;
-    flip32(swap32, data32);
-#endif
-
-#if (ALGO != BLAKE2B && ALGO != BLAKE256)
-    /* Copy the data template from header_bin */
-    cg_memcpy(work->data, pool->header_bin, 112);
-    cg_memcpy(work->data + 36, merkle_root, 32);
 #endif
 
     /* Store the stratum work diff to check it still matches the pool's
@@ -7468,23 +7342,6 @@ typedef struct SiaStratumInput {
     work->sdiff = pool->sdiff;
 
     cg_runlock(&pool->data_lock);
-
-    if (opt_debug) {
-        char *header, *merkle_hash;
-
-        header = bin2hex(work->data, 112);
-#if (ALGO == BLAKE2B || ALGO == BLAKE256)
-        merkle_hash = bin2hex((const unsigned char*)work->merkle_root, 32);
-#else
-        merkle_hash = bin2hex((const unsigned char*)merkle_root, 32);
-#endif
-        applog(LOG_DEBUG, "Generated stratum merkle %s", merkle_hash);
-        applog(LOG_DEBUG, "Generated stratum header %s", header);
-        applog(LOG_DEBUG, "Work job_id %s nonce2 %" PRIu64 " ntime %s", work->job_id,
-            work->nonce2, work->ntime);
-        free(header);
-        free(merkle_hash);
-    }
 
     calc_midstate(work);
     set_target(work->target, work->sdiff);
