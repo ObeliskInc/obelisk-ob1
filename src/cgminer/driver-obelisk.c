@@ -1370,7 +1370,7 @@ check_for_new_work:
 scanwork_exit:
     cgsleep_ms(10);
 
-    return 1;
+    return get_and_reset_hashes(ob);
 }
 
 static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
