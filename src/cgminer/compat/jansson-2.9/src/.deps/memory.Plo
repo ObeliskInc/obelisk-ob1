@@ -1,0 +1,115 @@
+memory.lo: memory.c \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/stdlib.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/features.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_config.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/cdefs.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/lib/gcc/arm-buildroot-linux-uclibcgnueabihf/7.3.0/include/stddef.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/waitflags.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/waitstatus.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/endian.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/endian.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/byteswap.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap-common.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/types.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/wordsize.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/typesizes.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap-16.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/types.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/time.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/select.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/select.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/sigset.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/time.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/sysmacros.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/pthreadtypes.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/alloca.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/string.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/xlocale.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_locale.h \
+ jansson.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/stdio.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_stdio.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/wchar.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/wchar.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/lib/gcc/arm-buildroot-linux-uclibcgnueabihf/7.3.0/include/stdarg.h \
+ /home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/stdio_lim.h \
+ jansson_config.h jansson_private.h hashtable.h strbuffer.h
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/stdlib.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/features.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_config.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/cdefs.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/lib/gcc/arm-buildroot-linux-uclibcgnueabihf/7.3.0/include/stddef.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/waitflags.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/waitstatus.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/endian.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/endian.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/byteswap.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap-common.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/types.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/wordsize.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/typesizes.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/byteswap-16.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/types.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/time.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/select.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/select.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/sigset.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/time.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/sys/sysmacros.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/pthreadtypes.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/alloca.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/string.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/xlocale.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_locale.h:
+
+jansson.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/stdio.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/uClibc_stdio.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/wchar.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/wchar.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/lib/gcc/arm-buildroot-linux-uclibcgnueabihf/7.3.0/include/stdarg.h:
+
+/home/user/dev/src/gitlab.com/NebulousLabs/obelisk-ob1/controlCardImage/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include/bits/stdio_lim.h:
+
+jansson_config.h:
+
+jansson_private.h:
+
+hashtable.h:
+
+strbuffer.h:
