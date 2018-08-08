@@ -18,10 +18,15 @@ A more detailed breakdown is provided below, but here's a quick checklist for
 commonly missing dependencies for debian users:
 
 ```
+# Updating PATH to include /sbin
+export PATH=$PATH:/sbin
+
 # Installing buildroot
-sudo apt-get install gcc
 sudo apt-get install g++
 sudo apt-get install build-essential # debian only
+
+# Installing post-script requirements
+sudo apt-get install mtools
 
 # Installing cgminer
 
@@ -39,9 +44,9 @@ sudo npm install -g yarn
 
 ## Buildroot Dependencies
 
-Most of our requirements come from the buildroot requirements. Generally
-speaking, there is nothing surprising or difficult to install that is required,
-almost everything is available directly from most linux package managers.
+Buildroot generally has very few requirements. Most base configurations need
+nothing more than the requirements in the link below. Debian users will often
+need to install `g++` and `build-essential`.
 
 https://buildroot.org/downloads/manual/manual.html#requirement
 
