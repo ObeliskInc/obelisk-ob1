@@ -52,7 +52,7 @@ extern FILE* dbgLog;
 // Not checking any return values here. Assuming we don't get buffer full.  Worst case is
 // that output would be lost.
 
-#define DBG_LOG "debug.log"
+#define DBG_LOG "/var/log/debug.log"
 
 // Output to console; iUse this if the console output handler is periodically being
 // called and is sending out the buffer.
