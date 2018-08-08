@@ -45,7 +45,13 @@
 /src/apiserver/.depend
 /src/cgminer/cgminer
 /src/cgminer/confdefs.h
+/src/cgminer/aclocal.m4
+/src/cgminer/configure
+/src/cgminer/config.h
+/src/cgminer/config.h.in
+/src/cgminer/config.h.in~
 /src/cgminer/config.log
+/src/cgminer/config.status
 /src/cgminer/conftest.c
 /src/cgminer/conftest.err
 /src/cgminer/Makefile
