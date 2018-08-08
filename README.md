@@ -12,6 +12,31 @@ the control card.
 
 The default root password for the OB1 control card is `obelisk`.
 
+## Dependencies Overview
+
+A more detailed breakdown is provided below, but here's a quick checklist for
+commonly missing dependencies for debian users:
+
+```
+# Installing buildroot
+sudo apt-get install gcc
+sudo apt-get install g++
+sudo apt-get install build-essential # debian only
+
+# Installing cgminer
+
+# Installing nodejs and npm
+#
+# This process is debian specific, if you are running on another system you will
+# need to figure out how to get the most recent versions of nodejs and npm on
+# your system. Most distros do not have an up-to-date npm and nodejs in the
+# package repositories.
+sudo apt-get install curl software-properties-common 
+curl -sL https://deb.nodesource.com/setup_10.x | sudo bash -
+sudo apt-get install nodejs
+sudo npm install -g yarn
+```
+
 ## Buildroot Dependencies
 
 Most of our requirements come from the buildroot requirements. Generally
@@ -20,10 +45,8 @@ almost everything is available directly from most linux package managers.
 
 https://buildroot.org/downloads/manual/manual.html#requirement
 
-You do not need to be root or to have admin priviledges to create the firmware
-images. You can switch to a clean installation at any time by running `make
-clean`. You can get the dependencies (buildroot) by running `make dependencies`.
-Finally, you can build the software fully with `make`.
+Once you have all of the required dependencies, you should not need root
+permissions to build a buildroot system.
 
 ## CGMiner Dependencies
 
