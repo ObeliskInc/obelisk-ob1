@@ -50,6 +50,7 @@
 /src/cgminer/conftest.c
 /src/cgminer/conftest.err
 /src/cgminer/Makefile
+/src/cgminer/Makefile.in
 /src/cgminer/*.o
 /src/cgminer/.deps
 /src/cgminer/autom4te.cache/
