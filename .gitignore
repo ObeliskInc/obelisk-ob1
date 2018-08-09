@@ -45,6 +45,11 @@
 /src/apiserver/.depend
 /src/cgminer/cgminer
 /src/cgminer/confdefs.h
+/src/cgminer/aclocal.m4
+/src/cgminer/configure
+/src/cgminer/config.h
+/src/cgminer/config.h.in
+/src/cgminer/config.h.in~
 /src/cgminer/config.log
 /src/cgminer/config.status
 /src/cgminer/conftest.c
@@ -59,8 +64,12 @@
 /src/cgminer/ccan/opt/.deps/
 /src/cgminer/ccan/opt/*.o
 /src/cgminer/compat/Makefile
+/src/cgminer/compat/jansson-2.9/aclocal.m4
+/src/cgminer/compat/jansson-2.9/configure
+/src/cgminer/compat/jansson-2.9/jansson_private_config.h
 /src/cgminer/compat/jansson-2.9/jansson_private_config.h.in~
 /src/cgminer/compat/jansson-2.9/Makefile
+/src/cgminer/compat/jansson-2.9/Makefile.in
 /src/cgminer/compat/jansson-2.9/autom4te.cache/
 /src/cgminer/compat/jansson-2.9/config.log
 /src/cgminer/compat/jansson-2.9/config.status

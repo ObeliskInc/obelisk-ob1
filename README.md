@@ -29,6 +29,7 @@ sudo apt-get install build-essential # debian only
 sudo apt-get install mtools
 
 # Installing cgminer
+`pkg-config`
 
 # Installing nodejs and npm
 #
