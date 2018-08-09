@@ -311,7 +311,7 @@ int main(void)
 	}
 	else
 	{
-		printf("test EIGHT passed\n");
+		printf("test eight passed. holla holla - we dem boys.\n");
 	}
 
 	return (0);
