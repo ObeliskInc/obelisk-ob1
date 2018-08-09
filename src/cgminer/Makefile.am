@@ -145,9 +145,12 @@ cgminer_SOURCES += driver-obelisk.c hexdump.c obelisk/multicast.c\
 			obelisk/Ob1Test.c obelisk/Ob1Utils.h
 
 # Sia hashing/verification code
-cgminer_SOURCES += obelisk/siahash/blake2-impl.h obelisk/siahash/blake2.h \
-			 obelisk/siahash/blake2b-ref.c obelisk/siahash/siaverify.c obelisk/siahash/siaverify.h \
-			 obelisk/siahash/siastratum.c obelisk/siahash/siastratum.h
+cgminer_SOURCES += obelisk/siahash/blake2-impl.h obelisk/siahash/blake2.h obelisk/siahash/blake2b-ref.c \
+      obelisk/siahash/siaverify.c obelisk/siahash/siaverify.h \
+			obelisk/siahash/siastratum.c obelisk/siahash/siastratum.h \
+      obelisk/dcrhash/dcrverify.c obelisk/dcrhash/dcrverify.h \
+			obelisk/dcrhash/dcrstratum.c obelisk/dcrhash/dcrstratum.h \
+			obelisk/dcrhash/blake256.c obelisk/dcrhash/blake256.h
 
 cgminer_SOURCES += obelisk/Usermain.c obelisk/Usermain.h
 

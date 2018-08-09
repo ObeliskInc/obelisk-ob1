@@ -265,7 +265,8 @@ extern char* curly;
 #define NONCE_SIZE 4 // bytes
 #define HASH_SIZE 32 // bytes
 #define ARB_TX_SIZE 137 // bytes (inclues the 0x00 byte)
-#define DECRED_HEADER_SIZE 80 // bytes  TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#define DECRED_MIDSTATE_SIZE 64 // bytes
+#define DECRED_HEADER_TAIL_SIZE 52 // bytes
 #define NTIME_STR_SIZE 8
 #define NTIME_SIZE 8 // bytes
 #define MAX_COINBASE_SIZE 128 // bytes
@@ -1128,7 +1129,6 @@ extern json_t* json_rpc_call(CURL* curl, const char* url, const char* userpass,
 extern const char* proxytype(proxytypes_t proxytype);
 extern char* get_proxy(char* url, struct pool* pool);
 extern void __bin2hex(char* s, const unsigned char* p, size_t len);
-extern void __bin2hex2(char* s, const unsigned char* p, size_t len);
 extern char* bin2hex(const unsigned char* p, size_t len);
 extern bool hex2bin(unsigned char* p, const char* hexstr, size_t len);
 
@@ -1408,7 +1408,7 @@ struct work {
     unsigned char midstate[SIA_HEADER_SIZE];
     unsigned char merkle_root[HASH_SIZE];
 #elif (ALGO == BLAKE256)
-    unsigned char midstate[DECRED_HEADER_SIZE];
+    unsigned char midstate[DECRED_MIDSTATE_SIZE];
     unsigned char merkle_root[HASH_SIZE];
 #else
     unsigned char midstate[32];

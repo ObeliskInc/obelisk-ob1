@@ -47,20 +47,33 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
         for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
-            // Skip M4 (the nonce)
-            if (i != E_SC1_REG_M4_RSV) {
-                applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
-                error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M0 + i, &(pBlake256Job->m[i]));
-                if (error != SUCCESS) {
-                    return error;
-                }
+            applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M0 + i, &(pBlake256Job->m[i]));
+            if (error != SUCCESS) {
+                return error;
             }
+        }
+
+        for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
+            applog(LOG_ERR, "    V%d: 0x%08lX", i, pBlake256Job->v[i]);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &(pBlake256Job->v[i]));
+            if (error != SUCCESS) {
+                return error;
+            }
+        }
+
+        // The Match register has the same value as V7
+        // TODO: Is this necessary?  Tom's code sets it, and it's listed as an input, soooo....I guess it is.
+        applog(LOG_ERR, "    V0MATCH: 0x%08lX", pBlake256Job->v[7]);
+        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DRC1_REG_V0MATCH, &(pBlake256Job->v[7]));
+        if (error != SUCCESS) {
+            return error;
         }
         break;
     }
     }
 
-    return SUCCESS;
+    return error;
 }
 
 // Set the upper and lower bounds for the specified engine(s).
@@ -242,8 +255,9 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         break;
 
     case MODEL_DCR1: {
-        uint32_t dataLow;
-        uint32_t dataHigh;
+        uint32_t dataLow = 0;
+        uint32_t dataHigh = 0;
+        // applog(LOG_ERR, "Reading EDR registers for %u.%u", boardNum, chipNum);
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR0, &dataLow);
         if (error != SUCCESS) {
             return error;
@@ -255,8 +269,18 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
             return error;
         }
         // applog(LOG_ERR, "gdr: high1=0x%04lX", dataHigh);
-        *(&pData[1]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
+        uint64_t dataLow64 = dataLow;
+        if (dataLow64) applog(LOG_ERR, "dataLow64=0x%016llx", dataLow64);
+        uint64_t dataHigh64 = dataHigh;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx", dataHigh64);
+        dataHigh64 = dataHigh64 << 32;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx (after shift)", dataHigh64);
+        *(&pData[1]) = dataHigh64 | dataLow64;
+        // *(&pData[1]) = (((uint64_t)dataHigh) << 32) | (uint64_t)dataLow;
+        if (pData[1]) applog(LOG_ERR, "pData[1]=0x%016llx", pData[1]);
 
+        dataLow = 0;
+        dataHigh = 0;
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR2, &dataLow);
         if (error != SUCCESS) {
             return error;
@@ -267,8 +291,15 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         if (error != SUCCESS) {
             return error;
         }
-        *(&pData[0]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
-        // applog(LOG_ERR, "gdr: high2=0x%04lX", dataHigh);
+        dataLow64 = dataLow;
+        if (dataLow64) applog(LOG_ERR, "dataLow64=0x%016llx", dataLow64);
+        dataHigh64 = dataHigh;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx", dataHigh64);
+        dataHigh64 = dataHigh64 << 32;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx (after shift)", dataHigh64);
+        *(&pData[0]) = dataHigh64 | dataLow64;
+        // *(&pData[0]) = (((uint64_t)dataHigh) << 32) | (uint64_t)dataLow;
+        if (pData[0]) applog(LOG_ERR, "pData[0]=0x%016llx", pData[0]);
         break;
     }
     }
@@ -415,7 +446,7 @@ ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
         // Always mask in the clock enable bits
         newOCRValue = (newOCRValue & DCR1_OCR_CORE_MSK) | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        uint32_t ocrA = newOCRValue && 0xFFFFFFFFL;
+        uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
         ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;
@@ -470,13 +501,14 @@ ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t di
         return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue);
     }
     case MODEL_DCR1: {
+        applog(LOG_ERR, "DCR1_OCR_BIAS_64BIT_MASK = 0x%016llX", DCR1_OCR_BIAS_64BIT_MASK);
         uint64_t newOCRValue = (gLastOCRWritten[boardNum][chipNum] & ~(DCR1_OCR_CLK_DIV_MSK | DCR1_OCR_BIAS_64BIT_MASK))
             | getDCR1DividerBits(divider)
             | getDCR1BiasBits(bias);
         // Always mask in the clock enable bits
         newOCRValue = newOCRValue | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        uint32_t ocrA = newOCRValue && 0xFFFFFFFFL;
+        uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
         ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;

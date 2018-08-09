@@ -23,7 +23,8 @@ typedef struct {
 } Blake2BJob;
 
 typedef struct {
-    uint32_t m[E_DCR1_NUM_MREGS];
+    uint32_t m[E_DCR1_NUM_MREGS];  // Midstate
+    uint32_t v[E_DCR1_NUM_VREGS];  // Header tail
 } Blake256Job;
 
 // Note that these unions have no type discriminator.  Instead, at startup, the API init function

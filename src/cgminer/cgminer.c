@@ -81,8 +81,12 @@ char* curly = ":D";
 #include "obelisk/spi.h"
 #include "obelisk/Usermain.h"
 #include "obelisk/Ob1Test.h"
+#if (ALGO == BLAKE2B)
 #include "obelisk/siahash/siastratum.h"
-
+#elif (ALGO == BLAKE256)
+#include "obelisk/dcrhash/dcrstratum.h"
+#include "obelisk/dcrhash/dcrverify.h"
+#endif
 #ifdef USE_AVALON
 #include "driver-avalon.h"
 #endif
@@ -4737,8 +4741,9 @@ static bool stale_work(struct work* work, bool share)
         same_job = true;
 
         cg_rlock(&pool->data_lock);
-        if (strcmp(work->job_id, pool->swork.job_id))
+        if (strcmp(work->job_id, pool->swork.job_id)) {
             same_job = false;
+        }
         cg_runlock(&pool->data_lock);
 
         if (!same_job) {
@@ -6635,7 +6640,6 @@ static void* stratum_rthread(void* userdata)
             /* Generate a single work item to update the current
 			 * block database */
             gen_stratum_work(pool, work);
-            applog(LOG_ERR, "Generated stratum work 2");
             /* Return value doesn't matter. We're just informing
 			 * that we may need to restart. */
             test_work_current(work);
@@ -7165,8 +7169,10 @@ static struct work* hash_pop(bool blocking)
             if (!work_rollable(work))
                 break;
         }
-    } else
+    } else {
         work = staged_work;
+    }
+
     HASH_DEL(staged_work, work);
     if (work_rollable(work))
         staged_rollable--;
@@ -7303,12 +7309,14 @@ typedef struct SiaStratumInput {
 	uint8_t ExtraNonce2[256];
 } SiaStratumInput;
 */
-#if (ALGO == BLAKE2B)
 
     /* Copy parameters required for share submission */
     work->job_id = strdup(pool->swork.job_id);
     work->nonce1 = strdup(pool->nonce1); 
     work->ntime = strdup(pool->ntime);
+    work->pool = pool;
+
+#if (ALGO == BLAKE2B)
 
     SiaStratumInput input;
     memset(&input, 0, sizeof(SiaStratumInput));
@@ -7334,7 +7342,14 @@ typedef struct SiaStratumInput {
     siaCalculateStratumHeader(work->midstate, input);
 
 #elif (ALGO == BLAKE256)
-    // TODO: Build decred work
+
+applog(LOG_ERR, "========================================================");
+applog(LOG_ERR, "Calling dcrBuildBlockHeader()");
+    DecredBlockHeader header;
+    dcrBuildBlockHeader(&header, work);
+    dcrPrepareMidstate(work->midstate, (uint8_t*)&header);
+    memcpy(work->midstate, &header, sizeof(DecredBlockHeader));
+applog(LOG_ERR, "========================================================");
 #endif
 
     /* Store the stratum work diff to check it still matches the pool's
@@ -7347,7 +7362,6 @@ typedef struct SiaStratumInput {
     set_target(work->target, work->sdiff);
 
     local_work++;
-    work->pool = pool;
     work->stratum = true;
     work->nonce = 0;
     work->longpoll = false;
@@ -7547,7 +7561,7 @@ struct work* get_work(struct thr_info* thr, const int thr_id)
         applog(LOG_DEBUG, "Get work blocked for %d seconds", (int)diff_t);
         cgpu->last_device_valid_work += diff_t;
     }
-    applog(LOG_DEBUG, "Got work from get queue to get work for thread %d", thr_id);
+    applog(LOG_ERR, "Got work from get queue to get work for thread %d", thr_id);
 
     work->thr_id = thr_id;
     if (opt_benchmark)
@@ -7557,6 +7571,7 @@ struct work* get_work(struct thr_info* thr, const int thr_id)
     work->mined = true;
     work->device_diff = MIN(cgpu->drv->max_diff, work->work_difficulty);
     work->device_diff = MAX(cgpu->drv->min_diff, work->device_diff);
+
     return work;
 }
 
@@ -10308,7 +10323,6 @@ begin_bench:
         if (pool->has_stratum) {
             if (opt_gen_stratum_work) {
                 gen_stratum_work(pool, work);
-                applog(LOG_DEBUG, "Generated stratum work");
                 stage_work(work);
             }
             continue;
