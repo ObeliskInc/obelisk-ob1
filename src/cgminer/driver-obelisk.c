@@ -148,8 +148,8 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
 {
 #if (MODEL == SC1)
     // Make the header with the nonce inserted at the right spot
-    uint8_t header[DECRED_MIDSTATE_SIZE];
-    memcpy(header, engine_work_work->midstate, SIA_HEADER_SIZE);
+    uint8_t header[SIA_HEADER_SIZE];
+    memcpy(header, engine_work->midstate, SIA_HEADER_SIZE);
     memcpy(header + 32, &nonce, sizeof(Nonce));
 
     if (siaHeaderMeetsMinimumTarget(header)) {
@@ -173,6 +173,7 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
     // Make the header with the nonce inserted at the right spot
     uint8_t midstate[DECRED_MIDSTATE_SIZE];
     uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
+
     applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
     memcpy(midstate, engine_work->midstate, DECRED_MIDSTATE_SIZE);
     applog(LOG_ERR, "is_nonce_valid 2");
@@ -1159,7 +1160,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
                         struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-                        if (is_valid_nonce(ob->chain_id,, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
+                        if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool
                             submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
