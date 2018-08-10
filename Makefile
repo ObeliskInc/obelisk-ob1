@@ -65,14 +65,19 @@ clean:
 	@rm -rf src/cgminer/lib/.deps
 	@rm -rf src/cgminer/lib/*.a
 	@rm -rf src/cgminer/lib/*.o
-	@rm -rf src/cgminer/obelisk/siahash/bin/
-	@rm -rf src/cgminer/obelisk/siahash/obj/
 	@rm -rf src/cgminer/obelisk/.deps
 	@rm -rf src/cgminer/obelisk/.dirstamp
 	@rm -rf src/cgminer/obelisk/*.o
+	@rm -rf src/cgminer/obelisk/siahash/bin/
+	@rm -rf src/cgminer/obelisk/siahash/obj/
 	@rm -rf src/cgminer/obelisk/siahash/.deps
 	@rm -rf src/cgminer/obelisk/siahash/.dirstamp
 	@rm -rf src/cgminer/obelisk/siahash/*.o
+	@rm -rf src/cgminer/obelisk/dcrhash/bin/
+	@rm -rf src/cgminer/obelisk/dcrhash/obj/
+	@rm -rf src/cgminer/obelisk/dcrhash/.deps
+	@rm -rf src/cgminer/obelisk/dcrhash/.dirstamp
+	@rm -rf src/cgminer/obelisk/dcrhash/*.o
 	@rm -rf src/controlCardUtils/bin
 	@rm -rf src/controlCardUtils/obj
 	@rm -rf src/sdCardUtils/bin
