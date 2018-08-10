@@ -53,7 +53,7 @@ cgminer_SOURCES	+= klist.h klist.c
 
 cgminer_SOURCES	+= noncedup.c
 
-cgminer_SOURCES += -ggdb
+cgminer_SOURCES += -ggdb -s -Os
 
 
 if NEED_FPGAUTILS
