@@ -250,6 +250,7 @@ extern char* curly;
 
 #if (ALGO == BLAKE2B)
 
+#define EXTRANONCE_SIZE 4 // bytes
 #define NONCE_SIZE 8 // bytes
 #define HASH_SIZE 32 // bytes
 #define ARB_TX_SIZE 145 // bytes (includes the 0x00 byte)
@@ -260,6 +261,7 @@ extern char* curly;
 
 #elif (ALGO == BLAKE256)
 
+#define EXTRANONCE_SIZE 4
 #define NONCE_SIZE 4 // bytes
 #define HASH_SIZE 32 // bytes
 #define ARB_TX_SIZE 137 // bytes (inclues the 0x00 byte)
@@ -540,7 +542,7 @@ struct cgpu_info {
     time_t last_share_pool_time;
     double last_share_diff;
     time_t last_device_valid_work;
-    uint32_t last_nonce;
+    Nonce last_nonce;
 
     time_t device_last_well;
     time_t device_last_not_well;
@@ -1126,6 +1128,7 @@ extern json_t* json_rpc_call(CURL* curl, const char* url, const char* userpass,
 extern const char* proxytype(proxytypes_t proxytype);
 extern char* get_proxy(char* url, struct pool* pool);
 extern void __bin2hex(char* s, const unsigned char* p, size_t len);
+extern void __bin2hex2(char* s, const unsigned char* p, size_t len);
 extern char* bin2hex(const unsigned char* p, size_t len);
 extern bool hex2bin(unsigned char* p, const char* hexstr, size_t len);
 
@@ -1323,7 +1326,7 @@ struct pool {
 
     char* nonce1;
     unsigned char* nonce1bin;
-    Nonce nonce2;
+    uint32_t nonce2;
     int n2size;
     char* sessionid;
     bool has_stratum;
@@ -1441,7 +1444,7 @@ struct work {
 #if (ALGO == BLAKE2B || ALGO == BLAKE256)
     char prev_hash[HASH_SIZE];
 #endif
-    Nonce nonce2;
+    uint32_t nonce2;
     size_t nonce2_len;
     char* ntime;
     double sdiff;

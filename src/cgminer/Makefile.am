@@ -53,7 +53,7 @@ cgminer_SOURCES	+= klist.h klist.c
 
 cgminer_SOURCES	+= noncedup.c
 
-cgminer_SOURCES += -ggdb -s -Os
+cgminer_SOURCES += -ggdb
 
 
 if NEED_FPGAUTILS
@@ -146,7 +146,8 @@ cgminer_SOURCES += driver-obelisk.c hexdump.c obelisk/multicast.c\
 
 # Sia hashing/verification code
 cgminer_SOURCES += obelisk/siahash/blake2-impl.h obelisk/siahash/blake2.h \
-			 obelisk/siahash/blake2b-ref.c obelisk/siahash/siaverify.c obelisk/siahash/siaverify.h
+			 obelisk/siahash/blake2b-ref.c obelisk/siahash/siaverify.c obelisk/siahash/siaverify.h \
+			 obelisk/siahash/siastratum.c obelisk/siahash/siastratum.h
 
 cgminer_SOURCES += obelisk/Usermain.c obelisk/Usermain.h
 

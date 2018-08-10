@@ -81,6 +81,7 @@ char* curly = ":D";
 #include "obelisk/spi.h"
 #include "obelisk/Usermain.h"
 #include "obelisk/Ob1Test.h"
+#include "obelisk/siahash/siastratum.h"
 
 #ifdef USE_AVALON
 #include "driver-avalon.h"
@@ -2232,25 +2233,25 @@ static struct opt_table opt_cmdline_table[] = {
 static void calc_midstate(struct work* work)
 {
 #if (ALGO == BLAKE2B)
-    // Build the 80 byte header
-    int offset = 0;
+    // // Build the 80 byte header
+    // int offset = 0;
 
-    // prevous hash - 32 bytes
-    cg_memcpy(work->midstate, work->prev_hash, HASH_SIZE);
-    offset += HASH_SIZE;
+    // // prevous hash - 32 bytes
+    // cg_memcpy(work->midstate, work->prev_hash, HASH_SIZE);
+    // offset += HASH_SIZE;
 
-    // nonce (ignored - just to keep the offsets correct) - 8 bytes
-    offset += NONCE_SIZE;
+    // // nonce (ignored - just to keep the offsets correct) - 8 bytes
+    // offset += NONCE_SIZE;
 
-    // ntime - 8 bytes
-    // Convert ntime to binary
-    unsigned char ntime_bin[NTIME_SIZE];
-    bool ret = hex2bin(ntime_bin, work->ntime, NTIME_SIZE);
-    cg_memcpy(work->midstate + offset, ntime_bin, NTIME_SIZE);
-    offset += NTIME_SIZE;
+    // // ntime - 8 bytes
+    // // Convert ntime to binary
+    // unsigned char ntime_bin[NTIME_SIZE];
+    // bool ret = hex2bin(ntime_bin, work->ntime, NTIME_SIZE);
+    // cg_memcpy(work->midstate + offset, ntime_bin, NTIME_SIZE);
+    // offset += NTIME_SIZE;
 
-    // Merkle root - 32 bytes
-    cg_memcpy(work->midstate + offset, work->merkle_root, HASH_SIZE);
+    // // Merkle root - 32 bytes
+    // cg_memcpy(work->midstate + offset, work->merkle_root, HASH_SIZE);
 
     // applog(LOG_ERR, "Calculated midstate/Sia header:");
     // hexdump(work->midstate, SIA_HEADER_SIZE);
@@ -6653,8 +6654,8 @@ out:
 static void* stratum_sthread(void* userdata)
 {
     struct pool* pool = (struct pool*)userdata;
-    uint64_t last_nonce2 = 0;
-    uint32_t last_nonce = 0;
+    uint32_t last_nonce2 = 0;
+    Nonce last_nonce = 0;
     char threadname[16];
 
     pthread_detach(pthread_self());
@@ -6671,8 +6672,8 @@ static void* stratum_sthread(void* userdata)
         struct stratum_share* sshare;
         uint32_t* hash32;
         Nonce nonce;
-        unsigned char nonce2[8];
-        uint64_t* nonce2_64;
+
+        unsigned char nonce2[EXTRANONCE_SIZE];
         struct work* work;
         bool submitted;
 
@@ -6683,7 +6684,8 @@ static void* stratum_sthread(void* userdata)
         if (unlikely(!work))
             quit(1, "Stratum q returned empty work");
 
-        if (unlikely(work->nonce2_len > 8)) {
+        // TODO: Fix this bitcoin thingie
+        if (unlikely(work->nonce2_len > 4)) {
             applog(LOG_ERR, "Pool %d asking for inappropriately long nonce2 length %d",
                 pool->pool_no, (int)work->nonce2_len);
             applog(LOG_ERR, "Not attempting to submit shares");
@@ -6691,23 +6693,24 @@ static void* stratum_sthread(void* userdata)
             continue;
         }
 
-        nonce = *((uint32_t*)(work->data + 76));
-        nonce2_64 = (uint64_t*)nonce2;
-        *nonce2_64 = htole64(work->nonce2);
+        nonce = work->nonce_to_submit;
         /* Filter out duplicate shares */
 
         // TODO: Add this back in once the rest of pool code is working
 
-        // if (unlikely(nonce == last_nonce && *nonce2_64 == last_nonce2)) {
+        // if (unlikely(nonce == last_nonce && pool->nonce2 == last_nonce2)) {
         //     applog(LOG_ERR, "Filtering duplicate share to pool %d",
         //         pool->pool_no);
         //     free_work(work);
         //     continue;
         // }
+
         last_nonce = nonce;
-        last_nonce2 = *nonce2_64;
-        __bin2hex(noncehex, (const unsigned char*)&work->nonce_to_submit, NONCE_SIZE);
-        __bin2hex(nonce2hex, nonce2, work->nonce2_len);
+        last_nonce2 = pool->nonce2;
+        __bin2hex(noncehex, (const unsigned char*)&nonce, NONCE_SIZE);
+        __bin2hex(nonce2hex, (const unsigned char*)&(work->nonce2), work->nonce2_len);
+
+        applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
 
         sshare = cgcalloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t*)work->hash;
@@ -7276,50 +7279,166 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
     /* Downgrade to a read lock to read off the pool variables */
     cg_dwlock(&pool->data_lock);
 
+/*
+typedef struct SiaStratumInput {
+	// Block header information.
+	uint8_t PrevHash[32];
+	uint8_t Nonce[8];
+	uint8_t Ntime[8];
+
+	// Merkle branches inputs.
+	uint16_t MerkleBranchesLen;
+	uint8_t** MerkleBranches[20][32];
+
+	// Coinbase inputs.
+	uint16_t Coinbase1Size;
+	uint16_t Coinbase2Size;
+	uint8_t Coinbase1[256];
+	uint8_t Coinbase2[256];
+
+	// Extra nonce inputs.
+	uint16_t ExtraNonce1Size;
+	uint16_t ExtraNonce2Size;
+	uint8_t ExtraNonce1[256];
+	uint8_t ExtraNonce2[256];
+} SiaStratumInput;
+*/
 #if (ALGO == BLAKE2B)
-    // Build the arbitrary transaction
-    arb_tx[0] = 0;
-    int offset = 1;
 
-    // coinbase1
-    cg_memcpy(arb_tx + offset, pool->coinbase1, pool->coinbase1_len);
-    offset += pool->coinbase1_len;
+    /* Copy parameters required for share submission */
+    work->job_id = strdup(pool->swork.job_id);
+    work->nonce1 = strdup(pool->nonce1); 
+    work->ntime = strdup(pool->ntime);
 
-    // extranonce1
-    cg_memcpy(arb_tx + offset, pool->nonce1, NONCE_SIZE);
-    offset += NONCE_SIZE;
+    SiaStratumInput input;
+    memset(&input, 0, sizeof(SiaStratumInput));
 
-    // extranonce2
-    cg_memcpy(arb_tx + offset, &pool->nonce2, NONCE_SIZE);
-    offset += NONCE_SIZE;
+    applog(LOG_ERR, "DBG1");
+    hex2bin(input.PrevHash, pool->prev_hash, HASH_SIZE * 2);
+    applog(LOG_ERR, "DBG2");
 
-    // coinbase2
-    cg_memcpy(arb_tx + offset, pool->coinbase2, pool->coinbase2_len);
-    offset += pool->coinbase2_len;
+    // Nonce is zeroed out from the memset() above
 
-    // Hash it to make the initial merkle root
-    // int blake2b( void *out, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen );
-    blake2b(work->merkle_root, HASH_SIZE, arb_tx, offset, NULL, 0);
-
-    // Generate the final merkle_root
-    for (i = 0; i < pool->merkles; i++) {
-        int offset = 1;
-        merkle_hash[0] = 1;
-
-        // Copy the next merkle branch in
-        cg_memcpy(merkle_hash + offset, pool->swork.merkle_bin[i], HASH_SIZE);
-        offset += HASH_SIZE;
-
-        // Copy the current root in
-        cg_memcpy(merkle_hash + offset, work->merkle_root, HASH_SIZE);
-	offset += HASH_SIZE;
-
-        blake2b(work->merkle_root, HASH_SIZE, merkle_hash, offset, NULL, 0);
+    applog(LOG_ERR, "DBG3");
+    hex2bin(input.Ntime, work->ntime, 16);
+    applog(LOG_ERR, "DBG5");
+    
+    input.MerkleBranchesLen = pool->merkles;
+    applog(LOG_ERR, "DBG6: len=%d  swork=0x%08lx", input.MerkleBranchesLen, pool->swork);
+    applog(LOG_ERR, "DBG6.1: swork->mb[%d]0x%08lx", i, pool->swork.merkle_bin[i]);
+    for (int i=0; i< input.MerkleBranchesLen; i++) {
+    applog(LOG_ERR, "DBG7");
+        memcpy(input.MerkleBranches[i], pool->swork.merkle_bin[i], HASH_SIZE);
+    applog(LOG_ERR, "DBG8");
     }
+    applog(LOG_ERR, "DBG9");
+    input.Coinbase1Size = pool->coinbase1_len;
+    applog(LOG_ERR, "DBG10");
+    memcpy(input.Coinbase1, pool->coinbase1, input.Coinbase1Size);
+    applog(LOG_ERR, "DBG11");
+    input.Coinbase2Size = pool->coinbase2_len;
+    applog(LOG_ERR, "DBG12");
+    memcpy(input.Coinbase2, pool->coinbase2, input.Coinbase2Size);
+    applog(LOG_ERR, "DBG13");
 
-    // Need to copy the prev_has from the pool to the work so it's available in calc_midstate()
-    // TODO: Should really just pass in the pool to calc_midstate() too.
-    bool ret = hex2bin(work->prev_hash, pool->prev_hash, HASH_SIZE);
+    input.ExtraNonce1Size = 4;
+    applog(LOG_ERR, "DBG14");
+    memcpy(input.ExtraNonce1, pool->nonce1bin,  input.ExtraNonce1Size);
+    applog(LOG_ERR, "DBG15");
+    input.ExtraNonce2Size = 4;
+
+
+    applog(LOG_ERR, "DBG16: nonce2=%lu", work->nonce2);
+    memcpy(input.ExtraNonce2, &(work->nonce2), input.ExtraNonce2Size);
+    applog(LOG_ERR, "DBG17: nonce2=%lu  input.ExtraNonce2=%02X%02X%02X%02X", work->nonce2, input.ExtraNonce2[0], input.ExtraNonce2[1], input.ExtraNonce2[2], input.ExtraNonce2[3]);
+
+    siaCalculateStratumHeader(work->midstate, input);
+    
+    applog(LOG_ERR, "DBG18");
+    char* ss = bin2hex(work->midstate, SIA_HEADER_SIZE);
+    applog(LOG_ERR, "DBG19");
+    applog(LOG_ERR, "HEADER: %s", ss);
+    free(ss);
+    applog(LOG_ERR, "DBG20");
+
+    //     // Build the arbitrary transaction
+    //     arb_tx[0]
+    //     = 0;
+    // int offset = 1;
+
+    // // coinbase1
+    // cg_memcpy(arb_tx + offset, pool->coinbase1, pool->coinbase1_len);
+    // offset += pool->coinbase1_len;
+
+    // // extranonce1
+    // cg_memcpy(arb_tx + offset, pool->nonce1bin, EXTRANONCE_SIZE);
+    // offset += EXTRANONCE_SIZE;
+
+    // // extranonce2
+    // uint32_t n2rev = htonl(pool->nonce2);
+    // cg_memcpy(arb_tx + offset, &n2rev, EXTRANONCE_SIZE);
+    // offset += EXTRANONCE_SIZE;
+
+    // // coinbase2
+    // cg_memcpy(arb_tx + offset, pool->coinbase2, pool->coinbase2_len);
+    // offset += pool->coinbase2_len;
+    // //  000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004e6f6e536961000000000000000000004c55584f5200005349503100007cbd82080000000000000030000003000000000000000000000000
+    // //    0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004E6F6E536961000000000000000000004C
+    // // 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000030000000000000004E6F6E536961000000000000000000004C55584F5200005349503100007CBD8208000000000000003000
+
+    // applog(LOG_ERR, "offset=%d  coinbase1_len=%d  coinbase2_len=%d", offset, pool->coinbase1_len, pool->coinbase2_len);
+
+    // // Hash it to make the initial merkle root
+    // // int blake2b( void *out, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen );
+    // blake2b(work->merkle_root, HASH_SIZE, arb_tx, offset, NULL, 0);
+
+    // char* cb1_str = bin2hex(pool->coinbase1, pool->coinbase1_len);
+    // applog(LOG_ERR, "coinbase1 = %s", cb1_str);
+    // free(cb1_str);
+
+    // char* en1_str = bin2hex(pool->nonce1bin, EXTRANONCE_SIZE);
+    // applog(LOG_ERR, "extranonce1 = %s", en1_str);
+    // free(en1_str);
+
+    // char* en2_str = bin2hex((const unsigned char*)&work->nonce2, EXTRANONCE_SIZE);
+    // applog(LOG_ERR, "extranonce2 = %s", en2_str);
+    // free(en2_str);
+
+    // char* cb2_str = bin2hex(pool->coinbase2, pool->coinbase2_len);
+    // applog(LOG_ERR, "coinbase2 = %s", cb2_str);
+    // free(cb2_str);
+
+    // char* arb_tx_str = bin2hex(work->merkle_root, HASH_SIZE);
+    // applog(LOG_ERR, "arb_tx hash = %02X %02X...%02X %02X   %s", work->merkle_root[0], work->merkle_root[1], work->merkle_root[30], work->merkle_root[31], arb_tx_str);
+    // free(arb_tx_str);
+
+    // // Generate the final merkle_root
+    // for (i = 0; i < pool->merkles; i++) {
+    //     int offset = 1;
+    //     merkle_hash[0] = 1;
+
+    //     // Copy the next merkle branch in
+    //     cg_memcpy(merkle_hash + offset, pool->swork.merkle_bin[i], HASH_SIZE);
+    //     offset += HASH_SIZE;
+
+    //     // Copy the current root in
+    //     cg_memcpy(merkle_hash + offset, work->merkle_root, HASH_SIZE);
+    //     offset += HASH_SIZE;
+
+    //     char* arb_tx_str = bin2hex(work->merkle_root, HASH_SIZE);
+    //     applog(LOG_ERR, "mk md = %02X %02X...%02X %02X   %s", work->merkle_root[0], work->merkle_root[1], work->merkle_root[30], work->merkle_root[31], arb_tx_str);
+    //     free(arb_tx_str);
+
+    //     blake2b(work->merkle_root, HASH_SIZE, merkle_hash, offset, NULL, 0);
+    // }
+
+    // char* merkle_root_str = bin2hex(work->merkle_root, HASH_SIZE);
+    // applog(LOG_ERR, "merkle root = %s", merkle_root_str);
+    // free(merkle_root_str);
+
+    // // Need to copy the prev_has from the pool to the work so it's available in calc_midstate()
+    // // TODO: Should really just pass in the pool to calc_midstate() too.
+    // bool ret = hex2bin(work->prev_hash, pool->prev_hash, HASH_SIZE);
     // TODO: Handle error (unlikely)
 
 #elif (ALGO == BLAKE256)
@@ -7348,10 +7467,6 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 	 * stratum diff when submitting shares */
     work->sdiff = pool->sdiff;
 
-    /* Copy parameters required for share submission */
-    work->job_id = strdup(pool->swork.job_id);
-    work->nonce1 = strdup(pool->nonce1);
-    work->ntime = strdup(pool->ntime);
     cg_runlock(&pool->data_lock);
 
     if (opt_debug) {

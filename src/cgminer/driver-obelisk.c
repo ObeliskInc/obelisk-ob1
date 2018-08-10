@@ -602,7 +602,8 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define StringMaxTime 1200 // After this amount of time, the string is abandoned as being unstable.
 
 // increaseDivider will increase the clock divider, resulting in a slower chip.
-static void increaseDivider(uint8_t* divider) {
+static void increaseDivider(uint8_t* divider)
+{
     switch (*divider) {
     case 1:
         *divider *= 2;
@@ -619,16 +620,17 @@ static void increaseDivider(uint8_t* divider) {
     }
 }
 
-static void decreaseDivider(uint8_t* divider) {
+static void decreaseDivider(uint8_t* divider)
+{
     switch (*divider) {
     case 2:
-		*divider /= 2;
+        *divider /= 2;
         break;
     case 4:
-		*divider /= 2;
+        *divider /= 2;
         break;
     case 8:
-		*divider /= 2;
+        *divider /= 2;
         break;
     default:
         // 1 or any other value means no change
@@ -636,11 +638,11 @@ static void decreaseDivider(uint8_t* divider) {
     }
 }
 
-
-static void increaseBias(int8_t* currentBias, uint8_t* currentDivider) {
+static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
     if (*currentBias == MAX_BIAS) {
         if (*currentDivider > 1) {
-			decreaseDivider(currentDivider);
+            decreaseDivider(currentDivider);
             *currentBias = MIN_BIAS;
         }
     } else {
@@ -648,10 +650,11 @@ static void increaseBias(int8_t* currentBias, uint8_t* currentDivider) {
     }
 }
 
-static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider) {
+static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
     if (*currentBias == MIN_BIAS) {
         if (*currentDivider < 8) {
-			increaseDivider(currentDivider);
+            increaseDivider(currentDivider);
             *currentBias = MAX_BIAS;
         }
     } else {
@@ -661,280 +664,291 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider) {
 
 // commitBias will take all of the current chip biases and commit them to the
 // string.
-static void commitBias(ob_chain* ob) {
-	int i = 0;
-	for (i = 0; i < 15; i++) {
-		ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
-	}
-	ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-	ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+static void commitBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < 15; i++) {
+        ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
+    }
+    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
 }
 
 // initControlState will prepare the control state for operation.
-static void initControlState(ob_chain* ob) {
-	// Set the board number.
-	ob->control_loop_state.boardNumber = ob->chain_id;
-	ob->control_loop_state.currentTime = time(0);
+static void initControlState(ob_chain* ob)
+{
+    // Set the board number.
+    ob->control_loop_state.boardNumber = ob->chain_id;
+    ob->control_loop_state.currentTime = time(0);
 
-	// Set the chip biases to minimum.
-	int i = 0;
-	for (i = 0; i < ChipCount; i++) {
-		ob->control_loop_state.chipBiases[i] = MIN_BIAS;
-		ob->control_loop_state.chipDividers[i] = 8;
-	}
+    // Set the chip biases to minimum.
+    int i = 0;
+    for (i = 0; i < ChipCount; i++) {
+        ob->control_loop_state.chipBiases[i] = MIN_BIAS;
+        ob->control_loop_state.chipDividers[i] = 8;
+    }
 
-	// Set the prevBiasChangeTime and prevVoltageChangeTime to the current time.
-	ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-	ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+    // Set the prevBiasChangeTime and prevVoltageChangeTime to the current time.
+    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 
-	// Set the voltage to level 20. This is the higest voltage that we start at,
-	// and then we walk up through the whole voltage process, printing out the
-	// hashrate as we go.
-	ob1SetStringVoltage(ob->control_loop_state.boardNumber, StartingStringVoltageLevel);
-	ob->control_loop_state.currentVoltageLevel = StartingStringVoltageLevel;
+    // Set the voltage to level 20. This is the higest voltage that we start at,
+    // and then we walk up through the whole voltage process, printing out the
+    // hashrate as we go.
+    ob1SetStringVoltage(ob->control_loop_state.boardNumber, StartingStringVoltageLevel);
+    ob->control_loop_state.currentVoltageLevel = StartingStringVoltageLevel;
 
-	// Set the board to initialized.
-	ob->control_loop_state.initialized = true;
+    // Set the board to initialized.
+    ob->control_loop_state.initialized = true;
 }
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
-static void updateControlState(ob_chain* ob) {
-	if (!ob->control_loop_state.initialized) {
-		initControlState(ob);
-	}
+static void updateControlState(ob_chain* ob)
+{
+    if (!ob->control_loop_state.initialized) {
+        initControlState(ob);
+    }
 
-	// Fetch some status variables about the hashing board.
-	HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
+    // Fetch some status variables about the hashing board.
+    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
 
-	// Update status values.
-	ob->control_loop_state.currentTime = time(0);
-	ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
-	ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
+    // Update status values.
+    ob->control_loop_state.currentTime = time(0);
+    ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
+    ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
 
-	// Fetch nonce count updates.
+    // Fetch nonce count updates.
     mutex_lock(&ob->lock);
-	ob->control_loop_state.currentGoodNonces = ob->good_nonces_found;
+    ob->control_loop_state.currentGoodNonces = ob->good_nonces_found;
     mutex_unlock(&ob->lock);
-	ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
-	ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
+    ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
+    ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
 }
 
 // displayControlState will check if enough time has passed, and then display
 // the current state of the hashing board to the user.
-static void displayControlState(ob_chain* ob) {
-	time_t lastStatus = ob->control_loop_state.lastStatusOutput;
-	time_t currentTime = ob->control_loop_state.currentTime;
-	if (currentTime - lastStatus > StatusOutputFrequency) {
-		// Compute the hashrate.
-		uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceBiasChange;
-		time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevBiasChangeTime + 1;
-		uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
+static void displayControlState(ob_chain* ob)
+{
+    time_t lastStatus = ob->control_loop_state.lastStatusOutput;
+    time_t currentTime = ob->control_loop_state.currentTime;
+    if (currentTime - lastStatus > StatusOutputFrequency) {
+        // Compute the hashrate.
+        uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceBiasChange;
+        time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevBiasChangeTime + 1;
+        uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
 
-		// Currently only displays the bias of the first chip.
-		char outBuf[256];
+        // Currently only displays the bias of the first chip.
+        char outBuf[256];
         sprintf(outBuf, "HB%u:  Temp: %-5.1f  VString: %2.02f  Biases: %u.%i  Hashrate: %lld GH/s  Stability: %i  Timeouts: %lld VLevel: %u",
             ob->control_loop_state.boardNumber,
             ob->control_loop_state.currentStringTemp,
             ob->control_loop_state.currentStringVoltage,
-			ob->control_loop_state.chipDividers[0],
-			ob->control_loop_state.chipBiases[0],
-			hashrate,
-			secondsElapsed,
-			ob->control_loop_state.stringTimeouts,
-			ob->control_loop_state.currentVoltageLevel);
+            ob->control_loop_state.chipDividers[0],
+            ob->control_loop_state.chipBiases[0],
+            hashrate,
+            secondsElapsed,
+            ob->control_loop_state.stringTimeouts,
+            ob->control_loop_state.currentVoltageLevel);
         applog(LOG_ERR, outBuf);
-		sprintf(outBuf, "%u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i",
-				ob->control_loop_state.chipDividers[0],
-				ob->control_loop_state.chipBiases[0],
-				ob->control_loop_state.chipDividers[1],
-				ob->control_loop_state.chipBiases[1],
-				ob->control_loop_state.chipDividers[2],
-				ob->control_loop_state.chipBiases[2],
-				ob->control_loop_state.chipDividers[3],
-				ob->control_loop_state.chipBiases[3],
-				ob->control_loop_state.chipDividers[4],
-				ob->control_loop_state.chipBiases[4],
-				ob->control_loop_state.chipDividers[5],
-				ob->control_loop_state.chipBiases[5],
-				ob->control_loop_state.chipDividers[6],
-				ob->control_loop_state.chipBiases[6],
-				ob->control_loop_state.chipDividers[7],
-				ob->control_loop_state.chipBiases[7],
-				ob->control_loop_state.chipDividers[8],
-				ob->control_loop_state.chipBiases[8],
-				ob->control_loop_state.chipDividers[9],
-				ob->control_loop_state.chipBiases[9],
-				ob->control_loop_state.chipDividers[10],
-				ob->control_loop_state.chipBiases[10],
-				ob->control_loop_state.chipDividers[11],
-				ob->control_loop_state.chipBiases[11],
-				ob->control_loop_state.chipDividers[12],
-				ob->control_loop_state.chipBiases[12],
-				ob->control_loop_state.chipDividers[13],
-				ob->control_loop_state.chipBiases[13],
-				ob->control_loop_state.chipDividers[14],
-				ob->control_loop_state.chipBiases[14]);
+        sprintf(outBuf, "%u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i",
+            ob->control_loop_state.chipDividers[0],
+            ob->control_loop_state.chipBiases[0],
+            ob->control_loop_state.chipDividers[1],
+            ob->control_loop_state.chipBiases[1],
+            ob->control_loop_state.chipDividers[2],
+            ob->control_loop_state.chipBiases[2],
+            ob->control_loop_state.chipDividers[3],
+            ob->control_loop_state.chipBiases[3],
+            ob->control_loop_state.chipDividers[4],
+            ob->control_loop_state.chipBiases[4],
+            ob->control_loop_state.chipDividers[5],
+            ob->control_loop_state.chipBiases[5],
+            ob->control_loop_state.chipDividers[6],
+            ob->control_loop_state.chipBiases[6],
+            ob->control_loop_state.chipDividers[7],
+            ob->control_loop_state.chipBiases[7],
+            ob->control_loop_state.chipDividers[8],
+            ob->control_loop_state.chipBiases[8],
+            ob->control_loop_state.chipDividers[9],
+            ob->control_loop_state.chipBiases[9],
+            ob->control_loop_state.chipDividers[10],
+            ob->control_loop_state.chipBiases[10],
+            ob->control_loop_state.chipDividers[11],
+            ob->control_loop_state.chipBiases[11],
+            ob->control_loop_state.chipDividers[12],
+            ob->control_loop_state.chipBiases[12],
+            ob->control_loop_state.chipDividers[13],
+            ob->control_loop_state.chipBiases[13],
+            ob->control_loop_state.chipDividers[14],
+            ob->control_loop_state.chipBiases[14]);
         applog(LOG_ERR, outBuf);
-		sprintf(outBuf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld",
-				ob->control_loop_state.voltageLevelHashrates[20],
-				ob->control_loop_state.voltageLevelHashrates[24],
-				ob->control_loop_state.voltageLevelHashrates[28],
-				ob->control_loop_state.voltageLevelHashrates[32],
-				ob->control_loop_state.voltageLevelHashrates[36],
-				ob->control_loop_state.voltageLevelHashrates[40],
-				ob->control_loop_state.voltageLevelHashrates[44],
-				ob->control_loop_state.voltageLevelHashrates[48],
-				ob->control_loop_state.voltageLevelHashrates[52],
-				ob->control_loop_state.voltageLevelHashrates[56],
-				ob->control_loop_state.voltageLevelHashrates[60],
-				ob->control_loop_state.voltageLevelHashrates[64],
-				ob->control_loop_state.voltageLevelHashrates[68],
-				ob->control_loop_state.voltageLevelHashrates[72],
-				ob->control_loop_state.voltageLevelHashrates[76],
-				ob->control_loop_state.voltageLevelHashrates[80],
-				ob->control_loop_state.voltageLevelHashrates[84],
-				ob->control_loop_state.voltageLevelHashrates[88],
-				ob->control_loop_state.voltageLevelHashrates[92],
-				ob->control_loop_state.voltageLevelHashrates[96],
-				ob->control_loop_state.voltageLevelHashrates[100],
-				ob->control_loop_state.voltageLevelHashrates[104],
-				ob->control_loop_state.voltageLevelHashrates[108],
-				ob->control_loop_state.voltageLevelHashrates[112],
-				ob->control_loop_state.voltageLevelHashrates[116],
-				ob->control_loop_state.voltageLevelHashrates[120],
-				ob->control_loop_state.voltageLevelHashrates[124]);
+        sprintf(outBuf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld",
+            ob->control_loop_state.voltageLevelHashrates[20],
+            ob->control_loop_state.voltageLevelHashrates[24],
+            ob->control_loop_state.voltageLevelHashrates[28],
+            ob->control_loop_state.voltageLevelHashrates[32],
+            ob->control_loop_state.voltageLevelHashrates[36],
+            ob->control_loop_state.voltageLevelHashrates[40],
+            ob->control_loop_state.voltageLevelHashrates[44],
+            ob->control_loop_state.voltageLevelHashrates[48],
+            ob->control_loop_state.voltageLevelHashrates[52],
+            ob->control_loop_state.voltageLevelHashrates[56],
+            ob->control_loop_state.voltageLevelHashrates[60],
+            ob->control_loop_state.voltageLevelHashrates[64],
+            ob->control_loop_state.voltageLevelHashrates[68],
+            ob->control_loop_state.voltageLevelHashrates[72],
+            ob->control_loop_state.voltageLevelHashrates[76],
+            ob->control_loop_state.voltageLevelHashrates[80],
+            ob->control_loop_state.voltageLevelHashrates[84],
+            ob->control_loop_state.voltageLevelHashrates[88],
+            ob->control_loop_state.voltageLevelHashrates[92],
+            ob->control_loop_state.voltageLevelHashrates[96],
+            ob->control_loop_state.voltageLevelHashrates[100],
+            ob->control_loop_state.voltageLevelHashrates[104],
+            ob->control_loop_state.voltageLevelHashrates[108],
+            ob->control_loop_state.voltageLevelHashrates[112],
+            ob->control_loop_state.voltageLevelHashrates[116],
+            ob->control_loop_state.voltageLevelHashrates[120],
+            ob->control_loop_state.voltageLevelHashrates[124]);
         applog(LOG_ERR, outBuf);
 
-		ob->control_loop_state.lastStatusOutput = currentTime;
-	}
+        ob->control_loop_state.lastStatusOutput = currentTime;
+    }
 }
 
 // targetTemp returns the target temperature for the chip we want.
-static double getTargetTemp(ob_chain* ob) {
-	// TODO: As we start playing with the individual biases of the chips, we can
-	// extend this function to take into account all the ways that the chips
-	// have been pushed around.
-	return HotChipTargetTemp-ChipTempVariance-HotChipTempRise;
+static double getTargetTemp(ob_chain* ob)
+{
+    // TODO: As we start playing with the individual biases of the chips, we can
+    // extend this function to take into account all the ways that the chips
+    // have been pushed around.
+    return HotChipTargetTemp - ChipTempVariance - HotChipTempRise;
 }
 
 // decrease the clock bias of every chip on the string.
-static void decreaseStringBias(ob_chain* ob) {
-	int i = 0;
-	for (i = 0; i < ChipCount; i++) {
-		decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-	}
-	applog(LOG_ERR, "HB%u: decreasing the string bias.", ob->control_loop_state.boardNumber);
-	commitBias(ob);
+static void decreaseStringBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < ChipCount; i++) {
+        decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+    }
+    applog(LOG_ERR, "HB%u: decreasing the string bias.", ob->control_loop_state.boardNumber);
+    commitBias(ob);
 }
 
 // increase the clock bias of every chip on the string.
-static void increaseStringBias(ob_chain* ob) {
-	int i = 0;
-	for (i = 0; i < ChipCount; i++) {
-		increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-	}
-	applog(LOG_ERR, "HB%u: increasing the string bias.", ob->control_loop_state.boardNumber);
-	commitBias(ob);
+static void increaseStringBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < ChipCount; i++) {
+        increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+    }
+    applog(LOG_ERR, "HB%u: increasing the string bias.", ob->control_loop_state.boardNumber);
+    commitBias(ob);
 }
 
 // handleOvertemps will clock down the string if the string is overheating.
-// 
+//
 // TODO: Add the deviation growth bits for unstable strings.
-static void handleOvertemps(ob_chain* ob, double targetTemp) {
-	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevOvertempCheck;
-	double currentTemp = ob->control_loop_state.currentStringTemp;
-	if (timeElapsed > OvertempCheckFrequency) {
-		// Reduce the string bias if we are overtemp.
-		if (currentTemp > targetTemp+TempDeviationAcceptable) {
-			decreaseStringBias(ob);
-		}
-		// Rapidly reduce the string bias again if we are at an urgent
-		// temperature.
-		if (currentTemp > targetTemp+TempDeviationAcceptable+TempDeviationUrgent) {
-			decreaseStringBias(ob);
-		}
-		ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
-	}
+static void handleOvertemps(ob_chain* ob, double targetTemp)
+{
+    time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevOvertempCheck;
+    double currentTemp = ob->control_loop_state.currentStringTemp;
+    if (timeElapsed > OvertempCheckFrequency) {
+        // Reduce the string bias if we are overtemp.
+        if (currentTemp > targetTemp + TempDeviationAcceptable) {
+            decreaseStringBias(ob);
+        }
+        // Rapidly reduce the string bias again if we are at an urgent
+        // temperature.
+        if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
+            decreaseStringBias(ob);
+        }
+        ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
+    }
 }
 
 // handleUndertemps will clock up the string if the string is too cold.
-static void handleUndertemps(ob_chain* ob, double targetTemp) {
-	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevUndertempCheck;
-	double currentTemp = ob->control_loop_state.currentStringTemp;
-	double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
-	if (timeElapsed > UndertempCheckFrequency) {
-		if (currentTemp < targetTemp-TempGapCold && currentTemp - prevTemp < TempRiseSpeedCold * UndertempCheckFrequency) {
-			increaseStringBias(ob);
-		} else if (currentTemp < targetTemp-TempGapWarm && currentTemp - prevTemp < TempRiseSpeedWarm * UndertempCheckFrequency) {
-			increaseStringBias(ob);
-		} else if (currentTemp < targetTemp-TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
-			increaseStringBias(ob);
-		}
-		ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
-		ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
-	}
+static void handleUndertemps(ob_chain* ob, double targetTemp)
+{
+    time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevUndertempCheck;
+    double currentTemp = ob->control_loop_state.currentStringTemp;
+    double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
+    if (timeElapsed > UndertempCheckFrequency) {
+        if (currentTemp < targetTemp - TempGapCold && currentTemp - prevTemp < TempRiseSpeedCold * UndertempCheckFrequency) {
+            increaseStringBias(ob);
+        } else if (currentTemp < targetTemp - TempGapWarm && currentTemp - prevTemp < TempRiseSpeedWarm * UndertempCheckFrequency) {
+            increaseStringBias(ob);
+        } else if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
+            increaseStringBias(ob);
+        }
+        ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
+        ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
+    }
 }
 
-static void setVoltageLevel(ob_chain* ob, uint8_t level) {
-	ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
-	ob->control_loop_state.currentVoltageLevel = level;
-	ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
-	ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+static void setVoltageLevel(ob_chain* ob, uint8_t level)
+{
+    ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
+    ob->control_loop_state.currentVoltageLevel = level;
+    ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
+    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 
-	// Changing the voltage is significant enough to count as changing the bias
-	// too.
-	ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
-	ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    // Changing the voltage is significant enough to count as changing the bias
+    // too.
+    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
 // hashrate.
-static void control_loop(ob_chain* ob) {
-	// Get a static view of the current state of the hashing board.
-	updateControlState(ob);
-	displayControlState(ob);
+static void control_loop(ob_chain* ob)
+{
+    // Get a static view of the current state of the hashing board.
+    updateControlState(ob);
+    displayControlState(ob);
 
-	// Determine the target temperature for the temperature chip.
-	double targetTemp = getTargetTemp(ob);
-	handleOvertemps(ob, targetTemp);
-	handleUndertemps(ob, targetTemp);
+    // Determine the target temperature for the temperature chip.
+    double targetTemp = getTargetTemp(ob);
+    handleOvertemps(ob, targetTemp);
+    handleUndertemps(ob, targetTemp);
 
-	// Determine if string is stable.
-	time_t currentTime = ob->control_loop_state.currentTime;
-	time_t lastBiasChange = ob->control_loop_state.prevBiasChangeTime;
-	time_t lastVoltageChange = ob->control_loop_state.prevVoltageChangeTime;
-	if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange <= StringMaxTime) {
-		// The string is not stable, but has also not timed out.
-		return;
-	}
+    // Determine if string is stable.
+    time_t currentTime = ob->control_loop_state.currentTime;
+    time_t lastBiasChange = ob->control_loop_state.prevBiasChangeTime;
+    time_t lastVoltageChange = ob->control_loop_state.prevVoltageChangeTime;
+    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange <= StringMaxTime) {
+        // The string is not stable, but has also not timed out.
+        return;
+    }
 
-	// Check if the string is at the final voltage.
-	uint8_t currentLevel = ob->control_loop_state.currentVoltageLevel;
-	if (currentLevel+VoltageStepSize >= MaxVoltageLevel) {
-		// TODO: Begin playing with chip bias.
-		return;
-	}
+    // Check if the string is at the final voltage.
+    uint8_t currentLevel = ob->control_loop_state.currentVoltageLevel;
+    if (currentLevel + VoltageStepSize >= MaxVoltageLevel) {
+        // TODO: Begin playing with chip bias.
+        return;
+    }
 
-	// Check if the string is stable or not. If yes, use hashrate since last
-	// bias change. If not, use hashrate since last voltage change.
-	uint64_t hashrate = 0;
-	if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange >= StringMaxTime) {
-		// The string is not stable, instead has timed out. Use hashrate over
-		// lifetime of string to estimate hashrate.
-		applog(LOG_ERR, "HB%u: string is victim of timeout", ob->control_loop_state.boardNumber);
-		ob->control_loop_state.stringTimeouts++;
-		hashrate = ob->control_loop_state.goodNoncesSinceVoltageChange * 1099 / (currentTime-lastVoltageChange+1);
-	} else {
-		// The string is stable. Use hashrate over lifetime of recent bias
-		// change to esmiate hashrate.
-		hashrate = ob->control_loop_state.goodNoncesSinceBiasChange * 1099 / (currentTime-lastBiasChange+1);
-	}
+    // Check if the string is stable or not. If yes, use hashrate since last
+    // bias change. If not, use hashrate since last voltage change.
+    uint64_t hashrate = 0;
+    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange >= StringMaxTime) {
+        // The string is not stable, instead has timed out. Use hashrate over
+        // lifetime of string to estimate hashrate.
+        applog(LOG_ERR, "HB%u: string is victim of timeout", ob->control_loop_state.boardNumber);
+        ob->control_loop_state.stringTimeouts++;
+        hashrate = ob->control_loop_state.goodNoncesSinceVoltageChange * 1099 / (currentTime - lastVoltageChange + 1);
+    } else {
+        // The string is stable. Use hashrate over lifetime of recent bias
+        // change to esmiate hashrate.
+        hashrate = ob->control_loop_state.goodNoncesSinceBiasChange * 1099 / (currentTime - lastBiasChange + 1);
+    }
 
-	// The string has reached a state where it is time to try the next voltage.
-	ob->control_loop_state.voltageLevelHashrates[currentLevel] = hashrate;
-	setVoltageLevel(ob, currentLevel+VoltageStepSize);
-	return;
+    // The string has reached a state where it is time to try the next voltage.
+    ob->control_loop_state.voltageLevelHashrates[currentLevel] = hashrate;
+    setVoltageLevel(ob, currentLevel + VoltageStepSize);
+    return;
 }
 
 static void control_loop_old(ob_chain* ob)
