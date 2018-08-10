@@ -144,28 +144,26 @@ static void* ob_gen_work_thread(void* arg)
 
 // Perform a hash on the midstate with the specified nonce inserted in place
 // and see if the resulting hash has sufficient difficulty to submit to the pool.
-bool is_valid_nonce(ob_chain* ob, uint8_t chip_num, uint8_t engine_num, Nonce nonce)
+bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Nonce nonce, struct work* engine_work, struct ob_chain* ob)
 {
 #if (MODEL == SC1)
     // Make the header with the nonce inserted at the right spot
     uint8_t header[DECRED_MIDSTATE_SIZE];
-    memcpy(header, ob->curr_work->midstate, SIA_HEADER_SIZE);
+    memcpy(header, engine_work_work->midstate, SIA_HEADER_SIZE);
     memcpy(header + 32, &nonce, sizeof(Nonce));
 
     if (siaHeaderMeetsMinimumTarget(header)) {
-        ob->good_nonces_found++;
-        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
     } else {
-        ob->bad_nonces_found++;
-        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)",board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
     }
 
     // Check if it meets the pool's stratum difficulty
-    if (ob->curr_work && ob->curr_work->pool) {
-        double sdiff = ob->curr_work->pool->sdiff;
+    if (engine_work->pool) {
+        double sdiff = engine_work->pool->sdiff;
         if (siaHeaderMeetsProvidedDifficulty(header, sdiff)) {
             // TODO: Anything else to do here?
-            applog(LOG_ERR, "CH%u: NONCE 0x%016llX meets pool sdiff of %f", ob->chain_id, nonce, sdiff);
+            applog(LOG_ERR, "CH%u: NONCE 0x%016llX meets pool sdiff of %f", board_num, nonce, sdiff);
             return true;
         }
     }
@@ -175,10 +173,12 @@ bool is_valid_nonce(ob_chain* ob, uint8_t chip_num, uint8_t engine_num, Nonce no
     // Make the header with the nonce inserted at the right spot
     uint8_t midstate[DECRED_MIDSTATE_SIZE];
     uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
-    memcpy(midstate, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
-
+    applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
+    memcpy(midstate, engine_work->midstate, DECRED_MIDSTATE_SIZE);
+    applog(LOG_ERR, "is_nonce_valid 2");
     // TODO: Is this the right place to insert the nonce for testing?
     memcpy(headerTail + 14, &nonce, sizeof(Nonce));
+    applog(LOG_ERR, "is_nonce_valid 3");
 
     if (dcrMidstateMeetsMinimumTarget(midstate, headerTail)) {
         ob->good_nonces_found++;
@@ -189,14 +189,16 @@ bool is_valid_nonce(ob_chain* ob, uint8_t chip_num, uint8_t engine_num, Nonce no
     }
 
     // Check if it meets the pool's stratum difficulty
-    if (ob->curr_work && ob->curr_work->pool) {
-        double sdiff = ob->curr_work->pool->sdiff;
+    if (engine_work->pool) {
+        double sdiff = engine_work->pool->sdiff;
+    applog(LOG_ERR, "is_nonce_valid 4");
         if (dcrMidstateMeetsProvidedDifficulty(midstate, headerTail, sdiff)) {
             // TODO: Anything else to do here?
-            applog(LOG_ERR, "CH%u: NONCE 0x%08lX meets pool sdiff of %f", ob->chain_id, nonce, sdiff);
+            applog(LOG_ERR, "CH%u: NONCE 0x%08lX meets pool sdiff of %f", board_num, nonce, sdiff);
             return true;
         }
     }
+    applog(LOG_ERR, "is_nonce_valid 5");
     return false;
 
 #endif
@@ -1156,7 +1158,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
-                        if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
+                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+                        if (is_valid_nonce(ob->chain_id,, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool
                             submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
@@ -1212,7 +1215,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     }
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
-                        if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
+                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+                        if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool
                             submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
