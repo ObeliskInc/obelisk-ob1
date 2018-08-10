@@ -19,6 +19,10 @@ HashboardModel gBoardModel;
 // We save the last clock divider and bias for each ASIC on each board
 uint64_t gLastOCRWritten[MAX_NUMBER_OF_HASH_BOARDS][NUM_CHIPS_PER_STRING];
 
+// TODO: Would be nice to split these up into interfaces and call device-specific functions instead
+//       of combining both device types into each function.
+
+
 //==================================================================================================
 // Chip-level API
 //==================================================================================================
@@ -47,20 +51,33 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
         for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
-            // Skip M4 (the nonce)
-            if (i != E_SC1_REG_M4_RSV) {
-                applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
-                error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M0 + i, &(pBlake256Job->m[i]));
-                if (error != SUCCESS) {
-                    return error;
-                }
+            applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M0 + i, &(pBlake256Job->m[i]));
+            if (error != SUCCESS) {
+                return error;
             }
+        }
+
+        for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
+            applog(LOG_ERR, "    V%d: 0x%08lX", i, pBlake256Job->v[i]);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &(pBlake256Job->v[i]));
+            if (error != SUCCESS) {
+                return error;
+            }
+        }
+
+        // The Match register has the same value as V7
+        // TODO: Is this necessary?  Tom's code sets it, and it's listed as an input, soooo....I guess it is.
+        applog(LOG_ERR, "    V0MATCH: 0x%08lX", pBlake256Job->v[7]);
+        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DRC1_REG_V0MATCH, &(pBlake256Job->v[7]));
+        if (error != SUCCESS) {
+            return error;
         }
         break;
     }
     }
 
-    return SUCCESS;
+    return error;
 }
 
 // Set the upper and lower bounds for the specified engine(s).
@@ -159,6 +176,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         if (error != SUCCESS) {
             return GENERIC_ERROR;
         }
+
         int n = 0;
         uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
         // Quick check to early out if no nonces have been found
@@ -191,17 +209,19 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         if (error != SUCCESS) {
             return 0;
         }
+
         int n = 0;
+        uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
         // Quick check to early out if no nonces have been found
-        if (fsr != 0) {
-            if ((fsr & 0x8ULL) > 1) {
+        if (fsr_mask > 0) {
+            if (fsr_mask > 1) {
                 applog(LOG_ERR, "***** Found more than 1 nonce!  fsr=0x%016llX", fsr);
             }
 
             uint8_t fifoDataReg = E_DCR1_REG_FDR0;
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
                 // See which bits are set and extract the nonces for them
-                if (1 << i & fsr) {
+                if ((1 << i) & fsr_mask) {
                     uint32_t nonce32bit;
                     error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce32bit);
                     if (error != SUCCESS) {
@@ -224,14 +244,6 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
 
 // For Sia, pass a pointer to a single uint64_t
 // For Decred, pass a pointer to an array of two uint64_t's
-// The caller can iterate these bits to see which engines need a new job.
-// This should be checked AFTER checking for nonces, but there is still a small
-// race condition, where an engine could find a nonce and then assert done
-// right after you checked it for nonces.  We could do a final quick nonce check
-// if this is an issue before giving it another job.  Alternative is to ONLY
-// check for nonces when DONE is asserted.  If we keep job size fo about 2^32 or 2^33,
-// then the engines finish jobs in about 20 seconds, so as long as latency in the
-// nonces is not a huge deal, that would avoid a huge amount of polling.
 ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 {
     ApiError error = GENERIC_ERROR;
@@ -242,8 +254,9 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         break;
 
     case MODEL_DCR1: {
-        uint32_t dataLow;
-        uint32_t dataHigh;
+        uint32_t dataLow = 0;
+        uint32_t dataHigh = 0;
+        // applog(LOG_ERR, "Reading EDR registers for %u.%u", boardNum, chipNum);
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR0, &dataLow);
         if (error != SUCCESS) {
             return error;
@@ -255,8 +268,18 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
             return error;
         }
         // applog(LOG_ERR, "gdr: high1=0x%04lX", dataHigh);
-        *(&pData[1]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
+        uint64_t dataLow64 = dataLow;
+        if (dataLow64) applog(LOG_ERR, "dataLow64=0x%016llx", dataLow64);
+        uint64_t dataHigh64 = dataHigh;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx", dataHigh64);
+        dataHigh64 = dataHigh64 << 32;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx (after shift)", dataHigh64);
+        *(&pData[1]) = dataHigh64 | dataLow64;
+        // *(&pData[1]) = (((uint64_t)dataHigh) << 32) | (uint64_t)dataLow;
+        if (pData[1]) applog(LOG_ERR, "pData[1]=0x%016llx", pData[1]);
 
+        dataLow = 0;
+        dataHigh = 0;
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR2, &dataLow);
         if (error != SUCCESS) {
             return error;
@@ -267,8 +290,15 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         if (error != SUCCESS) {
             return error;
         }
-        *(&pData[0]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
-        // applog(LOG_ERR, "gdr: high2=0x%04lX", dataHigh);
+        dataLow64 = dataLow;
+        if (dataLow64) applog(LOG_ERR, "dataLow64=0x%016llx", dataLow64);
+        dataHigh64 = dataHigh;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx", dataHigh64);
+        dataHigh64 = dataHigh64 << 32;
+        if (dataHigh64) applog(LOG_ERR, "dataHigh64=0x%016llx (after shift)", dataHigh64);
+        *(&pData[0]) = dataHigh64 | dataLow64;
+        // *(&pData[0]) = (((uint64_t)dataHigh) << 32) | (uint64_t)dataLow;
+        if (pData[0]) applog(LOG_ERR, "pData[0]=0x%016llx", pData[0]);
         break;
     }
     }
@@ -278,14 +308,6 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 
 // For Sia, pass a pointer to a single uint64_t
 // For Decred, pass a pointer to an array of two uint64_t's
-// The caller can iterate these bits to see which engines need a new job.
-// This should be checked AFTER checking for nonces, but there is still a small
-// race condition, where an engine could find a nonce and then assert done
-// right after you checked it for nonces.  We could do a final quick nonce check
-// if this is an issue before giving it another job.  Alternative is to ONLY
-// check for nonces when DONE is asserted.  If we keep job size fo about 2^32 or 2^33,
-// then the engines finish jobs in about 20 seconds, so as long as latency in the
-// nonces is not a huge deal, that would avoid a huge amount of polling.
 ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 {
     ApiError error = GENERIC_ERROR;
@@ -295,13 +317,36 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         error = ob1SpiReadChipReg(boardNum, chipNum, E_SC1_REG_EBR, pData);
         break;
 
-    case MODEL_DCR1:
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR0, &pData[0]);
+    case MODEL_DCR1: {
+        uint32_t dataLow;
+        uint32_t dataHigh;
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR0, &dataLow);
         if (error != SUCCESS) {
             return error;
         }
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR1, &pData[1]);
+        // applog(LOG_ERR, "gdr: low1=0x%04lX", dataLow);
+
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR1, &dataHigh);
+        if (error != SUCCESS) {
+            return error;
+        }
+        // applog(LOG_ERR, "gdr: high1=0x%04lX", dataHigh);
+        *(&pData[1]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
+
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR2, &dataLow);
+        if (error != SUCCESS) {
+            return error;
+        }
+        // applog(LOG_ERR, "gdr: low2=0x%04lX", dataLow);
+
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR3, &dataHigh);
+        if (error != SUCCESS) {
+            return error;
+        }
+        *(&pData[0]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
+        // applog(LOG_ERR, "gdr: high2=0x%04lX", dataHigh);
         break;
+    }
     }
 
     return error;
@@ -415,7 +460,7 @@ ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
         // Always mask in the clock enable bits
         newOCRValue = (newOCRValue & DCR1_OCR_CORE_MSK) | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        uint32_t ocrA = newOCRValue && 0xFFFFFFFFL;
+        uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
         ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;
@@ -470,13 +515,14 @@ ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t di
         return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue);
     }
     case MODEL_DCR1: {
+        applog(LOG_ERR, "DCR1_OCR_BIAS_64BIT_MASK = 0x%016llX", DCR1_OCR_BIAS_64BIT_MASK);
         uint64_t newOCRValue = (gLastOCRWritten[boardNum][chipNum] & ~(DCR1_OCR_CLK_DIV_MSK | DCR1_OCR_BIAS_64BIT_MASK))
             | getDCR1DividerBits(divider)
             | getDCR1BiasBits(bias);
         // Always mask in the clock enable bits
         newOCRValue = newOCRValue | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        uint32_t ocrA = newOCRValue && 0xFFFFFFFFL;
+        uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
         ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;

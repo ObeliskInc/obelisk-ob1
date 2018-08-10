@@ -14,7 +14,14 @@ cgminer command lines for various pools:
 ./cgminer --url sc.f2pool.com:7778 --user 79cc3a0572619864e6a45b0aa8c2294db3d27151ff88ed7e066e33ee545841c13d4797297324.obelisk --pass x --api-listen --api-allow W:127.0.0.1 --syslog
 
 Add more logging:
+
+SC1:
 ./cgminer --url us-west.luxor.tech:3333 --user 79cc3a0572619864e6a45b0aa8c2294db3d27151ff88ed7e066e33ee545841c13d4797297324.obelisk --pass x --api-listen --api-allow W:127.0.0.1 --log 4 --protocol-dump --syslog
+
+DCR1:
+./cgminer --url us-west.luxor.tech:4445 --user DsViAH5o1dUUe1SjjxpNK9m7g8KrqWeAYW5.obelisk --pass x --api-listen --api-allow W:127.0.0.1 --log 4 --protocol-dump --syslog
+
+
 
 */
 
@@ -24,14 +31,17 @@ Add more logging:
 #include "config.h"
 #include "klist.h"
 #include "sha2.h"
-#include "obelisk/siahash/siaverify.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 
 #if (ALGO == BLAKE2B)
-#include "obelisk/blake2.h"
+#include "obelisk/siahash/siaverify.h"
+#endif
+
+#if (ALGO == BLAKE256)
+#include "obelisk/dcrhash/dcrverify.h"
 #endif
 
 static int num_chains = 0;
@@ -51,6 +61,7 @@ static void wq_enqueue(struct thr_info* thr, ob_chain* ob)
 
     while (wq->num_elems < MAX_WQ_SIZE) {
         struct work* work = get_work(thr, thr->id);
+        applog(LOG_ERR, "wq_enqueue() got work");
         struct work_ent* we;
 
         we = cgmalloc(sizeof(*we));
@@ -133,15 +144,43 @@ static void* ob_gen_work_thread(void* arg)
 
 // Perform a hash on the midstate with the specified nonce inserted in place
 // and see if the resulting hash has sufficient difficulty to submit to the pool.
-bool is_valid_nonce(ob_chain* ob, uint8_t chip_num, uint8_t engine_num, Nonce nonce)
+bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Nonce nonce, struct work* engine_work, struct ob_chain* ob)
 {
 #if (MODEL == SC1)
     // Make the header with the nonce inserted at the right spot
-    uint8_t header[SIA_HEADER_SIZE];
-    memcpy(header, ob->curr_work->midstate, SIA_HEADER_SIZE);
+    uint8_t header[DECRED_MIDSTATE_SIZE];
+    memcpy(header, engine_work_work->midstate, SIA_HEADER_SIZE);
     memcpy(header + 32, &nonce, sizeof(Nonce));
 
     if (siaHeaderMeetsMinimumTarget(header)) {
+        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+    } else {
+        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)",board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+    }
+
+    // Check if it meets the pool's stratum difficulty
+    if (engine_work->pool) {
+        double sdiff = engine_work->pool->sdiff;
+        if (siaHeaderMeetsProvidedDifficulty(header, sdiff)) {
+            // TODO: Anything else to do here?
+            applog(LOG_ERR, "CH%u: NONCE 0x%016llX meets pool sdiff of %f", board_num, nonce, sdiff);
+            return true;
+        }
+    }
+    return false;
+
+#elif (MODEL == DCR1)
+    // Make the header with the nonce inserted at the right spot
+    uint8_t midstate[DECRED_MIDSTATE_SIZE];
+    uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
+    applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
+    memcpy(midstate, engine_work->midstate, DECRED_MIDSTATE_SIZE);
+    applog(LOG_ERR, "is_nonce_valid 2");
+    // TODO: Is this the right place to insert the nonce for testing?
+    memcpy(headerTail + 14, &nonce, sizeof(Nonce));
+    applog(LOG_ERR, "is_nonce_valid 3");
+
+    if (dcrMidstateMeetsMinimumTarget(midstate, headerTail)) {
         ob->good_nonces_found++;
         applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
     } else {
@@ -150,18 +189,18 @@ bool is_valid_nonce(ob_chain* ob, uint8_t chip_num, uint8_t engine_num, Nonce no
     }
 
     // Check if it meets the pool's stratum difficulty
-    if (ob->curr_work && ob->curr_work->pool) {
-        double sdiff = ob->curr_work->pool->sdiff;
-        if (siaHeaderMeetsProvidedDifficulty(header, sdiff)) {
+    if (engine_work->pool) {
+        double sdiff = engine_work->pool->sdiff;
+    applog(LOG_ERR, "is_nonce_valid 4");
+        if (dcrMidstateMeetsProvidedDifficulty(midstate, headerTail, sdiff)) {
             // TODO: Anything else to do here?
-            applog(LOG_ERR, "CH%u: NONCE 0x%016llX meets pool sdiff of %f", ob->chain_id, nonce, sdiff);
+            applog(LOG_ERR, "CH%u: NONCE 0x%08lX meets pool sdiff of %f", board_num, nonce, sdiff);
             return true;
         }
     }
+    applog(LOG_ERR, "is_nonce_valid 5");
     return false;
 
-#elif (MODEL == DCR1)
-    // TODO: Implement for Decred
 #endif
 }
 
@@ -905,6 +944,9 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
 // hashrate.
 static void control_loop(ob_chain* ob)
 {
+    // applog(LOG_ERR, "empty control loop");
+    // return;
+
     // Get a static view of the current state of the hashing board.
     updateControlState(ob);
     displayControlState(ob);
@@ -1093,15 +1135,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
-        uint64_t doneBitmask;
-        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &doneBitmask);
-        if (doneBitmask != 0) {
-            // applog(LOG_ERR, "CH%u: doneBitmask=0x%016llX (chip_num=%u)", ob->chain_id, doneBitmask, chip_num);
+        uint64_t done_bitmask;
+        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
+        if (done_bitmask != 0) {
+            // applog(LOG_ERR, "CH%u: done_bitmask=0x%016llX (chip_num=%u)", ob->chain_id, done_bitmask, chip_num);
         }
-        if (error == SUCCESS && doneBitmask != 0) {
+        if (error == SUCCESS && done_bitmask != 0) {
             for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
                 // If engine is done
-                if (doneBitmask & (1ULL << engine_num)) {
+                if (done_bitmask & (1ULL << engine_num)) {
 
                     // We are done, so count the hashes
                     add_hashes(ob, NONCE_RANGE_SIZE);
@@ -1116,7 +1158,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
-                        if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
+                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+                        if (is_valid_nonce(ob->chain_id,, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool
                             submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
@@ -1143,9 +1186,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
         uint64_t done_bitmask[2];
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, done_bitmask);
         if (done_bitmask[0] != 0 || done_bitmask[1] != 0) {
-            // applog(LOG_ERR, "CH%u: doneBitmask=0x%016llX%016llX (chip_num=%u)", ob->chain_id, done_bitmask[1], done_bitmask[0], chip_num);
+            applog(LOG_ERR, "CH%u: done_bitmask=0x%016llX%016llX (chip_num=%u)", ob->chain_id, done_bitmask[0], done_bitmask[1], chip_num);
         }
-        if (error == SUCCESS && done_bitmask != 0) {
+        if (error == SUCCESS && (done_bitmask[0] != 0 || done_bitmask[1] != 0)) {
             for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
                 uint64_t curr_done_bitmask;
                 uint64_t engine_bitmask;
@@ -1156,20 +1199,24 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     engine_bitmask = (1ULL << engine_num);
                 } else {
                     curr_done_bitmask = done_bitmask[0];
+
                     engine_bitmask = (1ULL << (engine_num - 64));
                 }
 
                 // If engine is done
                 if (curr_done_bitmask & engine_bitmask) {
-                    applog(LOG_ERR, "Reading a nonce from %u:%u:%u", ob->chain_id, chip_num, engine_num);
                     // We are done, so count the hashes
                     add_hashes(ob, NONCE_RANGE_SIZE);
 
                     NonceSet nonce_set;
                     error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
+                    if (nonce_set.count > 0) {
+                        applog(LOG_ERR, "Received %d nonce(s) from %u:%u:%u", nonce_set.count, ob->chain_id, chip_num, engine_num);
+                    }
                     for (uint8_t i = 0; i < nonce_set.count; i++) {
                         // Check that the nonce is valid
-                        if (is_valid_nonce(ob, chip_num, engine_num, nonce_set.nonces[i])) {
+                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+                        if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
                             add_good_nonces(ob, 1);
                             // If valid, submit to the pool
                             submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
@@ -1267,66 +1314,96 @@ check_for_new_work:
     }
 
 #elif (MODEL == DCR1)
-    for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
-        for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-            // applog(LOG_ERR, "Checking if engine_num=%d is done", engine_num);
-            if (!is_engine_busy(ob, chip_num, engine_num)) {
-                // If there is no work, get a new one
-                if (!ob->curr_work) {
-                    ob->curr_work = wq_dequeue(ob, true);
-                    applog(LOG_ERR, "***************************************************************");
-                    applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lld", ob->curr_work->job_id, ob->curr_work->nonce2);
-                    applog(LOG_ERR, "***************************************************************");
+    // Get a single work item
+    // TODO: We don;t need to get a new work item every time through - Sia has TONS of nonce space,
+    // so we can keep reusing it.
+    if (!ob->curr_work) {
+        ob->curr_work = wq_dequeue(ob, true);
+        applog(LOG_ERR, "***************************************************************");
+        applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lld", ob->curr_work->job_id, ob->curr_work->nonce2);
+        applog(LOG_ERR, "***************************************************************");
 
-                    hexdump(ob->curr_work->midstate, DECRED_HEADER_SIZE);
+        hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
 
-                    // Load the current job to the current chip and engine
-                    Job job;
-                    // TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-                    // memcpy(&job.blake256, ob->curr_work->midstate, DECRED_HEADER_SIZE);
+        // Load the current job to all chips
+        Job job;
+        // TODO: Change ob1LoadJob() to take a byte pointer so we avoid this copy
+        memcpy(&job.blake256, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
 
-                    // TODO: Can we take advantage of the queued job and just MULTICAST to all chips whenever we switch work?
-                    ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
+        ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
+        if (error != SUCCESS) {
+            // TODO: do something
+            goto scanwork_exit;
+        }
+
+        ob->start_of_next_nonce = 0;
+    }
+
+
+    if (ob->curr_work) {
+        applog(LOG_ERR, "@@@@@@@@@@@@@@ scanwork() handling work!\n");
+        for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
+            for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
+                // applog(LOG_ERR, "Checking if engine_num=%d is done", engine_num);
+                
+                if (!is_engine_busy(ob, chip_num, engine_num)) {
+                    // If there is no work, get a new one
+                    if (!ob->curr_work) {
+                        ob->curr_work = wq_dequeue(ob, true);
+                        applog(LOG_ERR, "***************************************************************");
+                        applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lld", ob->curr_work->job_id, ob->curr_work->nonce2);
+                        applog(LOG_ERR, "***************************************************************");
+
+                        hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
+
+                        // Load the current job to the current chip and engine
+                        Job job;
+                        // TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
+                        // memcpy(&job.blake256, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
+
+                        // TODO: Can we take advantage of the queued job and just MULTICAST to all chips whenever we switch work?
+                        ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
+                        if (error != SUCCESS) {
+                            // TODO: do something
+                            goto scanwork_exit;
+                        }
+
+                        ob->start_of_next_nonce = 0;
+                    }
+
+                    // TODO: We are not currently taking advantage of the queued job ability
+
+                    // applog(LOG_ERR, "Set nonce range: lower=%llu  upper=%llu", ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
+
+                    //  Set different nonce ranges
+                    ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
+                    if (error != SUCCESS) {
+                        // TODO: do something
+                        goto scanwork_exit;
+                    }
+                    // applog(LOG_ERR, "Start job on: B%u/C%u/E%u", ob->chain_id, chip_num, engine_num);
+
+                    // Start everything hashing!
+                    // TODO: Should we start things hashing as each engine gets its nonce range
+                    // instead of starting them all here at the end?  Does that slow us down much?
+                    error = ob1StartJob(ob->chain_id, chip_num, engine_num);
                     if (error != SUCCESS) {
                         // TODO: do something
                         goto scanwork_exit;
                     }
 
-                    ob->start_of_next_nonce = 0;
-                }
+                    set_engine_busy(ob, chip_num, engine_num, true);
 
-                // TODO: We are not currently taking advantage of the queued job ability
+                    // Remember what work this engine is working on, so we can use the same one
+                    // when testing and submitting a nonce.
+                    ob->chips[chip_num].engines_curr_work[engine_num] = ob->curr_work;
 
-                // applog(LOG_ERR, "Set nonce range: lower=%llu  upper=%llu", ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-
-                //  Set different nonce ranges
-                ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-                if (error != SUCCESS) {
-                    // TODO: do something
-                    goto scanwork_exit;
-                }
-                // applog(LOG_ERR, "Start job on: B%u/C%u/E%u", ob->chain_id, chip_num, engine_num);
-
-                // Start everything hashing!
-                // TODO: Should we start things hashing as each engine gets its nonce range
-                // instead of starting them all here at the end?  Does that slow us down much?
-                error = ob1StartJob(ob->chain_id, chip_num, engine_num);
-                if (error != SUCCESS) {
-                    // TODO: do something
-                    goto scanwork_exit;
-                }
-
-                set_engine_busy(ob, chip_num, engine_num, true);
-
-                // Remember what work this engine is working on, so we can use the same one
-                // when testing and submitting a nonce.
-                ob->chips[chip_num].engines_curr_work[engine_num] = ob->curr_work;
-
-                // Increment for next engine
-                ob->start_of_next_nonce += NONCE_RANGE_SIZE;
-                if (ob->start_of_next_nonce + NONCE_RANGE_SIZE >= 0xFFFFFFFFULL) {
-                    applog(LOG_ERR, "NONCE RANGE EXHAUSTED FOR THIS WORK - NEED A NEW ONE (NONCE_RANGE_SIZE=0x%016llX", NONCE_RANGE_SIZE);
-                    ob->curr_work = NULL;
+                    // Increment for next engine
+                    ob->start_of_next_nonce += NONCE_RANGE_SIZE;
+                    if (ob->start_of_next_nonce + NONCE_RANGE_SIZE >= 0xFFFFFFFFULL) {
+                        applog(LOG_ERR, "NONCE RANGE EXHAUSTED FOR THIS WORK - NEED A NEW ONE (NONCE_RANGE_SIZE=0x%016llX", NONCE_RANGE_SIZE);
+                        ob->curr_work = NULL;
+                    }
                 }
             }
         }
@@ -1368,9 +1445,10 @@ check_for_new_work:
 
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
 scanwork_exit:
+    applog(LOG_ERR, "HB%u: good_nonces=%u bad_nonces=%u", ob->chain_id, ob->good_nonces_found, ob->bad_nonces_found);
     cgsleep_ms(10);
 
-    return 1;
+    return get_and_reset_hashes(ob);
 }
 
 static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)

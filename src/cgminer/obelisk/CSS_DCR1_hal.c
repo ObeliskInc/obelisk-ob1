@@ -2464,7 +2464,7 @@ int iSetDCR1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBia
 
     // DCR1 has 32-bit registers, so this needs to be written to two registers
     sDCR1XferBuf.uiReg = E_DCR1_REG_OCRA;
-    sDCR1XferBuf.uiData = regValue && 0xFFFFFFFF;
+    sDCR1XferBuf.uiData = regValue & 0xFFFFFFFF;
     int iResult = iDCR1SpiTransfer(&sDCR1XferBuf);
     if (ERR_NONE == iResult) {
         sDCR1XferBuf.uiReg = E_DCR1_REG_OCRB;
