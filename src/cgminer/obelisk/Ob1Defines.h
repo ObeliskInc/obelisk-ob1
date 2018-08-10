@@ -1,4 +1,5 @@
 // Obelisk ASIC API
+#include "obelisk-config.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "CSS_SC1Defines.h"
@@ -57,7 +58,12 @@ typedef struct {
 } HashboardStatus;
 
 #define MAX_NONCE_FIFO_LENGTH 8
+
+#if (ALGO == BLAKE2B)
 typedef uint64_t Nonce;
+#elif (ALGO == BLAKE256)
+typedef uint32_t Nonce;
+#endif
 
 typedef struct {
     Nonce nonces[MAX_NONCE_FIFO_LENGTH];

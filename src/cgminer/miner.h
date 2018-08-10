@@ -13,7 +13,11 @@
 #include <stdint.h>
 
 // There is a circular dependency between miner.h and Ob1APi.h, so doing this for now.
+#if (ALGO == BLAKE2B)
 typedef uint64_t Nonce;
+#elif (ALGO == BLAKE256)
+typedef uint32_t Nonce;
+#endif
 
 #include <sys/time.h>
 
@@ -265,8 +269,10 @@ extern char* curly;
 #define NONCE_SIZE 4 // bytes
 #define HASH_SIZE 32 // bytes
 #define ARB_TX_SIZE 137 // bytes (inclues the 0x00 byte)
-#define DECRED_MIDSTATE_SIZE 64 // bytes
+#define DECRED_MIDSTATE_SIZE 32 // bytes
 #define DECRED_HEADER_TAIL_SIZE 52 // bytes
+#define DECRED_HEADER_TAIL_OFFSET_IN_BLOCK 128 // bytes
+#define DECRED_HEADER_TAIL_NONCE_OFFSET 12 // bytes
 #define NTIME_STR_SIZE 8
 #define NTIME_SIZE 8 // bytes
 #define MAX_COINBASE_SIZE 128 // bytes
@@ -1409,7 +1415,7 @@ struct work {
     unsigned char merkle_root[HASH_SIZE];
 #elif (ALGO == BLAKE256)
     unsigned char midstate[DECRED_MIDSTATE_SIZE];
-    unsigned char merkle_root[HASH_SIZE];
+    unsigned char header_tail[DECRED_HEADER_TAIL_SIZE];
 #else
     unsigned char midstate[32];
 #endif

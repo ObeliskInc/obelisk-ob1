@@ -36,6 +36,9 @@ DCR1:
 #include <stdlib.h>
 #include <time.h>
 
+// HACK:
+extern void dump(unsigned char* p, int len, char* label);
+
 #if (ALGO == BLAKE2B)
 #include "obelisk/siahash/siaverify.h"
 #endif
@@ -171,29 +174,34 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
 
 #elif (MODEL == DCR1)
     // Make the header with the nonce inserted at the right spot
-    uint8_t midstate[DECRED_MIDSTATE_SIZE];
     uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
 
-    applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
-    memcpy(midstate, engine_work->midstate, DECRED_MIDSTATE_SIZE);
-    applog(LOG_ERR, "is_nonce_valid 2");
-    // TODO: Is this the right place to insert the nonce for testing?
-    memcpy(headerTail + 14, &nonce, sizeof(Nonce));
-    applog(LOG_ERR, "is_nonce_valid 3");
+    // HACK: Reverse the nonce
+    nonce = htonl(nonce);
 
-    if (dcrMidstateMeetsMinimumTarget(midstate, headerTail)) {
+    applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
+
+    // Make a copy of the header tail and insert the given nonce
+    memcpy(headerTail, &engine_work->header_tail, DECRED_HEADER_TAIL_SIZE);
+    dump(headerTail, DECRED_HEADER_TAIL_SIZE, "header tail (without nonce)");
+    memcpy(headerTail + DECRED_HEADER_TAIL_NONCE_OFFSET, &nonce, sizeof(Nonce));
+    applog(LOG_ERR, "is_nonce_valid 3");
+    dump(headerTail, DECRED_HEADER_TAIL_SIZE, "header tail (with nonce)");
+    dump(engine_work->midstate, DECRED_MIDSTATE_SIZE, "midstate (when validating)");
+
+    if (dcrMidstateMeetsMinimumTarget(engine_work->midstate, headerTail)) {
         ob->good_nonces_found++;
-        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%08lX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
     } else {
         ob->bad_nonces_found++;
-        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
+        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%08lX (good count=%d, bad count=%d)", ob->chain_id, nonce, ob->good_nonces_found, ob->bad_nonces_found);
     }
 
     // Check if it meets the pool's stratum difficulty
     if (engine_work->pool) {
         double sdiff = engine_work->pool->sdiff;
     applog(LOG_ERR, "is_nonce_valid 4");
-        if (dcrMidstateMeetsProvidedDifficulty(midstate, headerTail, sdiff)) {
+        if (dcrMidstateMeetsProvidedDifficulty(engine_work->midstate, headerTail, sdiff)) {
             // TODO: Anything else to do here?
             applog(LOG_ERR, "CH%u: NONCE 0x%08lX meets pool sdiff of %f", board_num, nonce, sdiff);
             return true;
@@ -1340,7 +1348,6 @@ check_for_new_work:
         ob->start_of_next_nonce = 0;
     }
 
-
     if (ob->curr_work) {
         applog(LOG_ERR, "@@@@@@@@@@@@@@ scanwork() handling work!\n");
         for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
@@ -1355,12 +1362,16 @@ check_for_new_work:
                         applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lld", ob->curr_work->job_id, ob->curr_work->nonce2);
                         applog(LOG_ERR, "***************************************************************");
 
+                        applog(LOG_ERR, "midstate");
                         hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
+                        applog(LOG_ERR, "header tail");
+                        hexdump(ob->curr_work->header_tail, DECRED_HEADER_TAIL_SIZE);
 
                         // Load the current job to the current chip and engine
                         Job job;
                         // TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-                        // memcpy(&job.blake256, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
+                        memcpy(&job.blake256.v, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
+                        memcpy(&job.blake256.m, ob->curr_work->header_tail, DECRED_HEADER_TAIL_SIZE);
 
                         // TODO: Can we take advantage of the queued job and just MULTICAST to all chips whenever we switch work?
                         ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
@@ -1377,7 +1388,8 @@ check_for_new_work:
                     // applog(LOG_ERR, "Set nonce range: lower=%llu  upper=%llu", ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
 
                     //  Set different nonce ranges
-                    ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
+                    // ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
+                    ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, 0, 0xFFFFFFFF);
                     if (error != SUCCESS) {
                         // TODO: do something
                         goto scanwork_exit;
