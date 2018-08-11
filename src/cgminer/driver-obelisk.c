@@ -533,9 +533,9 @@ static void obelisk_detect(bool hotplug)
         //ob->lastshare = cgpu->dev_start_tv.tv_sec;
 
         // Initialize the ob chip fields
-        for (int i = 0; i < NUM_CHIPS_PER_BOARD; i++) {
+        for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
             struct chip_info* chip = &ob->chips[i];
-            chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob1GetNumEnginesPerChip());
+            chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob->staticBoardModel.enginesPerChip);
         }
 
 		// Set the board number.
@@ -985,21 +985,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 {
     struct cgpu_info* cgpu = thr->cgpu;
     ob_chain* ob = cgpu->device_data;
-
     pthread_cond_signal(&ob->work_cond);
-
-    // Get nonces from chip and submit
-    if (false) {
-        Nonce nonce = 0x12345678;
-        // Need to pass back the work when submitting the nonce
-        // This is pretty stupid, since we probably only need the job_id
-        // and the extranonce2, which we could hang onto separately rather
-        // than the entire huge work structure.
-        // submit_nonce(thr, work, nonce);
-    }
-
-    // Check to see if it's been too long since we submitted a share
-    // and exit if so.
 
 #if (MODEL == SC1)
     // Look for nonces first so we can give new work in the same iteration below
