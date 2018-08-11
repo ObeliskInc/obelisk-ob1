@@ -53,6 +53,35 @@ Q: How will the interrupt know which card it is for?
 
 
 */
+
+/*
+const struct MODEL_SC1A {
+
+} MODEL_SC1A;
+*/
+
+// hashBoardModel defines a few parameters around a hashboard to make the code
+// more easy to adapt to each type of 
+typedef struct hashBoardModel {
+	// General chip information.
+	E_ASIC_TYPE_T asicType;
+	uint16_t chipsPerBoard;
+	uint16_t enginesPerChip;
+
+	// General string information.
+	uint16_t minStringLevel;
+	uint16_t maxStringLevel;
+} hashBoardModel;
+
+const struct hashBoardModel MODEL_SC1A = {
+	.asicType = MODEL_SC1,
+	.chipsPerBoard = 15,
+	.enginesPerChip = 64,
+
+	.minStringLevel = 20,
+	.maxStringLevel = 127
+};
+
 typedef struct chip_info {
 #if (MODEL == SC1)
     // Keep track of busy engines manually, because reading the EBR doesn't seem to work
@@ -104,10 +133,14 @@ typedef struct nonce_fifo {
     nonce_info nonces[MAX_PENDING_NONCES];
 } nonce_fifo;
 
-// Obelisk-specific info stored on the cgpu object - use this to keep track
-// of the state of the chips and which work items are being handled by
-// which chips, among other things.
+// ob_chain is essentially the global state variable for a hashboard. Each
+// hashing board has its own ob_chain.
 typedef struct ob_chain {
+	// Board Information
+	hashBoardModel staticBoardModel;
+
+	// Control loop information.
+
     int chain_id;
     uint16_t num_chips;
     uint16_t num_cores;

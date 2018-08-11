@@ -497,21 +497,14 @@ uint64_t get_bad_nonces(ob_chain* ob)
 
 static void obelisk_detect(bool hotplug)
 {
-    applog(LOG_ERR, "***** obelisk_detect()\n");
-
-    // TODO: Detect how many boards are installed and set a global variable
-    // num_chains, so we know how many boards to talk to, how many threads
-    // to start, etc.
-
-    // ob1RegisterNonceHandler(ob_nonce_handler);
-    // ob1RegisterJobCompleteHandler(ob_job_complete_handler);
-
+	// Basic initialization.
+    applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 
-    int num_chains = ob1GetNumPresentHashboards();
-    // int num_chains = 1;
-
-    for (int i = 0; i < num_chains; i++) {
+	// Initialize each hashboard.
+    int numHashboards = ob1GetNumPresentHashboards();
+    for (int i = 0; i < numHashboards; i++) {
+		// Enable the persistence for this board.
         struct cgpu_info* cgpu;
         ob_chain* ob;
         pthread_t pth;
@@ -523,6 +516,20 @@ static void obelisk_detect(bool hotplug)
         cgpu->chain_num = i;
         cgpu->device_data = ob = &chains[i];
         chains[i].chain_id = i;
+
+		// Determine the type of board.
+		//
+		// TODO: The E_ASIC_TYPE_T is a misnomer, it actually returns the board
+		// type.
+		//
+		// TODO: The tag 'MODEL_SC1' is correct for the chip type, but not the
+		// board type.
+		//
+		// TODO: Switch to a case statement.
+		E_ASIC_TYPE_T boardType = eGetBoardType(i);
+		if (boardType == MODEL_SC1) {
+			ob->staticBoardModel = MODEL_SC1A;
+		}
 
         // Setup control loop initial state
         chains[i].control_loop_state.boardId = i;
@@ -547,6 +554,30 @@ static void obelisk_detect(bool hotplug)
             struct chip_info* chip = &ob->chips[i];
             chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob1GetNumEnginesPerChip());
         }
+
+		// Set the board number.
+		ob->control_loop_state.boardNumber = ob->chain_id;
+		ob->control_loop_state.currentTime = time(0);
+
+		// Set the chip biases to minimum.
+		int i = 0;
+		for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->control_loop_state.chipBiases[i] = MIN_BIAS;
+			ob->control_loop_state.chipDividers[i] = 8;
+		}
+
+		// Set the prevBiasChangeTime and prevVoltageChangeTime to the current time.
+		ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+
+		// Set the voltage to level 20. This is the higest voltage that we start at,
+		// and then we walk up through the whole voltage process, printing out the
+		// hashrate as we go.
+		ob1SetStringVoltage(ob->control_loop_state.boardNumber, ob->staticBoardModel.minStringLevel);
+		ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringLevel;
+
+		// Set the board to initialized.
+		ob->control_loop_state.initialized = true;
 
         INIT_LIST_HEAD(&ob->active_wq.head);
 
@@ -714,42 +745,10 @@ static void commitBias(ob_chain* ob)
     ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
 }
 
-// initControlState will prepare the control state for operation.
-static void initControlState(ob_chain* ob)
-{
-    // Set the board number.
-    ob->control_loop_state.boardNumber = ob->chain_id;
-    ob->control_loop_state.currentTime = time(0);
-
-    // Set the chip biases to minimum.
-    int i = 0;
-    for (i = 0; i < ChipCount; i++) {
-        ob->control_loop_state.chipBiases[i] = MIN_BIAS;
-        ob->control_loop_state.chipDividers[i] = 8;
-    }
-
-    // Set the prevBiasChangeTime and prevVoltageChangeTime to the current time.
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
-
-    // Set the voltage to level 20. This is the higest voltage that we start at,
-    // and then we walk up through the whole voltage process, printing out the
-    // hashrate as we go.
-    ob1SetStringVoltage(ob->control_loop_state.boardNumber, StartingStringVoltageLevel);
-    ob->control_loop_state.currentVoltageLevel = StartingStringVoltageLevel;
-
-    // Set the board to initialized.
-    ob->control_loop_state.initialized = true;
-}
-
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
 static void updateControlState(ob_chain* ob)
 {
-    if (!ob->control_loop_state.initialized) {
-        initControlState(ob);
-    }
-
     // Fetch some status variables about the hashing board.
     HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
 
@@ -1115,7 +1114,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 {
     struct cgpu_info* cgpu = thr->cgpu;
     ob_chain* ob = cgpu->device_data;
-    // applog(LOG_ERR, "CH%u: obelisk_scanwork() - start", ob->chain_id);
 
     pthread_cond_signal(&ob->work_cond);
 

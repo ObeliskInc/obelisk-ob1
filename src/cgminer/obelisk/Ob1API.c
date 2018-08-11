@@ -557,30 +557,25 @@ bool ob1IsMasterHashClockEnabled(uint8_t boardNum)
 // installed, or fatal error of some sort).
 ApiError ob1Initialize()
 {
-    // Control board setup and POST functions
+	// Set the lights to off while initializing the boards.
+	ob1SetRedLEDOff();
+	ob1SetGreenLEDOff();
+
+	// Intialize control board.
     ApiError error = ob1InitializeControlBoard();
-    if (error == SUCCESS) {
-        ob1SetRedLEDOff();
-        ob1SetGreenLEDOff();
-        // Detect and initialize hashing boards
-        error = ob1InitializeHashBoards();
+	if (error != SUCCESS) {
+		ob1SetRedLEDOn();
+		return error;
     }
 
-    // Figure out what type of board is in slot 0
-    gBoardModel = eGetBoardType(0);
-    applog(LOG_ERR, "================================================================================\n");
-    applog(LOG_ERR, "Setting gBoardModel to %s (%d) \n", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1", gBoardModel);
-    applog(LOG_ERR, "================================================================================\n");
-
-    if (error == SUCCESS) {
-        ob1SetRedLEDOff();
-        ob1SetGreenLEDOn();
-    } else {
+	// Initialize hashing board.
+	error = ob1InitializeHashBoards();
+	if (error != SUCCESS) {
         ob1SetRedLEDOn();
-        ob1SetGreenLEDOff();
     }
 
-    return error;
+	// Leave the LEDs off if initialization is successful.
+    return SUCCESS;
 }
 
 // If there is an error reading any of the values, the returned object's error
