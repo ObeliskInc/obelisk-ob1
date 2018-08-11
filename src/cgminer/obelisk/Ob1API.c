@@ -90,7 +90,7 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
 
         // The Match register has the same value as V7
         // TODO: Is this necessary?  Tom's code sets it, and it's listed as an input, soooo....I guess it is.
-        uint32_t data = pBlake256Job->m[7];
+        uint32_t data = pBlake256Job->v[7];
         applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
         error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DRC1_REG_V0MATCH, &data);
         if (error != SUCCESS) {

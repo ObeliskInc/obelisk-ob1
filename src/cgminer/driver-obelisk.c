@@ -176,9 +176,6 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
     // Make the header with the nonce inserted at the right spot
     uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
 
-    // HACK: Reverse the nonce
-    nonce = htonl(nonce);
-
     applog(LOG_ERR, "is_nonce_valid 1: engine_work=0x%08lX", engine_work);
 
     // Make a copy of the header tail and insert the given nonce
