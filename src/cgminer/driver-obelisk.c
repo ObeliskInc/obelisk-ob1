@@ -528,7 +528,7 @@ static void obelisk_detect(bool hotplug)
 		// TODO: Switch to a case statement.
 		E_ASIC_TYPE_T boardType = eGetBoardType(i);
 		if (boardType == MODEL_SC1) {
-			ob->staticBoardModel = MODEL_SC1A;
+			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
 		}
 
         // Setup control loop initial state
@@ -573,8 +573,8 @@ static void obelisk_detect(bool hotplug)
 		// Set the voltage to level 20. This is the higest voltage that we start at,
 		// and then we walk up through the whole voltage process, printing out the
 		// hashrate as we go.
-		ob1SetStringVoltage(ob->control_loop_state.boardNumber, ob->staticBoardModel.minStringLevel);
-		ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringLevel;
+		ob1SetStringVoltage(ob->control_loop_state.boardNumber, ob->staticBoardModel.minStringVoltageLevel);
+		ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
 
 		// Set the board to initialized.
 		ob->control_loop_state.initialized = true;

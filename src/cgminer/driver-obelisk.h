@@ -5,6 +5,7 @@
 #include "elist.h"
 #include "miner.h"
 #include "obelisk/Ob1API.h"
+#include "obelisk/Ob1Models.h"
 #include "obelisk/Ob1Utils.h"
 #include "obelisk/err_codes.h"
 
@@ -50,37 +51,7 @@ was setup already.
 Need to lock access to the SPI if we have three cgpu threads.
 
 Q: How will the interrupt know which card it is for?
-
-
 */
-
-/*
-const struct MODEL_SC1A {
-
-} MODEL_SC1A;
-*/
-
-// hashBoardModel defines a few parameters around a hashboard to make the code
-// more easy to adapt to each type of 
-typedef struct hashBoardModel {
-	// General chip information.
-	E_ASIC_TYPE_T asicType;
-	uint16_t chipsPerBoard;
-	uint16_t enginesPerChip;
-
-	// General string information.
-	uint16_t minStringLevel;
-	uint16_t maxStringLevel;
-} hashBoardModel;
-
-const struct hashBoardModel MODEL_SC1A = {
-	.asicType = MODEL_SC1,
-	.chipsPerBoard = 15,
-	.enginesPerChip = 64,
-
-	.minStringLevel = 20,
-	.maxStringLevel = 127
-};
 
 typedef struct chip_info {
 #if (MODEL == SC1)
