@@ -113,6 +113,7 @@ typedef struct ob_chain {
 
 	// Hashing information.
 	uint8_t staticChipTarget[32]; // The target that the chip needs to meet before returning a nonce.
+	uint64_t staticHashesPerSuccessfulNonce; // Number of hashes required to find a header meeting the chip target.
 
 	// Control loop information.
     int chain_id;

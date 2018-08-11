@@ -589,6 +589,7 @@ static void obelisk_detect(bool hotplug)
 			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
 			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 			memcpy(ob->staticChipTarget, chipTarget, 32);
+			ob->staticHashesPerSuccessfulNonce = 1 << 40;
 		}
 
         cgtime(&cgpu->dev_start_tv);
@@ -932,6 +933,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     ob_chain* ob = cgpu->device_data;
     pthread_cond_signal(&ob->work_cond);
 
+	int64_t hashesConfirmed = 0;
+
 #if (MODEL == SC1)
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
@@ -975,6 +978,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				}
 				if (nonceResult > 1) {
 					add_good_nonces(ob, 1);
+					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
 					submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
@@ -1254,7 +1258,7 @@ check_for_new_work:
 scanwork_exit:
     cgsleep_ms(10);
 
-    return get_and_reset_hashes(ob);
+    return hashesConfirmed;
 }
 
 static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
