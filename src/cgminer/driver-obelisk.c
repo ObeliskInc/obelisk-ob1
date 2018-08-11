@@ -947,8 +947,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
         uint64_t done_bitmask;
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
-		// Skip this chip if it's not done, or if there was an error.
-		if (error != SUCCESS || done_bitmask == 0) {
+		// Skip this chip if there was an error, or if the entire chip is not
+		// done.
+		if (error != SUCCESS || done_bitmask != 0xffffffffffffffff) {
 			continue;
 		}
 
