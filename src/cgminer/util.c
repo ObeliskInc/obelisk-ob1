@@ -2242,11 +2242,13 @@ static bool parse_notify(struct pool* pool, json_t* val)
     free(pool->swork.job_id);
     pool->swork.job_id = job_id;
     if (memcmp(pool->prev_hash, prev_hash, 64)) {
-        applog(LOG_ERR, "parse_notify(): FORCE CLEAN!");
         pool->swork.clean = true;
+        pool->stale_share_id = get_total_work();
+        applog(LOG_ERR, "********************************************************************************* parse_notify(): FORCE CLEAN!  New stale_share_id=%llu", pool->stale_share_id);
     } else {
         if (clean) {
-            applog(LOG_ERR, "parse_notify(): POOL SAYS TO GET CLEAN!");
+            applog(LOG_ERR, "********************************************************************************** parse_notify(): POOL SAYS TO GET CLEAN!  New stale_share_id=%llu", pool->stale_share_id);
+            pool->stale_share_id = get_total_work();
         }
         pool->swork.clean = clean;
     }

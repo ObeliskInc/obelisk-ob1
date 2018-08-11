@@ -47,7 +47,17 @@ void dcrBuildBlockHeader(DecredBlockHeader* header, struct work* work) {
   hex2bin((uint8_t*)header->version, (const char*)&pool->bbversion, strlen(pool->bbversion));
 
   // TODO: Reverse the prev hash?
-  memcpy(header->prevHash, work->prev_hash, sizeof(header->prevHash));
+  // applog(LOG_ERR, "size=%lu", sizeof(header->prevHash));
+  // dump(work->prev_hash, 32, "prev_hash");
+  hex2bin(header->prevHash, work->prev_hash, HASH_SIZE * 2);
+  // memcpy(header->prevHash, work->prev_hash, sizeof(header->prevHash));
+
+  // Swap the prev_hash byte   order
+  uint32_t *swap = (uint32_t*)header->prevHash;
+  int i = 0;
+  for(i = 0; i < HASH_SIZE; i++) {
+    swap[i] = ((swap[i] >> 24) & 0xff) | ((swap[i] << 8) & 0xff0000 ) | ((swap[i] >> 8) & 0xff00) | ((swap[i] << 24) & 0xff000000);
+  }    
 
   // Copy a bunch of fields from coinbase1 all at once
   memcpy(header->merkleRoot, pool->coinbase1, pool->coinbase1_len - 4);  // We trim off the last 4 bytes as they are unused
@@ -61,7 +71,8 @@ void dcrBuildBlockHeader(DecredBlockHeader* header, struct work* work) {
   // Stake version comes from coinbase2
   memcpy(header->stakeVersion, pool->coinbase2, sizeof(header->stakeVersion));
 
-	dump((uint8_t*)header, sizeof(DecredBlockHeader), "header");
+  // applog(LOG_ERR, "jobid='%s'  extranonce2=%lu", work->job_id, work->nonce2);
+	// dump((uint8_t*)header, sizeof(DecredBlockHeader), "header");
 }
 
 

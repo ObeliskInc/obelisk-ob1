@@ -1284,6 +1284,8 @@ struct pool {
     unsigned int getfail_occasions;
     unsigned int remotefail_occasions;
     struct timeval tv_idle;
+    // Work with id lower than this value are stale, so discard them when popping from the queue
+    uint64_t stale_share_id;
 
     double utility;
     int last_shares, shares;
@@ -1448,7 +1450,7 @@ struct work {
     bool stratum;
     char* job_id;
 #if (ALGO == BLAKE2B || ALGO == BLAKE256)
-    char prev_hash[HASH_SIZE];
+    char prev_hash[HASH_SIZE * 2 + 1];
 #endif
     uint32_t nonce2;
     size_t nonce2_len;
@@ -1461,7 +1463,7 @@ struct work {
     int gbt_txns;
 
     unsigned int work_block;
-    uint32_t id;
+    uint64_t id;
     UT_hash_handle hh;
 
     /* This is the diff work we're aiming to submit and should match the
@@ -1484,6 +1486,7 @@ struct work {
 
     // Field used to pass the nonce in the copied work struct when submitting a nonce
     Nonce nonce_to_submit;
+    bool is_nonce2_roll_only;
 };
 
 #ifdef USE_MODMINER
@@ -1665,5 +1668,7 @@ extern struct api_data* api_add_avg(struct api_data* root, char* name, float* da
 extern void dupalloc(struct cgpu_info* cgpu, int timelimit);
 extern void dupcounters(struct cgpu_info* cgpu, uint64_t* checked, uint64_t* dups);
 extern bool isdupnonce(struct cgpu_info* cgpu, struct work* work, Nonce nonce);
+
+extern int get_total_work(void);
 
 #endif /* __MINER_H__ */
