@@ -23,7 +23,8 @@ int main(void) {
 	};
 	uint8_t midstate[32];
 	dcrCompressToMidstate(midstate, TestOneDCRHeader);
-	bool result = dcrMidstateMeetsMinimumTarget(midstate, (TestOneDCRHeader) + 128);
+	uint32_t result;
+	result = dcrMidstateMeetsMinimumTarget(midstate, (TestOneDCRHeader) + 128);
 	if (!result) {
 		printf("TEST ONE FAILED\n");
 		printf("TEST ONE FAILED\n");
@@ -137,8 +138,8 @@ int main(void) {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00};
 	dcrPrepareMidstate(midstate, TestSixDCRHeader);
-	result = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSixDCRHeader) + 128, 240000);
-	result2 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSixDCRHeader) + 128, 260000);
+	result = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSixDCRHeader) + 128, 1);
+	result2 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSixDCRHeader) + 128, 6000);
 	if (!result || result2) {
 		printf("TEST SIX FAILED\n");
 		printf("TEST SIX FAILED\n");
@@ -161,10 +162,9 @@ int main(void) {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00};
 	dcrPrepareMidstate(midstate, TestSevenDCRHeader);
-	result = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSevenDCRHeader) + 128, 240000);
-	result2 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSevenDCRHeader) + 128, 260000);
+	result = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSevenDCRHeader) + 128, 1);
+	result2 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestSevenDCRHeader) + 128, 6000);
 	if (!result || result2) {
-		printf("%u, %u\n", result, result2);
 		printf("TEST SEVEN FAILED\n");
 		printf("TEST SEVEN FAILED\n");
 		printf("TEST SEVEN FAILED\n");
@@ -188,9 +188,7 @@ int main(void) {
 
 	dcrPrepareMidstate(midstate, TestEightDCRHeader);
 	result = dcrMidstateMeetsMinimumTarget(midstate, (TestEightDCRHeader) + 128);
-	result2 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestEightDCRHeader) + 128, 6);
-	bool result3 = dcrMidstateMeetsProvidedDifficulty(midstate, (TestEightDCRHeader) + 128, 8);
-	if (!result || !result2 || result3) {
+	if (!result) {
 		printf("TEST EIGHT FAILED\n");
 		printf("TEST EIGHT FAILED\n");
 		printf("TEST EIGHT FAILED\n");

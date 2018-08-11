@@ -97,6 +97,11 @@
 /src/cgminer/obelisk/siahash/.deps/
 /src/cgminer/obelisk/siahash/.dirstamp
 /src/cgminer/obelisk/siahash/*.o
+/src/cgminer/obelisk/dcrhash/bin/
+/src/cgminer/obelisk/dcrhash/obj/
+/src/cgminer/obelisk/dcrhash/.deps/
+/src/cgminer/obelisk/dcrhash/.dirstamp
+/src/cgminer/obelisk/dcrhash/*.o
 /src/controlCardUtils/bin
 /src/controlCardUtils/obj
 /src/sdCardUtils/bin
