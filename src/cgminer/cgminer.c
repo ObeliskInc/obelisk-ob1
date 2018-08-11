@@ -9810,11 +9810,11 @@ int main(int argc, char* argv[])
 #ifdef EMC_TEST
     //NOTE: BEGIN TESTING SECTION
 
-    usermain();
+    // usermain();
 
-    int tResult;
-    char tArgv[] = "1";
-    char** ptArgv;
+    // int tResult;
+    // char tArgv[] = "1";
+    // char** ptArgv;
 
     //NOTE: BEGIN GPIO Testing
     //tResult = gpio_main();

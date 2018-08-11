@@ -1859,6 +1859,7 @@ static void DCR1GetTestJob(uint8_t uiSampleNum)
  * \return int type; is less than 0 for an error, 0 for no error, EMC_TEST_STATE_END (1) for completed
  * Assumes each example only has a single solution.
  */
+/*
 int iDCR1EMCTestJob(int iControlState)
 {
 #define EMC_NONCE_UB 0xFFFFFFFF // Only 32-bits as opposed to SC1's 64-bits
@@ -2119,6 +2120,7 @@ int iDCR1EMCTestJob(int iControlState)
 
     return (iReturn);
 } // iDCR1EMCTestJob()
+*/
 
 /** *************************************************************
  *  \brief Start job to ASIC for EMC testing;

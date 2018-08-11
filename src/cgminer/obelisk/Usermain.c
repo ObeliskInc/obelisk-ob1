@@ -460,6 +460,7 @@ void Dummy_Handler_Msg(void)
 /** *************************************************************
  *  \brief Main loop and initialization
  */
+/*
 int usermain(void)
 {
     static uint8_t tempPotValue = 10;
@@ -482,7 +483,6 @@ int usermain(void)
 #define STARTUP_DELAY_MS 100
     uint32_t ulTestJiffies1, ulTestJiffies2;
 
-    /* Initializes (ATSAMG55) MCU, drivers and middleware */
     atmel_start_init();
 #ifdef DEBUG_CONSOLE
     // Get debug console started early so we can report system status.
@@ -806,8 +806,7 @@ int usermain(void)
         }
 #endif // else HB_FUNC_TEST
 
-        /*
-        if (get_FiveSecFlag()) {
+        if (get_FiveSecFlag() && false) {
             //printf("\n_____START of 5 Sec Tasks_____\n");
             gpio_toggle_pin_level(CONTROLLER_GREEN_LED);
             // if (true == overTempFlag) {
@@ -817,7 +816,6 @@ int usermain(void)
 
             bReportStatus = true;
         }
-        */
 #endif // #if (HW_ATSAMG55_XP_BOARD != HARDWARE_PLATFORM)
 
         // Periodic status output
@@ -942,3 +940,4 @@ int usermain(void)
     } // while (1)
 
 } // int usermain(void)
+*/

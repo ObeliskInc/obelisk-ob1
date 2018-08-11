@@ -253,10 +253,6 @@ static void* ob_control_thread(void* arg)
     sprintf(tname, "ob_control_%d", ob->chain_id);
     RenameThread(tname);
 
-    // Set initial clock divider and bias for all chips
-    ControlLoopState* clBoard = &ob->control_loop_state;
-    ob1SetClockDividerAndBias(ob->chain_id, ALL_CHIPS, clBoard->currDivider, clBoard->currBias);
-
     while (true) {
         control_loop(ob);
         cgsleep_ms(100);
@@ -530,19 +526,6 @@ static void obelisk_detect(bool hotplug)
 		if (boardType == MODEL_SC1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
 		}
-
-        // Setup control loop initial state
-        chains[i].control_loop_state.boardId = i;
-        chains[i].control_loop_state.currDivider = 8;
-        chains[i].control_loop_state.currBias = MIN_BIAS;
-        chains[i].control_loop_state.lastChangeUp = false;
-        chains[i].control_loop_state.lastTemp = 0;
-        chains[i].control_loop_state.lastTempOnChange = 0;
-        chains[i].control_loop_state.ticksSinceLastChange = 0;
-        chains[i].control_loop_state.printCounter = 0;
-        chains[i].control_loop_state.masterTickCounter = 0;
-        chains[i].control_loop_state.lastGHS = 0.0;
-        chains[i].control_loop_state.lastGHSStatistical = 0.0;
 
         cgtime(&cgpu->dev_start_tv);
 
@@ -993,118 +976,6 @@ static void control_loop(ob_chain* ob)
     return;
 }
 
-static void control_loop_old(ob_chain* ob)
-{
-    HashboardModel model = ob1GetHashboardModel();
-    char outBuf[256];
-
-    // Control "loop"
-    uint8_t board = ob->chain_id;
-    HashboardStatus hbStatus = ob1GetHashboardStatus(board);
-    double currAsicTemp = hbStatus.chipTemp;
-    ControlLoopState* clBoard = &ob->control_loop_state;
-
-    // Calculate hashrate based on DONE jobs
-    clBoard->masterTickCounter++;
-    if ((clBoard->masterTickCounter % 300) == 0) {
-        double hashes = (double)get_and_reset_hashes(ob);
-        clBoard->lastGHS = (hashes / 1000000000.0) / 30.0;
-    }
-
-    if ((clBoard->masterTickCounter % 600) == 0) {
-        double good_nonces = (double)get_and_reset_good_nonces(ob);
-        uint64_t hashes_per_nonce = 1ULL << 40;
-        double hashes = (double)hashes_per_nonce * good_nonces;
-        clBoard->lastGHSStatistical = (hashes / 1000000000.0) / 36.0;
-    }
-
-    // applog(LOG_ERR, "CH%u: chipTemp=%3.1fC  ticks=%lu", ob->chain_id, currAsicTemp, clBoard->ticksSinceLastChange);
-
-    // Check if the temp is too high
-    if (currAsicTemp >= CONTROL_LOOP_HIGH_TEMP && clBoard->ticksSinceLastChange >= 10) {
-        clBoard->ticksSinceLastChange = 0;
-        clBoard->lastTempOnChange = currAsicTemp;
-
-        decrementBias(clBoard);
-
-        ob1SetClockDividerAndBias(board, ALL_CHIPS, clBoard->currDivider, clBoard->currBias);
-
-        formatControlLoopState(outBuf, clBoard);
-        applog(LOG_ERR, "CH%u: OVER HIGH_TEMP (%3.1fC): %s", board, CONTROL_LOOP_HIGH_TEMP, outBuf);
-    }
-
-    if (currAsicTemp >= CONTROL_LOOP_SUPER_HIGH_TEMP && clBoard->ticksSinceLastChange >= 5) {
-        clBoard->ticksSinceLastChange = 0;
-        clBoard->lastTempOnChange = currAsicTemp;
-
-        decrementBias(clBoard);
-
-        ob1SetClockDividerAndBias(board, ALL_CHIPS, clBoard->currDivider, clBoard->currBias);
-
-        formatControlLoopState(outBuf, clBoard);
-        applog(LOG_ERR, "CH%u: OVER SUPER_HIGH_TEMP (%3.1fC): %s", board, CONTROL_LOOP_SUPER_HIGH_TEMP, outBuf);
-    }
-
-    // Check if the temp is too low or if temp did not increase since the last time
-    if (clBoard->ticksSinceLastChange >= TICKS_BETWEEN_BIAS_UPS) {
-        if (currAsicTemp <= CONTROL_LOOP_LOW_TEMP && (int)currAsicTemp - (int)clBoard->lastTempOnChange <= 2) {
-            // if (currAsicTemp <= CONTROL_LOOP_LOW_TEMP) {
-            clBoard->lastTempOnChange = currAsicTemp;
-
-            // Bump up the voltage bias (and thus the clockrate)
-            incrementBias(clBoard);
-
-            ob1SetClockDividerAndBias(board, ALL_CHIPS, clBoard->currDivider, clBoard->currBias);
-
-            formatControlLoopState(outBuf, clBoard);
-            applog(LOG_ERR, "CH%u: Undertemp (%3.1fC): %s", board, CONTROL_LOOP_LOW_TEMP, outBuf);
-
-        } else {
-            clBoard->lastTempOnChange = currAsicTemp;
-        }
-        clBoard->ticksSinceLastChange = 0;
-    } else {
-        // No change
-        clBoard->ticksSinceLastChange++;
-    }
-    clBoard->lastTemp = currAsicTemp;
-
-    // applog(LOG_ERR, "printCounter=%d", printCounter);
-
-    // Manage string voltage - simple example
-    // if (clBoard->masterTickCounter % 100 == 0) {
-    //     ob1SetStringVoltage(clBoard->boardId, 50);
-    // } else if (clBoard->masterTickCounter % 50 == 0) {
-    //     ob1SetStringVoltage(clBoard->boardId, 30);
-    // }
-
-    clBoard->printCounter++;
-    if (clBoard->printCounter == 10) {
-        clBoard->printCounter = 0;
-
-        // We can have up to 3 control loop instances, so only one of them should toggle the LED
-        // TODO: Probably move/change this so we can handle showing errors from any of the control_loops()
-        if (ob->chain_id == 0) {
-            ob1ToggleGreenLED();
-        }
-
-        ControlLoopState* state = &ob->control_loop_state;
-
-        char divAndBiasBuf[20];
-        formatDividerAndBias(divAndBiasBuf, state);
-
-        sprintf(outBuf, "CH%u: Temp: %-5.1f  Dir: %s  Div|Bias: %s  GH/s: %-5.1f  GH/s(stat): %-5.1f  VString: %2.02f",
-            ob->chain_id,
-            state->lastTemp,
-            state->lastChangeUp ? "up  " : "down",
-            divAndBiasBuf,
-            clBoard->lastGHS,
-            clBoard->lastGHSStatistical,
-            hbStatus.asicV15);
-        applog(LOG_ERR, outBuf);
-    }
-}
-
 /*
  * TODO: allow this to run through more than once - the second+
  * time not sending any new work unless a flush occurs since:
@@ -1444,7 +1315,6 @@ check_for_new_work:
 
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
 scanwork_exit:
-    applog(LOG_ERR, "HB%u: good_nonces=%u bad_nonces=%u", ob->chain_id, ob->good_nonces_found, ob->bad_nonces_found);
     cgsleep_ms(10);
 
     return get_and_reset_hashes(ob);
