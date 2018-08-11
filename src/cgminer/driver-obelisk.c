@@ -1062,7 +1062,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     }
 
 #if (MODEL == SC1)
-check_for_new_work:
     // Get a single work item
     // TODO: We don;t need to get a new work item every time through - Sia has TONS of nonce space,
     // so we can keep reusing it.
