@@ -17,7 +17,7 @@
 #define NUM_ENGINES_PER_CHIP 64
 
 // Each engine will be given a range this size
-#define NONCE_RANGE_SIZE (4294976296ULL / 4ULL)
+#define NONCE_RANGE_SIZE (4294976296ULL * 4ULL)
 // #define NONCE_RANGE_SIZE (4294976296L / NUM_ENGINES_PER_CHIP) // 67,108,864
 
 #define MAX_WQ_SIZE 2
