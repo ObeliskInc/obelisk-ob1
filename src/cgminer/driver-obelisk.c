@@ -945,46 +945,45 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
         uint64_t done_bitmask;
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
-        if (done_bitmask != 0) {
-            // applog(LOG_ERR, "CH%u: done_bitmask=0x%016llX (chip_num=%u)", ob->chain_id, done_bitmask, chip_num);
-        }
-        if (error == SUCCESS && done_bitmask != 0) {
-            for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-                // If engine is done
-                if (done_bitmask & (1ULL << engine_num)) {
+		// Skip this chip if it's not done, or if there was an error.
+		if (error != SUCCESS || done_bitmask == 0) {
+			continue;
+		}
 
-                    // We are done, so count the hashes
-                    add_hashes(ob, NONCE_RANGE_SIZE);
+		// Check all the engines on the chip.
+		for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
+			// Skip this engine if it's not done.
+			if (!(done_bitmask & (1ULL << engine_num))) {
+				continue;
+			}
 
-                    NonceSet nonce_set;
-                    nonce_set.count = 0;
-                    error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
-                    if (error != SUCCESS) {
-                        applog(LOG_ERR, "Error reading nonces!!!");
-                        continue;
-                    }
+			// We are done, so count the hashes
+			add_hashes(ob, NONCE_RANGE_SIZE);
 
-                    for (uint8_t i = 0; i < nonce_set.count; i++) {
-                        // Check that the nonce is valid
-                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-                        if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
-                            add_good_nonces(ob, 1);
-                            // If valid, submit to the pool
-                            submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
-                        } else {
-                            // TODO: handle error in some way
-                            add_bad_nonces(ob, 1);
-                        }
-                    }
+			NonceSet nonce_set;
+			nonce_set.count = 0;
+			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
+			if (error != SUCCESS) {
+				applog(LOG_ERR, "Error reading nonces!!!");
+				continue;
+			}
 
-                    // Reset the busy flag so it is given a new job below
-                    // applog(LOG_ERR, "Setting engine not busy");
-                    set_engine_busy(ob, chip_num, engine_num, false);
+			for (uint8_t i = 0; i < nonce_set.count; i++) {
+				// Check that the nonce is valid
+				struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+				if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
+					add_good_nonces(ob, 1);
+					// If valid, submit to the pool
+					submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
+				} else {
+					// TODO: handle error in some way
+					add_bad_nonces(ob, 1);
+				}
+			}
 
-                    // NOTE: We don't clear the engine DONE flag, as that is not possible directly.
-                    //  instead, you need to give it a new job.
-                }
-            }
+			// Reset the busy flag so it is given a new job below
+			// applog(LOG_ERR, "Setting engine not busy");
+			set_engine_busy(ob, chip_num, engine_num, false);
         }
     }
 #elif (MODEL == DCR1)
