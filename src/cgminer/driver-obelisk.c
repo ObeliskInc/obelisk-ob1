@@ -313,44 +313,6 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
     ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
 }
 
-// // Separate thread to handle nonces so that we are not polling for them
-// static void* ob_nonce_thread(void* arg)
-// {
-//     struct cgpu_info* cgpu = arg;
-//     ob_chain* ob = cgpu->device_data;
-//     char tname[16];
-
-//     sprintf(tname, "ob_nonce_%d", ob->chain_id);
-//     RenameThread(tname);
-
-//     mutex_lock(&ob->lock);
-
-//     while (!pthread_cond_wait(&ob->nonce_cond, &ob->lock)) {
-//         mutex_unlock(&ob->lock);
-
-//         int n = num_pending_nonces(ob);
-//         while (n > 0) {
-//             nonce_info info;
-//             if (pop_pending_nonce(ob, &info) == SUCCESS) {
-//                 struct work* work = ob->chips[info.chip_num].work;
-
-//                 // Check that the nonce is valid
-//                 if (is_valid_nonce(ob, info.nonce)) { // TODO: Probably not using this function, but this may be wrong now
-//                     // If valid, submit to the pool
-//                     submit_nonce(cgpu->thr[0], work, info.nonce);
-//                 } else {
-//                     // TODO: handle error in some way
-//                 }
-//             }
-//             n--;
-//         }
-
-//         mutex_lock(&ob->lock);
-//     }
-
-//     return NULL;
-// }
-
 // Separate thread to handle the control loop so we can react quickly to temp changes
 static void* ob_control_thread(void* arg)
 {
