@@ -109,6 +109,7 @@ typedef struct nonce_fifo {
 typedef struct ob_chain {
 	// Board Information
 	hashBoardModel staticBoardModel;
+	int            staticBoardNumber;
 
 	// Control loop information.
 

@@ -205,6 +205,114 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
 #endif
 }
 
+// increaseDivider will increase the clock divider, resulting in a slower chip.
+static void increaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 1:
+        *divider *= 2;
+        break;
+    case 2:
+        *divider *= 2;
+        break;
+    case 4:
+        *divider *= 2;
+        break;
+    default:
+        // 8 or any other value means no change
+        break;
+    }
+}
+
+static void decreaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 2:
+        *divider /= 2;
+        break;
+    case 4:
+        *divider /= 2;
+        break;
+    case 8:
+        *divider /= 2;
+        break;
+    default:
+        // 1 or any other value means no change
+        break;
+    }
+}
+
+static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MAX_BIAS) {
+        if (*currentDivider > 1) {
+            decreaseDivider(currentDivider);
+            *currentBias = MIN_BIAS;
+        }
+    } else {
+        *currentBias += 1;
+    }
+}
+
+static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MIN_BIAS) {
+        if (*currentDivider < 8) {
+            increaseDivider(currentDivider);
+            *currentBias = MAX_BIAS;
+        }
+    } else {
+        *currentBias -= 1;
+    }
+}
+
+// commitBoardBias will take all of the current chip biases and commit them to the
+// string.
+static void commitBoardBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < 15; i++) {
+        ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
+    }
+    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+}
+
+// decrease the clock bias of every chip on the string.
+static void decreaseStringBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+        decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+    }
+    applog(LOG_ERR, "HB%u: decreasing the string bias.", ob->control_loop_state.boardNumber);
+    commitBoardBias(ob);
+}
+
+// increase the clock bias of every chip on the string.
+static void increaseStringBias(ob_chain* ob)
+{
+    int i = 0;
+    for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+        increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+    }
+    applog(LOG_ERR, "HB%u: increasing the string bias.", ob->control_loop_state.boardNumber);
+    commitBoardBias(ob);
+}
+
+static void setVoltageLevel(ob_chain* ob, uint8_t level)
+{
+    ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
+    ob->control_loop_state.currentVoltageLevel = level;
+    ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
+    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+
+    // Changing the voltage is significant enough to count as changing the bias
+    // too.
+    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+}
+
 // // Separate thread to handle nonces so that we are not polling for them
 // static void* ob_nonce_thread(void* arg)
 // {
@@ -513,6 +621,9 @@ static void obelisk_detect(bool hotplug)
         cgpu->device_data = ob = &chains[i];
         chains[i].chain_id = i;
 
+		// Set the board number.
+		ob->staticBoardNumber = i;
+
 		// Determine the type of board.
 		//
 		// TODO: The E_ASIC_TYPE_T is a misnomer, it actually returns the board
@@ -548,27 +659,16 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.chipBiases[i] = MIN_BIAS;
 			ob->control_loop_state.chipDividers[i] = 8;
 		}
+		commitBoardBias(ob);
 
-		// Set the prevBiasChangeTime and prevVoltageChangeTime to the current time.
-		ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
-
-		// Set the voltage to level 20. This is the higest voltage that we start at,
-		// and then we walk up through the whole voltage process, printing out the
-		// hashrate as we go.
-		ob1SetStringVoltage(ob->control_loop_state.boardNumber, ob->staticBoardModel.minStringVoltageLevel);
-		ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
-
-		// Set the board to initialized.
-		ob->control_loop_state.initialized = true;
+		// Set the string voltage to the highest voltage for starting up.
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
         INIT_LIST_HEAD(&ob->active_wq.head);
 
         chains[i].cgpu = cgpu;
         add_cgpu(cgpu);
         cgpu->device_id = i;
-
-        applog(LOG_WARNING, "Detected ob chain %d", i);
 
         mutex_init(&ob->lock);
         pthread_cond_init(&ob->work_cond, NULL);
@@ -654,79 +754,6 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define VoltageStepSize 12
 #define StringStableTime 360 // How long a string must have the same bias before being considered stable.
 #define StringMaxTime 1200 // After this amount of time, the string is abandoned as being unstable.
-
-// increaseDivider will increase the clock divider, resulting in a slower chip.
-static void increaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 1:
-        *divider *= 2;
-        break;
-    case 2:
-        *divider *= 2;
-        break;
-    case 4:
-        *divider *= 2;
-        break;
-    default:
-        // 8 or any other value means no change
-        break;
-    }
-}
-
-static void decreaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 2:
-        *divider /= 2;
-        break;
-    case 4:
-        *divider /= 2;
-        break;
-    case 8:
-        *divider /= 2;
-        break;
-    default:
-        // 1 or any other value means no change
-        break;
-    }
-}
-
-static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
-{
-    if (*currentBias == MAX_BIAS) {
-        if (*currentDivider > 1) {
-            decreaseDivider(currentDivider);
-            *currentBias = MIN_BIAS;
-        }
-    } else {
-        *currentBias += 1;
-    }
-}
-
-static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
-{
-    if (*currentBias == MIN_BIAS) {
-        if (*currentDivider < 8) {
-            increaseDivider(currentDivider);
-            *currentBias = MAX_BIAS;
-        }
-    } else {
-        *currentBias -= 1;
-    }
-}
-
-// commitBias will take all of the current chip biases and commit them to the
-// string.
-static void commitBias(ob_chain* ob)
-{
-    int i = 0;
-    for (i = 0; i < 15; i++) {
-        ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
-    }
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
-}
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
@@ -848,28 +875,6 @@ static double getTargetTemp(ob_chain* ob)
     return HotChipTargetTemp - ChipTempVariance - HotChipTempRise;
 }
 
-// decrease the clock bias of every chip on the string.
-static void decreaseStringBias(ob_chain* ob)
-{
-    int i = 0;
-    for (i = 0; i < ChipCount; i++) {
-        decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-    }
-    applog(LOG_ERR, "HB%u: decreasing the string bias.", ob->control_loop_state.boardNumber);
-    commitBias(ob);
-}
-
-// increase the clock bias of every chip on the string.
-static void increaseStringBias(ob_chain* ob)
-{
-    int i = 0;
-    for (i = 0; i < ChipCount; i++) {
-        increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-    }
-    applog(LOG_ERR, "HB%u: increasing the string bias.", ob->control_loop_state.boardNumber);
-    commitBias(ob);
-}
-
 // handleOvertemps will clock down the string if the string is overheating.
 //
 // TODO: Add the deviation growth bits for unstable strings.
@@ -908,19 +913,6 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
         ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
         ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
     }
-}
-
-static void setVoltageLevel(ob_chain* ob, uint8_t level)
-{
-    ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
-    ob->control_loop_state.currentVoltageLevel = level;
-    ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
-
-    // Changing the voltage is significant enough to count as changing the bias
-    // too.
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
