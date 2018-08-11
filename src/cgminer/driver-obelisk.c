@@ -285,7 +285,6 @@ static void decreaseStringBias(ob_chain* ob)
     for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
     }
-    applog(LOG_ERR, "HB%u: decreasing the string bias.", ob->control_loop_state.boardNumber);
     commitBoardBias(ob);
 }
 
@@ -296,7 +295,6 @@ static void increaseStringBias(ob_chain* ob)
     for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
     }
-    applog(LOG_ERR, "HB%u: increasing the string bias.", ob->control_loop_state.boardNumber);
     commitBoardBias(ob);
 }
 
