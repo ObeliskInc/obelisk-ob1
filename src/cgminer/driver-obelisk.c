@@ -587,9 +587,15 @@ static void obelisk_detect(bool hotplug)
 		E_ASIC_TYPE_T boardType = eGetBoardType(i);
 		if (boardType == MODEL_SC1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
+
+			// Employ memcpy because we can't set the target directly.
 			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 			memcpy(ob->staticChipTarget, chipTarget, 32);
-			ob->staticHashesPerSuccessfulNonce = 1 << 40;
+
+			// Use a proxy because we can't set the value directly to 1 << 40.
+			uint64_t hashestPerNonce = 1;
+			hashestPerNonce = hashestPerNonce << 40;
+			ob->staticHashesPerSuccessfulNonce = hashestPerNonce;
 		}
 
         cgtime(&cgpu->dev_start_tv);
