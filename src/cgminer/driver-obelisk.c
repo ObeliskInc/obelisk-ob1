@@ -142,6 +142,26 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
+// validNonce returns '0' if the nonce is not valid under either the pool
+// difficulty nor the chip difficulty, '1' if the nonce is not valid under the
+// pool difficulty but is valid under the chip difficutly, and '2' if the nonce
+// is valid under both the pool difficulty and the chip difficulty.
+//
+// TODO: Instead of calling 'siaHeader...' make a generic function that we can
+// establish when we set up the board in the beginning of the function.
+int validNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
+	// Create the header with the nonce set up correctly.
+    uint8_t header[ob->staticBoardModel.headerSize];
+    memcpy(header, engine_work->midstate, ob->staticBoardModel.headerSize);
+    memcpy(header + ob->staticBoardModel.nonceOffset, &nonce, sizeof(Nonce));
+
+    // Check if it meets the pool's stratum difficulty
+	if (!engine_work->pool) {
+		return siaHeaderMeetsProvidedTarget(header, ob->staticChipTarget) ? 1 : 0;
+	}
+	return siaHeaderMeetsChipTargetAndPoolDifficulty(header, ob->staticChipTarget, engine_work->pool->sdiff);
+}
+
 // Perform a hash on the midstate with the specified nonce inserted in place
 // and see if the resulting hash has sufficient difficulty to submit to the pool.
 bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Nonce nonce, struct work* engine_work, struct ob_chain* ob)
@@ -152,18 +172,10 @@ bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Non
     memcpy(header, engine_work->midstate, SIA_HEADER_SIZE);
     memcpy(header + 32, &nonce, sizeof(Nonce));
 
-    if (siaHeaderMeetsMinimumTarget(header)) {
-        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)", board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
-    } else {
-        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%d, bad count=%d)",board_num, nonce, ob->good_nonces_found, ob->bad_nonces_found);
-    }
-
     // Check if it meets the pool's stratum difficulty
     if (engine_work->pool) {
         double sdiff = engine_work->pool->sdiff;
         if (siaHeaderMeetsProvidedDifficulty(header, sdiff)) {
-            // TODO: Anything else to do here?
-            applog(LOG_ERR, "CH%u: NONCE 0x%016llX meets pool sdiff of %f", board_num, nonce, sdiff);
             return true;
         }
     }
@@ -538,27 +550,6 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-// void ob_nonce_handler(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce nonce, bool nonceLimitReached)
-// {
-//     applog(LOG_ERR, "ob_nonce_handler called!");
-//     // Take the info and put it into a queue that is service by a nonce thread and signal
-//     // the condition variable.
-//     ob_chain* ob = &chains[boardNum];
-//     push_pending_nonce(ob, chipNum, engineNum, nonce, nonceLimitReached);
-
-//     // TODO: API should clear interrupts after calling handler possibly multiple times
-// }
-
-// void ob_job_complete_handler(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
-// {
-//     applog(LOG_ERR, "ob_job_complete_handler called!");
-//     ob_chain* ob = &chains[boardNum];
-//     mark_engine_ready(ob, chipNum, engineNum);
-
-//     add_hashes(ob, NONCE_RANGE_SIZE);
-//     // TODO: API should clear interrupts after calling handler possibly multiple times
-// }
-
 static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
@@ -596,6 +587,8 @@ static void obelisk_detect(bool hotplug)
 		E_ASIC_TYPE_T boardType = eGetBoardType(i);
 		if (boardType == MODEL_SC1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
+			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+			memcpy(ob->staticChipTarget, chipTarget, 32);
 		}
 
         cgtime(&cgpu->dev_start_tv);
@@ -942,7 +935,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 #if (MODEL == SC1)
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
-    for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
+    for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
         uint64_t done_bitmask;
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
 		// Skip this chip if it's not done, or if there was an error.
@@ -951,7 +944,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Check all the engines on the chip.
-		for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
+		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
 			// Skip this engine if it's not done.
 			if (!(done_bitmask & (1ULL << engine_num))) {
 				continue;
@@ -960,6 +953,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// We are done, so count the hashes
 			add_hashes(ob, NONCE_RANGE_SIZE);
 
+			// Read any nonces that the engine found.
 			NonceSet nonce_set;
 			nonce_set.count = 0;
 			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
@@ -968,16 +962,22 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				continue;
 			}
 
+			// Check the nonces and submit them to a pool if valid.
+			// 
+			// TODO: Don't submit them to a pool in this critical path, do it
+			// asynchronously so that we aren't blocking on network code.
 			for (uint8_t i = 0; i < nonce_set.count; i++) {
 				// Check that the nonce is valid
 				struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-				if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
-					add_good_nonces(ob, 1);
-					// If valid, submit to the pool
-					submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
-				} else {
-					// TODO: handle error in some way
+				int nonceResult = validNonce(ob, engine_work, nonce_set.nonces[i]);
+				if (nonceResult == 0) {
 					add_bad_nonces(ob, 1);
+				}
+				if (nonceResult > 1) {
+					add_good_nonces(ob, 1);
+				}
+				if (nonceResult == 2) {
+					submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
 				}
 			}
 

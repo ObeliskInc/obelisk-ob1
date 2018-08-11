@@ -111,8 +111,10 @@ typedef struct ob_chain {
 	hashBoardModel staticBoardModel;
 	int            staticBoardNumber;
 
-	// Control loop information.
+	// Hashing information.
+	uint8_t staticChipTarget[32]; // The target that the chip needs to meet before returning a nonce.
 
+	// Control loop information.
     int chain_id;
     uint16_t num_chips;
     uint16_t num_cores;
