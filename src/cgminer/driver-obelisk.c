@@ -581,7 +581,7 @@ ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 
 	// Load the job to the chip.
 	Job job;
-	memcpy(&job.blake2b, ob->chipWork[chipNum]->midstate, SIA_HEADER_SIZE);
+	memcpy(&job.blake2b, ob->chipWork[chipNum]->midstate, ob->staticBoardModel.headerSize);
 	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
 	if (error != SUCCESS) {
 		return error;
@@ -595,6 +595,7 @@ ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	return SUCCESS;
 }
 
+// Code that runs at startup.
 static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
