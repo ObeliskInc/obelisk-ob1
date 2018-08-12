@@ -38,7 +38,7 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         for (int i = 0; i < E_SC1_NUM_MREGS; i++) {
             // Skip M4 (the nonce)
             if (i != E_SC1_REG_M4_RSV) {
-                applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
+                // applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
                 error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &(pBlake2BJob->m[i]));
                 if (error != SUCCESS) {
                     return error;
@@ -51,7 +51,7 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
         for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
-            applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
+            // applog(LOG_ERR, "    M%d: 0x%08lX", i, pBlake256Job->m[i]);
             error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M0 + i, &(pBlake256Job->m[i]));
             if (error != SUCCESS) {
                 return error;

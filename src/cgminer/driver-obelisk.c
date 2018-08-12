@@ -61,7 +61,7 @@ static void wq_enqueue(struct thr_info* thr, ob_chain* ob)
 
     while (wq->num_elems < MAX_WQ_SIZE) {
         struct work* work = get_work(thr, thr->id);
-        applog(LOG_ERR, "wq_enqueue() got work");
+        // applog(LOG_ERR, "wq_enqueue() got work");
         struct work_ent* we;
 
         we = cgmalloc(sizeof(*we));
@@ -132,7 +132,7 @@ static void* ob_gen_work_thread(void* arg)
 
         // Only start filling the queue once we reach the specified limit
         if (ob->active_wq.num_elems <= WQ_REFILL_SIZE) {
-            applog(LOG_ERR, "Calling wq_enqueue() for thread %d", ob->chain_id);
+            // applog(LOG_ERR, "Calling wq_enqueue() for thread %d", ob->chain_id);
             wq_enqueue(cgpu->thr[0], ob);
         }
 
@@ -550,6 +550,31 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
+// loadNextChipJob will load a job into a chip.
+ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum) {
+	struct work* nextWork = wq_dequeue(ob, true);
+	// Mark what job the chip has.
+	ob->chipWork[chipNum] = nextWork;
+	if (nextWork == NULL) {
+		return GENERIC_ERROR;
+	}
+
+	// Load the job to the chip.
+	Job job;
+	memcpy(&job.blake2b, ob->chipWork[chipNum]->midstate, SIA_HEADER_SIZE);
+	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
+	if (error != SUCCESS) {
+		return error;
+	}
+
+	// Start the job on the chip.
+	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
+	if (error != SUCCESS) {
+		return error;
+	}
+	return SUCCESS;
+}
+
 static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
@@ -614,8 +639,7 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.currentTime = time(0);
 
 		// Set the chip biases to minimum.
-		int i = 0;
-		for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->control_loop_state.chipBiases[i] = MIN_BIAS;
 			ob->control_loop_state.chipDividers[i] = 8;
 		}
@@ -623,6 +647,15 @@ static void obelisk_detect(bool hotplug)
 
 		// Set the string voltage to the highest voltage for starting up.
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
+
+		// Set the nonce range for every chip.
+		Nonce nonceStart = 0;
+		for (int i = 0; i < ob->staticBoardModel.enginesPerChip; i++) {
+			ApiError error = ob1SetNonceRange(ob->chain_id, ALL_CHIPS, i, nonceStart, nonceStart+ob->staticBoardModel.nonceRange-1);
+			// TODO: This is pretty important, we probably need to crash/try
+			// again if this fails.
+			nonceStart += ob->staticBoardModel.nonceRange;
+		}
 
 		// Allocate the chip work fields.
 		ob->chipWork = malloc((ob->staticBoardModel.chipsPerBoard)*sizeof(struct work*));
@@ -882,9 +915,6 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
 // hashrate.
 static void control_loop(ob_chain* ob)
 {
-    // applog(LOG_ERR, "empty control loop");
-    // return;
-
     // Get a static view of the current state of the hashing board.
     updateControlState(ob);
     displayControlState(ob);
@@ -948,6 +978,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
+		// If the chip does not appear to have work, give it work.
+		if(ob->chipWork[chip_num] == NULL) {
+			loadNextChipJob(ob, chip_num);
+			continue;
+		}
+
         uint64_t done_bitmask;
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
@@ -968,17 +1004,16 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			nonce_set.count = 0;
 			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
 			if (error != SUCCESS) {
-				applog(LOG_ERR, "Error reading nonces!!!");
+				applog(LOG_ERR, "Error reading nonces.");
 				continue;
 			}
 
 			// Check the nonces and submit them to a pool if valid.
 			// 
-			// TODO: Don't submit them to a pool in this critical path, do it
-			// asynchronously so that we aren't blocking on network code.
+			// TODO: Make sure the pool submission code is low-impact.
 			for (uint8_t i = 0; i < nonce_set.count; i++) {
 				// Check that the nonce is valid
-				struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
+				struct work* engine_work = ob->chipWork[chip_num];
 				int nonceResult = validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
 					add_bad_nonces(ob, 1);
@@ -990,35 +1025,18 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
-					submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
+					submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
 				}
 			}
-
-			// Reset the busy flag so it is given a new job below
-			// applog(LOG_ERR, "Setting engine not busy");
-			set_engine_busy(ob, chip_num, engine_num, false);
         }
 
-		/*
 		// Give a new job to the chip.
-		if (ob->curr_work) {
-			// Get the next job.
-			struct work* nextWork = wq_dequeue(ob, true);
-
-			// Load the job to the chip.
-			Job job;
-			memcpy(&job.blake2b, ob->curr_work->midstate, SIA_HEADER_SIZE);
-			ApiError error = ob1LoadJob(ob->chain_id, chip_num, ALL_ENGINES, &job);
-
-			// Start the job on the chip.
-			error = ob1StartJob(ob->chain_id, chip_num, engine_num);
-			if (error != SUCCESS) {
-				// TODO: do something
-				goto scanwork_exit;
-			}
-			set_engine_busy(ob, chip_num, ALL_ENGINES, true);
+		// Get the next job.
+		error = loadNextChipJob(ob, chip_num);
+		if (error != SUCCESS) {
+			applog(LOG_ERR, "Error loading chip job");
+			continue;
 		}
-		*/
     }
 #elif (MODEL == DCR1)
     // Look for nonces first so we can give new work in the same iteration below
@@ -1083,76 +1101,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     if (ob->curr_work && ob->curr_work->pool->swork.clean) {
         ob->curr_work->pool->swork.clean = false;
         ob->curr_work = NULL;
+		ob->curr_work = wq_dequeue(ob, true);
     }
 
 #if (MODEL == SC1)
-    // Get a single work item
-    // TODO: We don;t need to get a new work item every time through - Sia has TONS of nonce space,
-    // so we can keep reusing it.
-    if (!ob->curr_work) {
-        ob->curr_work = wq_dequeue(ob, true);
-        applog(LOG_ERR, "***************************************************************");
-        applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lld", ob->curr_work->job_id, ob->curr_work->nonce2);
-        applog(LOG_ERR, "***************************************************************");
-
-        hexdump(ob->curr_work->midstate, SIA_HEADER_SIZE);
-
-        // Load the current job to all chips
-        Job job;
-        // TODO: Change ob1LoadJob() to take a byte pointer so we avoid this copy
-        memcpy(&job.blake2b, ob->curr_work->midstate, SIA_HEADER_SIZE);
-
-        ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
-        if (error != SUCCESS) {
-            // TODO: do something
-            goto scanwork_exit;
-        }
-
-        ob->start_of_next_nonce = 0;
-    }
-
-    if (ob->curr_work) {
-
-        for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
-            for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-                // applog(LOG_ERR, "Checking if engine_num=%d is done", engine_num);
-                if (!is_engine_busy(ob, chip_num, engine_num)) {
-
-                    // TODO: We are not currently taking advantage of the queued job ability
-
-                    // applog(LOG_ERR, "Set nonce range: lower=%llu  upper=%llu", ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-
-                    //  Set different nonce ranges
-                    ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-                    if (error != SUCCESS) {
-                        // TODO: do something
-                        goto scanwork_exit;
-                    }
-
-                    // applog(LOG_ERR, "Start job on: B%u/C%u/E%u", ob->chain_id, chip_num, engine_num);
-
-                    // Start everything hashing!
-                    // TODO: Should we start things hashing as each engine gets its nonce range
-                    // instead of starting them all here at the end?  Does that slow us down much?
-                    error = ob1StartJob(ob->chain_id, chip_num, engine_num);
-                    if (error != SUCCESS) {
-                        // TODO: do something
-                        goto scanwork_exit;
-                    }
-
-                    set_engine_busy(ob, chip_num, engine_num, true);
-
-                    // Remember what work this engine is working on, so we can use the same one
-                    // when testing and submitting a nonce.
-                    ob->chips[chip_num].engines_curr_work[engine_num] = ob->curr_work;
-
-                    // Increment for next engine
-                    ob->start_of_next_nonce += NONCE_RANGE_SIZE;
-                }
-            }
-        }
-    }
-
+	// Job queueing handled above already.
 #elif (MODEL == DCR1)
     // Get a single work item
     // TODO: We don;t need to get a new work item every time through - Sia has TONS of nonce space,
@@ -1248,8 +1201,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
             }
         }
     }
-
-    // Clear done flags - how?
 
 #endif
     //applog(LOG_ERR, "^^^^^^^^^^^^^^^^^^ ob->active_wq.num_elems= %d (obelisk_scan_work)", ob->active_wq.num_elems);

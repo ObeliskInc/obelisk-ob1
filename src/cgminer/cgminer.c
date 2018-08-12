@@ -7544,7 +7544,7 @@ struct work* get_work(struct thr_info* thr, const int thr_id)
     time_t diff_t;
 
     thread_reportout(thr);
-    applog(LOG_DEBUG, "Popping work from get queue to get work");
+    // applog(LOG_DEBUG, "Popping work from get queue to get work");
     diff_t = time(NULL);
     while (!work) {
         work = hash_pop(true);
@@ -7561,7 +7561,7 @@ struct work* get_work(struct thr_info* thr, const int thr_id)
         applog(LOG_DEBUG, "Get work blocked for %d seconds", (int)diff_t);
         cgpu->last_device_valid_work += diff_t;
     }
-    applog(LOG_ERR, "Got work from get queue to get work for thread %d", thr_id);
+    // applog(LOG_ERR, "Got work from get queue to get work for thread %d", thr_id);
 
     work->thr_id = thr_id;
     if (opt_benchmark)

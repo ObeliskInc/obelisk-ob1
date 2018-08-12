@@ -10,6 +10,9 @@ typedef struct hashBoardModel {
 	// Information for working with block headers for this algorithm.
 	uint64_t headerSize;
 	uint64_t nonceOffset;
+
+	// Suggested parameters to use when operating the chips.
+	uint64_t nonceRange;
 } hashBoardModel;
 
 // HASHBOARD_MODEL_SC1A defines the parameters for our SC1A hashing card.
@@ -20,5 +23,7 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.maxStringVoltageLevel = 127,
 
 	.headerSize = 80,
-	.nonceOffset = 32
+	.nonceOffset = 32,
+
+	.nonceRange = 1 << 30
 };
