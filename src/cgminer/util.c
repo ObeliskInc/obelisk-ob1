@@ -2242,7 +2242,7 @@ static bool parse_notify(struct pool* pool, json_t* val)
     free(pool->swork.job_id);
     pool->swork.job_id = job_id;
     if (memcmp(pool->prev_hash, prev_hash, 64)) {
-        applog(LOG_ERR, "parse_notify(): FORCE CLEAN!");
+        // applog(LOG_ERR, "parse_notify(): FORCE CLEAN!");
         pool->swork.clean = true;
     } else {
         if (clean) {

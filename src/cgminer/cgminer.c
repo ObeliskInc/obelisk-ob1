@@ -6690,8 +6690,8 @@ static void* stratum_sthread(void* userdata)
 
         // TODO: Fix this bitcoin thingie
         if (unlikely(work->nonce2_len > 4)) {
-            applog(LOG_ERR, "Pool %d asking for inappropriately long nonce2 length %d",
-                pool->pool_no, (int)work->nonce2_len);
+            // applog(LOG_ERR, "Pool %d asking for inappropriately long nonce2 length %d",
+            //     pool->pool_no, (int)work->nonce2_len);
             applog(LOG_ERR, "Not attempting to submit shares");
             free_work(work);
             continue;
@@ -6734,8 +6734,8 @@ static void* stratum_sthread(void* userdata)
             "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
             pool->rpc_user, work->job_id, nonce2hex, work->ntime, noncehex, sshare->id);
 
-        applog(LOG_ERR, "Submitting share %08lx to pool %d",
-            (long unsigned int)htole32(hash32[6]), pool->pool_no);
+        // applog(LOG_ERR, "Submitting share %08lx to pool %d",
+        //    (long unsigned int)htole32(hash32[6]), pool->pool_no);
         // applog(LOG_ERR, "JSON=%s", s);
 
         /* Try resubmitting for up to 2 minutes if we fail to submit
@@ -7594,8 +7594,8 @@ static void submit_work_async(struct work* work)
         pool->diff_accepted += work->work_difficulty;
         mutex_unlock(&stats_lock);
 
-        applog(LOG_NOTICE, "Accepted %s %d benchmark share nonce %08x",
-            cgpu->drv->name, cgpu->device_id, *(uint32_t*)(work->data + 64 + 12));
+        // applog(LOG_NOTICE, "Accepted %s %d benchmark share nonce %08x",
+        //    cgpu->drv->name, cgpu->device_id, *(uint32_t*)(work->data + 64 + 12));
         return;
     }
 
@@ -7689,7 +7689,7 @@ static void update_work_stats(struct thr_info* thr, struct work* work)
         work->pool->solved++;
         found_blocks++;
         work->mandatory = true;
-        applog(LOG_NOTICE, "Found block for pool %d!", work->pool->pool_no);
+        // applog(LOG_NOTICE, "Found block for pool %d!", work->pool->pool_no);
     }
 
     mutex_lock(&stats_lock);
