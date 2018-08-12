@@ -3518,14 +3518,14 @@ share_result(json_t* val, json_t* res, json_t* err, const struct work* work,
         pool->last_share_time = cgpu->last_share_pool_time;
         pool->last_share_diff = work->work_difficulty;
         applog(LOG_DEBUG, "PROOF OF WORK RESULT: true (yay!!!)");
-        if (!QUIET) {
-            if (total_pools > 1)
-                applog(LOG_NOTICE, "Accepted %s %s %d pool %d %s%s",
-                    hashshow, cgpu->drv->name, cgpu->device_id, work->pool->pool_no, resubmit ? "(resubmit)" : "", worktime);
-            else
-                applog(LOG_NOTICE, "Accepted %s %s %d %s%s",
-                    hashshow, cgpu->drv->name, cgpu->device_id, resubmit ? "(resubmit)" : "", worktime);
-        }
+        // if (!QUIET) {
+            // if (total_pools > 1)
+                // applog(LOG_NOTICE, "Accepted %s %s %d pool %d %s%s",
+                //     hashshow, cgpu->drv->name, cgpu->device_id, work->pool->pool_no, resubmit ? "(resubmit)" : "", worktime);
+            // else
+                // applog(LOG_NOTICE, "Accepted %s %s %d %s%s",
+                //     hashshow, cgpu->drv->name, cgpu->device_id, resubmit ? "(resubmit)" : "", worktime);
+        // }
         sharelog("accept", work);
         if (opt_shares && total_diff_accepted >= opt_shares) {
             applog(LOG_WARNING, "Successfully mined %d accepted shares as requested and exiting.", opt_shares);
@@ -6714,7 +6714,7 @@ static void* stratum_sthread(void* userdata)
         __bin2hex(noncehex, (const unsigned char*)&nonce, NONCE_SIZE);
         __bin2hex(nonce2hex, (const unsigned char*)&(work->nonce2), work->nonce2_len);
 
-        applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
+        // applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
 
         sshare = cgcalloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t*)work->hash;

@@ -116,8 +116,16 @@ typedef struct ob_chain {
 	uint64_t staticHashesPerSuccessfulNonce; // Number of hashes required to find a header meeting the chip target.
 
 	// Work information.
-	uint64_t goodNoncesFound;
-	struct   work** chipWork;
+	// 
+	// The nonce counters in this struct do not use locking even though they are
+	// accessed by multiple threads. That's because only one thread is ever
+	// writing to it, the others are reading. And the ones that are reading are
+	// only displaying output to a user, so if it's occasionally corrupted,
+	// that's not so bad.
+	uint64_t  goodNoncesFound; // Total number of good nonces found.
+	struct    work** chipWork; // The work structures for each chip.
+	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
+	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
 
 	// Control loop information.
     int chain_id;

@@ -646,7 +646,7 @@ static void obelisk_detect(bool hotplug)
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+12);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+20);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -668,7 +668,9 @@ static void obelisk_detect(bool hotplug)
 		}
 
 		// Allocate the chip work fields.
-		ob->chipWork = malloc((ob->staticBoardModel.chipsPerBoard)*sizeof(struct work*));
+		ob->chipWork = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(struct work*));
+		ob->chipGoodNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
+		ob->chipBadNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
 
         INIT_LIST_HEAD(&ob->active_wq.head);
 
@@ -734,11 +736,11 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 10
+#define StatusOutputFrequency 30
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
-#define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
+#define HotChipTargetTemp 112.0 // Acceptable temp for hottest chip.
 #define HotChipTempRise 15.0 // Thermal sims suggest the hottest chip is this much hotter than the senosr chip.
 
 // Overtemp variables.
@@ -794,79 +796,20 @@ static void displayControlState(ob_chain* ob)
         uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
 
         // Currently only displays the bias of the first chip.
-        char outBuf[256];
-        sprintf(outBuf, "HB%u:  Temp: %-5.1f  VString: %2.02f  Biases: %u.%i  Hashrate: %lld GH/s  Stability: %i  Timeouts: %lld VLevel: %u",
+		applog(LOG_ERR, "");
+        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Hashrate: %lld GH/s  VLevel: %u",
             ob->control_loop_state.boardNumber,
             ob->control_loop_state.currentStringTemp,
             ob->control_loop_state.currentStringVoltage,
-            ob->control_loop_state.chipDividers[0],
-            ob->control_loop_state.chipBiases[0],
             hashrate,
-            secondsElapsed,
-            ob->control_loop_state.stringTimeouts,
             ob->control_loop_state.currentVoltageLevel);
-        applog(LOG_ERR, outBuf);
-        sprintf(outBuf, "%u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i, %u.%i",
-            ob->control_loop_state.chipDividers[0],
-            ob->control_loop_state.chipBiases[0],
-            ob->control_loop_state.chipDividers[1],
-            ob->control_loop_state.chipBiases[1],
-            ob->control_loop_state.chipDividers[2],
-            ob->control_loop_state.chipBiases[2],
-            ob->control_loop_state.chipDividers[3],
-            ob->control_loop_state.chipBiases[3],
-            ob->control_loop_state.chipDividers[4],
-            ob->control_loop_state.chipBiases[4],
-            ob->control_loop_state.chipDividers[5],
-            ob->control_loop_state.chipBiases[5],
-            ob->control_loop_state.chipDividers[6],
-            ob->control_loop_state.chipBiases[6],
-            ob->control_loop_state.chipDividers[7],
-            ob->control_loop_state.chipBiases[7],
-            ob->control_loop_state.chipDividers[8],
-            ob->control_loop_state.chipBiases[8],
-            ob->control_loop_state.chipDividers[9],
-            ob->control_loop_state.chipBiases[9],
-            ob->control_loop_state.chipDividers[10],
-            ob->control_loop_state.chipBiases[10],
-            ob->control_loop_state.chipDividers[11],
-            ob->control_loop_state.chipBiases[11],
-            ob->control_loop_state.chipDividers[12],
-            ob->control_loop_state.chipBiases[12],
-            ob->control_loop_state.chipDividers[13],
-            ob->control_loop_state.chipBiases[13],
-            ob->control_loop_state.chipDividers[14],
-            ob->control_loop_state.chipBiases[14]);
-        applog(LOG_ERR, outBuf);
-        sprintf(outBuf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld",
-            ob->control_loop_state.voltageLevelHashrates[20],
-            ob->control_loop_state.voltageLevelHashrates[24],
-            ob->control_loop_state.voltageLevelHashrates[28],
-            ob->control_loop_state.voltageLevelHashrates[32],
-            ob->control_loop_state.voltageLevelHashrates[36],
-            ob->control_loop_state.voltageLevelHashrates[40],
-            ob->control_loop_state.voltageLevelHashrates[44],
-            ob->control_loop_state.voltageLevelHashrates[48],
-            ob->control_loop_state.voltageLevelHashrates[52],
-            ob->control_loop_state.voltageLevelHashrates[56],
-            ob->control_loop_state.voltageLevelHashrates[60],
-            ob->control_loop_state.voltageLevelHashrates[64],
-            ob->control_loop_state.voltageLevelHashrates[68],
-            ob->control_loop_state.voltageLevelHashrates[72],
-            ob->control_loop_state.voltageLevelHashrates[76],
-            ob->control_loop_state.voltageLevelHashrates[80],
-            ob->control_loop_state.voltageLevelHashrates[84],
-            ob->control_loop_state.voltageLevelHashrates[88],
-            ob->control_loop_state.voltageLevelHashrates[92],
-            ob->control_loop_state.voltageLevelHashrates[96],
-            ob->control_loop_state.voltageLevelHashrates[100],
-            ob->control_loop_state.voltageLevelHashrates[104],
-            ob->control_loop_state.voltageLevelHashrates[108],
-            ob->control_loop_state.voltageLevelHashrates[112],
-            ob->control_loop_state.voltageLevelHashrates[116],
-            ob->control_loop_state.voltageLevelHashrates[120],
-            ob->control_loop_state.voltageLevelHashrates[124]);
-        applog(LOG_ERR, outBuf);
+		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
+			uint64_t badNonces = ob->chipBadNonces[chipNum];
+			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
+			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
+			applog(LOG_ERR, "Chip %u: bias=%u.%i  good=%u  bad=%u", chipNum, divider, bias, goodNonces, badNonces);
+		}
 
         ob->control_loop_state.lastStatusOutput = currentTime;
     }
@@ -1026,14 +969,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				struct work* engine_work = ob->chipWork[chip_num];
 				int nonceResult = validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
-					applog(LOG_ERR, "found a bad nonce");
-					add_bad_nonces(ob, 1);
+					ob->chipBadNonces[chip_num]++;
 				}
 				if (nonceResult > 0) {
-					applog(LOG_ERR, "found a good nonce");
-					mutex_lock(&ob->lock);
 					ob->goodNoncesFound++;
-					mutex_unlock(&ob->lock);
+					ob->chipGoodNonces[chip_num]++;
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
