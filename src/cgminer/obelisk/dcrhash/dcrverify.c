@@ -77,7 +77,13 @@ bool dcrMidstateMeetsProvidedTarget(uint8_t midstate[64], uint8_t headerTail[52]
 	dcrBlake256CompressBlock(compressionState, m, 0x5A0);
 	uint8_t *checksum = (uint8_t*)compressionState;
 
+	// Do an endianness flip on the target.
 	int i = 0;
+	uint32_t *swap = (uint32_t*)checksum;
+	for(i = 0; i < 8; i++) {
+		swap[i] = ((swap[i] >> 24) & 0xff) | ((swap[i] << 8) & 0xff0000 ) | ((swap[i] >> 8) & 0xff00) | ((swap[i] << 24) & 0xff000000);
+	}
+
 	for(i = 0; i < 32; i++) {
 		if(checksum[31-i] > target[i]) {
 			return false;
