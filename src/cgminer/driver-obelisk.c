@@ -681,19 +681,16 @@ static void obelisk_detect(bool hotplug)
 		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
 		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
 		increaseBias(&ob->control_loop_state.chipBiases[9], &ob->control_loop_state.chipDividers[9]);
-		increaseBias(&ob->control_loop_state.chipBiases[9], &ob->control_loop_state.chipDividers[9]);
-		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
 		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
 		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
 		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
 		increaseBias(&ob->control_loop_state.chipBiases[11], &ob->control_loop_state.chipDividers[11]);
 		increaseBias(&ob->control_loop_state.chipBiases[11], &ob->control_loop_state.chipDividers[11]);
-		increaseBias(&ob->control_loop_state.chipBiases[12], &ob->control_loop_state.chipDividers[12]);
 		increaseBias(&ob->control_loop_state.chipBiases[12], &ob->control_loop_state.chipDividers[12]);
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+26);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+24);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
