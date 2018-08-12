@@ -624,6 +624,9 @@ static void obelisk_detect(bool hotplug)
 		// Set the string voltage to the highest voltage for starting up.
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
+		// Allocate the chip work fields.
+		ob->chipWork = malloc((ob->staticBoardModel.chipsPerBoard)*sizeof(struct work*));
+
         INIT_LIST_HEAD(&ob->active_wq.head);
 
         chains[i].cgpu = cgpu;
@@ -729,7 +732,7 @@ static void updateControlState(ob_chain* ob)
 
     // Fetch nonce count updates.
     mutex_lock(&ob->lock);
-    ob->control_loop_state.currentGoodNonces = ob->good_nonces_found;
+    ob->control_loop_state.currentGoodNonces = ob->goodNoncesFound;
     mutex_unlock(&ob->lock);
     ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
     ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
@@ -743,8 +746,8 @@ static void displayControlState(ob_chain* ob)
     time_t currentTime = ob->control_loop_state.currentTime;
     if (currentTime - lastStatus > StatusOutputFrequency) {
         // Compute the hashrate.
-        uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceBiasChange;
-        time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevBiasChangeTime + 1;
+        uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
+        time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
         uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
 
         // Currently only displays the bias of the first chip.
@@ -960,9 +963,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				continue;
 			}
 
-			// We are done, so count the hashes
-			add_hashes(ob, NONCE_RANGE_SIZE);
-
 			// Read any nonces that the engine found.
 			NonceSet nonce_set;
 			nonce_set.count = 0;
@@ -984,7 +984,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					add_bad_nonces(ob, 1);
 				}
 				if (nonceResult > 1) {
-					add_good_nonces(ob, 1);
+					mutex_lock(&ob->lock);
+					ob->goodNoncesFound++;
+					mutex_unlock(&ob->lock);
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
@@ -996,6 +998,27 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// applog(LOG_ERR, "Setting engine not busy");
 			set_engine_busy(ob, chip_num, engine_num, false);
         }
+
+		/*
+		// Give a new job to the chip.
+		if (ob->curr_work) {
+			// Get the next job.
+			struct work* nextWork = wq_dequeue(ob, true);
+
+			// Load the job to the chip.
+			Job job;
+			memcpy(&job.blake2b, ob->curr_work->midstate, SIA_HEADER_SIZE);
+			ApiError error = ob1LoadJob(ob->chain_id, chip_num, ALL_ENGINES, &job);
+
+			// Start the job on the chip.
+			error = ob1StartJob(ob->chain_id, chip_num, engine_num);
+			if (error != SUCCESS) {
+				// TODO: do something
+				goto scanwork_exit;
+			}
+			set_engine_busy(ob, chip_num, ALL_ENGINES, true);
+		}
+		*/
     }
 #elif (MODEL == DCR1)
     // Look for nonces first so we can give new work in the same iteration below

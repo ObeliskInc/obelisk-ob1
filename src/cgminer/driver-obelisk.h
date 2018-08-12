@@ -17,7 +17,7 @@
 #define NUM_ENGINES_PER_CHIP 64
 
 // Each engine will be given a range this size
-#define NONCE_RANGE_SIZE (4294976296ULL * 4ULL)
+#define NONCE_RANGE_SIZE (4294976296ULL / 4)
 // #define NONCE_RANGE_SIZE (4294976296L / NUM_ENGINES_PER_CHIP) // 67,108,864
 
 #define MAX_WQ_SIZE 2
@@ -107,13 +107,17 @@ typedef struct nonce_fifo {
 // ob_chain is essentially the global state variable for a hashboard. Each
 // hashing board has its own ob_chain.
 typedef struct ob_chain {
-	// Board Information
+	// Board information.
 	hashBoardModel staticBoardModel;
 	int            staticBoardNumber;
 
-	// Hashing information.
-	uint8_t staticChipTarget[32]; // The target that the chip needs to meet before returning a nonce.
+	// Static hashing information.
+	uint8_t  staticChipTarget[32];           // The target that the chip needs to meet before returning a nonce.
 	uint64_t staticHashesPerSuccessfulNonce; // Number of hashes required to find a header meeting the chip target.
+
+	// Work information.
+	uint64_t goodNoncesFound;
+	struct   work** chipWork;
 
 	// Control loop information.
     int chain_id;
