@@ -649,12 +649,22 @@ static void obelisk_detect(bool hotplug)
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
-		Nonce nonceStart = 0;
-		for (int i = 0; i < ob->staticBoardModel.enginesPerChip; i++) {
-			ApiError error = ob1SetNonceRange(ob->chain_id, ALL_CHIPS, i, nonceStart, nonceStart+ob->staticBoardModel.nonceRange-1);
-			// TODO: This is pretty important, we probably need to crash/try
-			// again if this fails.
-			nonceStart += ob->staticBoardModel.nonceRange;
+		uint64_t nonceRangeFailures = 0;
+		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+			Nonce nonceStart = 0;
+			for (int engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+				ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceStart+ob->staticBoardModel.nonceRange-1);
+				if (error != SUCCESS) {
+					nonceRangeFailures++;
+				}
+				// TODO: This is pretty important, we probably need to crash/try
+				// again if this fails.
+				nonceStart += ob->staticBoardModel.nonceRange;
+			}
+		}
+		// Crash the program if there were too many nonce range failures.
+		if (nonceRangeFailures > 256) {
+			exit(-1);
 		}
 
 		// Allocate the chip work fields.
@@ -685,7 +695,7 @@ static void obelisk_identify(__maybe_unused struct cgpu_info* cgpu)
 
 static void obelisk_flush_work(struct cgpu_info* cgpu)
 {
-    applog(LOG_ERR, "***** obelisk_flush_work()");
+    // applog(LOG_ERR, "***** obelisk_flush_work()");
 }
 
 static bool obelisk_thread_prepare(struct thr_info* thr)
@@ -724,7 +734,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 3
+#define StatusOutputFrequency 10
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
@@ -1016,15 +1026,18 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				struct work* engine_work = ob->chipWork[chip_num];
 				int nonceResult = validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
+					applog(LOG_ERR, "found a bad nonce");
 					add_bad_nonces(ob, 1);
 				}
-				if (nonceResult > 1) {
+				if (nonceResult > 0) {
+					applog(LOG_ERR, "found a good nonce");
 					mutex_lock(&ob->lock);
 					ob->goodNoncesFound++;
 					mutex_unlock(&ob->lock);
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
+					applog(LOG_ERR, "found a good nonce that can be submitted to the pool");
 					submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
 				}
 			}

@@ -6736,7 +6736,7 @@ static void* stratum_sthread(void* userdata)
 
         applog(LOG_ERR, "Submitting share %08lx to pool %d",
             (long unsigned int)htole32(hash32[6]), pool->pool_no);
-        applog(LOG_ERR, "JSON=%s", s);
+        // applog(LOG_ERR, "JSON=%s", s);
 
         /* Try resubmitting for up to 2 minutes if we fail to submit
 		 * once and the stratum pool nonce1 still matches suggesting
@@ -6752,7 +6752,7 @@ static void* stratum_sthread(void* userdata)
 
                 if (pool_tclear(pool, &pool->submit_fail))
                     applog(LOG_ERR, "Pool %d communication resumed, submitting work", pool->pool_no);
-                applog(LOG_ERR, "Successfully submitted, adding to stratum_shares db");
+                // applog(LOG_ERR, "Successfully submitted, adding to stratum_shares db");
                 submitted = true;
                 break;
             }

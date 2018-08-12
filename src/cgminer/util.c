@@ -2202,17 +2202,17 @@ static bool parse_notify(struct pool* pool, json_t* val)
     char line[81];
     int offset = 0;
     line[80] = 0;
-    applog(LOG_ERR, "parse_notify:");
-    applog(LOG_ERR, "----------");
-    do {
-        strncpy(line, json_str + offset, 80);
-        offset += 80;
-        applog(LOG_ERR, line);
-    } while (offset < len);
-    applog(LOG_ERR, "----------");
+    // applog(LOG_ERR, "parse_notify:");
+    // applog(LOG_ERR, "----------");
+    // do {
+        // strncpy(line, json_str + offset, 80);
+        // offset += 80;
+        // applog(LOG_ERR, line);
+    // } while (offset < len);
+    // applog(LOG_ERR, "----------");
 
-    applog(LOG_ERR, "Pool %d confirmed mining.subscribe with extranonce1 %s extran2size %d",
-        pool->pool_no, pool->nonce1, pool->n2size);
+    // applog(LOG_ERR, "Pool %d confirmed mining.subscribe with extranonce1 %s extran2size %d",
+    //    pool->pool_no, pool->nonce1, pool->n2size);
 
     arr = json_array_get(val, 4);
     if (!arr || !json_is_array(arr))
