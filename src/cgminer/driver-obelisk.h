@@ -149,8 +149,8 @@ typedef struct ob_chain {
     struct work* curr_work;
     Nonce start_of_next_nonce;
 
-    int good_nonces_found;
-    int bad_nonces_found;
+    uint64_t good_nonces_found;
+    uint64_t bad_nonces_found;
 
     // Pending nonces
     nonce_fifo pending_nonces;
@@ -182,3 +182,26 @@ typedef struct ob_chain {
 ApiError push_pending_nonce(ob_chain* ob, int chip_num, int engine_num, Nonce nonce, bool nonce_limit_reached);
 ApiError pop_pending_nonce(ob_chain* ob, nonce_info* info);
 int num_pending_nonces(ob_chain* ob);
+
+
+void set_engine_busy(ob_chain* ob, int chip_num, int engine_num, bool is_busy);
+
+bool is_engine_busy(ob_chain* ob, int chip_num, int engine_num);
+
+void add_hashes(ob_chain* ob, uint64_t num_hashes);
+
+void add_good_nonces(ob_chain* ob, uint64_t amt);
+
+void add_bad_nonces(ob_chain* ob, uint64_t amt);
+
+uint64_t get_and_reset_hashes(ob_chain* ob);
+
+uint64_t get_and_reset_good_nonces(ob_chain* ob);
+
+uint64_t get_and_reset_bad_nonces(ob_chain* ob);
+
+uint64_t get_num_hashes(ob_chain* ob);
+
+uint64_t get_good_nonces(ob_chain* ob);
+
+uint64_t get_bad_nonces(ob_chain* ob);

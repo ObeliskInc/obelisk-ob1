@@ -10,6 +10,8 @@
  * any later version.  See COPYING for more details.
  */
 
+
+
 #include "config.h"
 
 #ifdef HAVE_CURSES
@@ -29,6 +31,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+
+// HACK:
+extern void dump(unsigned char* p, int len, char* label);
 
 //NOTE: Obelisk - Adding TRound's Atmel Project
 // #include "ApplicationFiles/Usermain.h"
@@ -2275,12 +2280,24 @@ static void calc_midstate(struct work* work)
 }
 
 /* Returns the current value of total_work and increments it */
-static int total_work_inc(void)
+int total_work_inc(void)
 {
     int ret;
 
     cg_wlock(&control_lock);
     ret = total_work++;
+    cg_wunlock(&control_lock);
+    applog(LOG_ERR, "NEW WORK WITH id=%u", ret);
+
+    return ret;
+}
+
+int get_total_work(void)
+{
+    int ret;
+
+    cg_wlock(&control_lock);
+    ret = total_work;
     cg_wunlock(&control_lock);
 
     return ret;
@@ -6756,6 +6773,7 @@ static void* stratum_sthread(void* userdata)
                 submitted = true;
                 break;
             }
+
             if (!pool_tset(pool, &pool->submit_fail) && cnx_needed(pool)) {
                 applog(LOG_ERR, "Pool %d stratum share submission failure", pool->pool_no);
                 total_ro++;
@@ -7278,6 +7296,7 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
     cg_memcpy(pool->coinbase + pool->nonce2_offset, &nonce2le, pool->n2size);
 #endif
 
+
     // Update nonce2
     work->nonce2 = pool->nonce2++;
     work->nonce2_len = pool->n2size;
@@ -7343,13 +7362,84 @@ typedef struct SiaStratumInput {
 
 #elif (ALGO == BLAKE256)
 
-applog(LOG_ERR, "========================================================");
-applog(LOG_ERR, "Calling dcrBuildBlockHeader()");
+// applog(LOG_ERR, "========================================================");
+// applog(LOG_ERR, "Calling dcrBuildBlockHeader()");
+
+    // uint8_t testHeader[180] = {
+    // 0x01, 0x00, 0x00, 0x00, 0x80, 0xd9, 0x21, 0x2b, 0xf4, 0xce, 0xb0, 0x66, 0xde, 0xd2, 0x86, 0x6b,
+    // 0x39, 0xd4, 0xed, 0x89, 0xe0, 0xab, 0x60, 0xf3, 0x35, 0xc1, 0x1d, 0xf8, 0xe7, 0xbf, 0x85, 0xd9,
+    // 0xc3, 0x5c, 0x8e, 0x29, 0x47, 0x63, 0x69, 0x67, 0x50, 0xe6, 0x72, 0x86, 0x7f, 0x91, 0x00, 0x68,
+    // 0x79, 0x94, 0x18, 0xdb, 0x8d, 0xa6, 0x07, 0xba, 0xf2, 0x28, 0x08, 0x55, 0x22, 0x48, 0xb5, 0xd0,
+    // 0xb9, 0x5f, 0x89, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x1b, 0x00, 0xc2, 0xeb, 0x0b, 0x00, 0x00, 0x00, 0x00,
+    // 0x01, 0x00, 0x00, 0x00, 0x71, 0xbb, 0x01, 0x00, 0x27, 0xd8, 0xb8, 0x56, 0x00, 0x00, 0x00, 0x00, // 0x6e, 0x83, 0xd6, 0xda,  NONCE
+    // 0x38, 0x2a, 0x09, 0x36, 0xed, 0x7f, 0x17, 0x77, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x00
+    // };
+
+    // uint32_t testMidstate[16] = {
+    //     0x51F87D90,
+    //     0x660D07D4,
+    //     0xA697C2B7,
+    //     0xC52BB4EF,
+    //     0xBB2C0B5E,
+    //     0x41B8CB4C,
+    //     0x9254A116,
+    //     0xE2B2CC34,
+    //     0x243F6A88,
+    //     0x85A308D3,
+    //     0x13198A2E,
+    //     0x03707344,
+    //     0xA4093D82,
+    //     0x299F3470,
+    //     0x082EFA98,
+    //     0xEC4E6C89
+    // };
+
+    // uint32_t testHeaderTail[13] = {
+    //     0x6A5C0200,
+    //     0x39200000,
+    //     0x74017B59,
+    //     0x00000000,
+    //     0x00000005,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x00000000,
+    //     0x04000000};
+    // Expected nonce: 0x64EE1D76
+
+    // Copy over the prev_hash
+    cg_memcpy(work->prev_hash, pool->prev_hash, HASH_SIZE * 2);
+
     DecredBlockHeader header;
     dcrBuildBlockHeader(&header, work);
-    dcrPrepareMidstate(work->midstate, (uint8_t*)&header);
-    memcpy(work->midstate, &header, sizeof(DecredBlockHeader));
-applog(LOG_ERR, "========================================================");
+    uint8_t* pHeader = (uint8_t*)&header;
+    dcrPrepareMidstate(work->midstate, pHeader);
+    memcpy(work->header_tail, &pHeader[DECRED_HEADER_TAIL_OFFSET_IN_BLOCK], DECRED_HEADER_TAIL_SIZE);
+
+    // dcrPrepareMidstate(work->midstate, testHeader);
+
+    // uint8_t* pHeader = testHeader;
+    // memcpy(work->header_tail, &pHeader[DECRED_HEADER_TAIL_OFFSET_IN_BLOCK], DECRED_HEADER_TAIL_SIZE);
+
+    // memcpy(work->midstate, testMidstate, DECRED_MIDSTATE_SIZE);
+    // memcpy(work->header_tail, &testHeaderTail, DECRED_HEADER_TAIL_SIZE);
+
+    // dump(testHeader, sizeof(DecredBlockHeader), "header");
+    // dump((uint8_t*)&header, sizeof(DecredBlockHeader), "header");
+
+    // dump(pHeader, 180, "header");
+    // dump((uint8_t*)&work->midstate, DECRED_MIDSTATE_SIZE, "midstate");
+    // dump((uint8_t*)&pHeader[DECRED_HEADER_TAIL_OFFSET_IN_BLOCK], DECRED_HEADER_TAIL_SIZE, "header tail");
+
+// applog(LOG_ERR, "========================================================");
 #endif
 
     /* Store the stratum work diff to check it still matches the pool's

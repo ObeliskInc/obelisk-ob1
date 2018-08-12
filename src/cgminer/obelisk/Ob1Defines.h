@@ -1,4 +1,5 @@
 // Obelisk ASIC API
+#include "obelisk-config.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "CSS_SC1Defines.h"
@@ -25,6 +26,7 @@ typedef struct {
 typedef struct {
     uint32_t m[E_DCR1_NUM_MREGS];  // Midstate
     uint32_t v[E_DCR1_NUM_VREGS];  // Header tail
+    bool is_nonce2_roll_only;
 } Blake256Job;
 
 // Note that these unions have no type discriminator.  Instead, at startup, the API init function
@@ -57,7 +59,12 @@ typedef struct {
 } HashboardStatus;
 
 #define MAX_NONCE_FIFO_LENGTH 8
+
+#if (ALGO == BLAKE2B)
 typedef uint64_t Nonce;
+#elif (ALGO == BLAKE256)
+typedef uint32_t Nonce;
+#endif
 
 typedef struct {
     Nonce nonces[MAX_NONCE_FIFO_LENGTH];

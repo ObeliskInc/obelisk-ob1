@@ -372,7 +372,7 @@ static int iMCP9903ReadReg(uint8_t uiBoard, uint8_t uiReg)
     sMPC9903TwiXferBuf.puiaData = ucaMCP990XInBuf;
 
     iResult = iTWIInitXFer(&sMPC9903TwiXferBuf);
-    usleep(1000);
+    usleep(1000);  // TODO: Reduce this sleep
 
     return (iResult);
 

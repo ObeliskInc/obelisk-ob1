@@ -120,7 +120,7 @@ int iReadMCP4017(uint8_t *puiValue)
         do {
             iResult = iTWIReadBuf(TWI_PORT0_NUM, ucaTWIInBuf, 1, true);
         } while (ERR_BUSY == iResult);
-	usleep(100000);
+	usleep(100000);  // TODO: Reduce this sleep
     }
     *puiValue = ucaTWIInBuf[0];
 
