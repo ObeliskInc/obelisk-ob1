@@ -1,5 +1,6 @@
 // Obelisk ASIC API
 #include "obelisk-config.h"
+#include "obelisk-model.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "CSS_SC1Defines.h"

@@ -9,6 +9,7 @@
 /controlCardImage/.br-external.mk
 /controlCardImage/.config
 /controlCardImage/.config.old
+/controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/.cgminer/cgminer.conf
 /controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/apiserver
 /controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 /controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/gpio_init
@@ -56,6 +57,7 @@
 /src/cgminer/conftest.err
 /src/cgminer/Makefile
 /src/cgminer/Makefile.in
+/src/cgminer/obelisk-model.h
 /src/cgminer/*.o
 /src/cgminer/.deps
 /src/cgminer/autom4te.cache/
