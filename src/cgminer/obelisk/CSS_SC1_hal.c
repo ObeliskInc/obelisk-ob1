@@ -1398,6 +1398,7 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
         } // end switch
     }
 
+	/*
     if (ERR_NONE == iRetVal) {
         // Verify the SPI port is idle and ready to go; if not we wait to allow an active transfer to complete.
         // We don't want to corrupt the transfer buffer or change the SPI mux during an active transfer.
@@ -1405,6 +1406,7 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
             iRetVal = ERR_BUSY; // got a timeout?
         }
     }
+	*/
 
     if (ERR_NONE == iRetVal) {
         // Set up the mode-address in bytes [2:0]; big-endian order
