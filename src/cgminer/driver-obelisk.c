@@ -693,7 +693,7 @@ static void obelisk_detect(bool hotplug)
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+32);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+26);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
