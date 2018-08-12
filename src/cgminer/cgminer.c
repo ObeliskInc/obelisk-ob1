@@ -2287,7 +2287,6 @@ int total_work_inc(void)
     cg_wlock(&control_lock);
     ret = total_work++;
     cg_wunlock(&control_lock);
-    applog(LOG_ERR, "NEW WORK WITH id=%u", ret);
 
     return ret;
 }

@@ -25,5 +25,5 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.headerSize = 80,
 	.nonceOffset = 32,
 
-	.nonceRange = 17179869184ULL // 2^34
+	.nonceRange = 4294967296ULL // 2^32
 };
