@@ -638,9 +638,9 @@ static void obelisk_detect(bool hotplug)
 			memcpy(ob->staticChipTarget, chipTarget, 32);
 
 			// Use a proxy because we can't set the value directly to 1 << 40.
-			uint64_t hashestPerNonce = 1;
-			hashestPerNonce = hashestPerNonce << 40;
-			ob->staticHashesPerSuccessfulNonce = hashestPerNonce;
+			uint64_t hashesPerNonce = 1;
+			hashesPerNonce = hashesPerNonce << 40;
+			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 		}
 
         cgtime(&cgpu->dev_start_tv);
