@@ -25,7 +25,10 @@ interface ConnectProps {
   networkConfig?: NetworkConfig
 }
 
-type CombinedProps = BrowserRouterProps & ConnectProps & InjectedProps & DispatchProp<any>
+type CombinedProps = BrowserRouterProps &
+  ConnectProps &
+  InjectedProps &
+  DispatchProp<any>
 
 const dhcpOptions = [
   { text: 'Enabled', value: 'enabled', key: 0 },
@@ -52,7 +55,10 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
         <Formik
           initialValues={{ ...(this.props.networkConfig || {}) }}
           enableReinitialize={true}
-          onSubmit={(values: NetworkConfig, formikBag: FormikProps<NetworkConfig>) => {
+          onSubmit={(
+            values: NetworkConfig,
+            formikBag: FormikProps<NetworkConfig>
+          ) => {
             if (this.props.dispatch) {
               if (
                 confirm(
@@ -61,7 +67,7 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                     'If your settings are incorrect or the device is assigned a new ' +
                     'IP address by the DHCP server, you may lose the ability to ' +
                     'reconnect to the device.\n\n' +
-                    'Do you want to continue?',
+                    'Do you want to continue?'
                 )
               ) {
                 this.props.dispatch(setNetworkConfig.started(values))
@@ -115,7 +121,8 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                 }
               },
             }
-            const disableNetworkFields = formikProps.values.dhcpEnabled === 'enabled'
+            const disableNetworkFields =
+              formikProps.values.dhcpEnabled === 'enabled'
 
             return (
               <Form onSubmit={formikProps.handleSubmit}>
@@ -196,7 +203,7 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                 <div className={classNames.formFieldError}>
                   {_.get(formikProps.errors, ['dnsServer'], ' ')}
                 </div>
-                <Button type="submit">SAVE</Button>
+                {formikProps.dirty && <Button type="submit">SAVE</Button>}
               </Form>
             )
           }}
@@ -212,4 +219,6 @@ const mapStateToProps = (state: any, props: any): ConnectProps => ({
 
 const networkPanel = withStyles()<any>(NetworkPanel)
 
-export default withRouter(connect<ConnectProps, any, any>(mapStateToProps)(networkPanel))
+export default withRouter(
+  connect<ConnectProps, any, any>(mapStateToProps)(networkPanel)
+)

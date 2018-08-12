@@ -49,7 +49,10 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
         <Formik
           initialValues={this.props.miningConfig}
           enableReinitialize={true}
-          onSubmit={(values: MiningConfig, formikBag: FormikProps<MiningConfig>) => {
+          onSubmit={(
+            values: MiningConfig,
+            formikBag: FormikProps<MiningConfig>
+          ) => {
             if (this.props.dispatch) {
               this.props.dispatch(setMiningConfig.started(values))
             }
@@ -136,7 +139,10 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                       <Button color="red">Efficiency</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'efficiency')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(
+                          this,
+                          'efficiency'
+                        )}
                       >
                         Efficiency
                       </Button>
@@ -145,7 +151,10 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                       <Button color="red">Balanced</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'balanced')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(
+                          this,
+                          'balanced'
+                        )}
                       >
                         Balanced
                       </Button>
@@ -154,7 +163,10 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                       <Button color="red">Hashrate</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'hashrate')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(
+                          this,
+                          'hashrate'
+                        )}
                       >
                         Hashrate
                       </Button>

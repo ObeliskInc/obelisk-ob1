@@ -21,7 +21,10 @@ interface ConnectProps {
   poolsConfig: PoolConfig[]
 }
 
-type CombinedProps = BrowserRouterProps & ConnectProps & InjectedProps & DispatchProp<any>
+type CombinedProps = BrowserRouterProps &
+  ConnectProps &
+  InjectedProps &
+  DispatchProp<any>
 
 class PoolsPanel extends React.PureComponent<CombinedProps> {
   public static styles: InputSheet<{}> = {
@@ -43,10 +46,16 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
         <Formik
           initialValues={{ ...(this.props.poolsConfig || {}) }}
           enableReinitialize={true}
-          onSubmit={(values: PoolConfig[], formikBag: FormikProps<PoolConfig[]>) => {
+          onSubmit={(
+            values: PoolConfig[],
+            formikBag: FormikProps<PoolConfig[]>
+          ) => {
             if (this.props.dispatch) {
               // Convert from objects to arrays
-              const poolConfigs = _.map(values, (value: PoolConfig, index: number) => value)
+              const poolConfigs = _.map(
+                values,
+                (value: PoolConfig, index: number) => value
+              )
               this.props.dispatch(setPoolsConfig.started(poolConfigs))
             }
           }}
@@ -85,7 +94,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
               poolFields.push(
                 <Header as="h2" key={`${i}_pool_header`}>
                   Pool {i + 1}
-                </Header>,
+                </Header>
               )
 
               // URL
@@ -99,12 +108,15 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
                   onBlur={formikProps.handleBlur}
                   value={_.get(formikProps.values, [i, 'url'], '')}
                   error={!!_.get(formikProps.errors, [i, 'url'], '')}
-                />,
+                />
               )
               poolFields.push(
-                <div className={classNames.formFieldError} key={`${i}_url_error`}>
+                <div
+                  className={classNames.formFieldError}
+                  key={`${i}_url_error`}
+                >
                   {_.get(formikProps.errors, [i, 'url'], '')}
-                </div>,
+                </div>
               )
 
               // Worker
@@ -118,12 +130,15 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
                   onBlur={formikProps.handleBlur}
                   value={_.get(formikProps.values, [i, 'worker'], '')}
                   error={!!_.get(formikProps.errors, [i, 'worker'], '')}
-                />,
+                />
               )
               poolFields.push(
-                <div className={classNames.formFieldError} key={`${i}_worker_error`}>
+                <div
+                  className={classNames.formFieldError}
+                  key={`${i}_worker_error`}
+                >
                   {_.get(formikProps.errors, [i, 'worker'], '')}
-                </div>,
+                </div>
               )
 
               // Password
@@ -137,19 +152,22 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
                   onBlur={formikProps.handleBlur}
                   value={_.get(formikProps.values, [i, 'password'], '')}
                   error={!!_.get(formikProps.errors, [i, 'password'], '')}
-                />,
+                />
               )
               poolFields.push(
-                <div className={classNames.formFieldError} key={`${i}_password_error`}>
+                <div
+                  className={classNames.formFieldError}
+                  key={`${i}_password_error`}
+                >
                   {_.get(formikProps.errors, [i, 'password'], '')}
-                </div>,
+                </div>
               )
             }
             return (
               <Form onSubmit={formikProps.handleSubmit}>
                 {poolFields}
 
-                <Button type="submit">SAVE</Button>
+                {formikProps.dirty && <Button type="submit">SAVE</Button>}
               </Form>
             )
           }}
@@ -165,4 +183,6 @@ const mapStateToProps = (state: any, props: any): ConnectProps => ({
 
 const poolsPanel = withStyles()<any>(PoolsPanel)
 
-export default withRouter(connect<ConnectProps, any, any>(mapStateToProps)(poolsPanel))
+export default withRouter(
+  connect<ConnectProps, any, any>(mapStateToProps)(poolsPanel)
+)
