@@ -2287,7 +2287,6 @@ int total_work_inc(void)
     cg_wlock(&control_lock);
     ret = total_work++;
     cg_wunlock(&control_lock);
-    applog(LOG_ERR, "NEW WORK WITH id=%u", ret);
 
     return ret;
 }
@@ -3535,14 +3534,14 @@ share_result(json_t* val, json_t* res, json_t* err, const struct work* work,
         pool->last_share_time = cgpu->last_share_pool_time;
         pool->last_share_diff = work->work_difficulty;
         applog(LOG_DEBUG, "PROOF OF WORK RESULT: true (yay!!!)");
-        if (!QUIET) {
-            if (total_pools > 1)
-                applog(LOG_NOTICE, "Accepted %s %s %d pool %d %s%s",
-                    hashshow, cgpu->drv->name, cgpu->device_id, work->pool->pool_no, resubmit ? "(resubmit)" : "", worktime);
-            else
-                applog(LOG_NOTICE, "Accepted %s %s %d %s%s",
-                    hashshow, cgpu->drv->name, cgpu->device_id, resubmit ? "(resubmit)" : "", worktime);
-        }
+        // if (!QUIET) {
+            // if (total_pools > 1)
+                // applog(LOG_NOTICE, "Accepted %s %s %d pool %d %s%s",
+                //     hashshow, cgpu->drv->name, cgpu->device_id, work->pool->pool_no, resubmit ? "(resubmit)" : "", worktime);
+            // else
+                // applog(LOG_NOTICE, "Accepted %s %s %d %s%s",
+                //     hashshow, cgpu->drv->name, cgpu->device_id, resubmit ? "(resubmit)" : "", worktime);
+        // }
         sharelog("accept", work);
         if (opt_shares && total_diff_accepted >= opt_shares) {
             applog(LOG_WARNING, "Successfully mined %d accepted shares as requested and exiting.", opt_shares);
@@ -6707,8 +6706,8 @@ static void* stratum_sthread(void* userdata)
 
         // TODO: Fix this bitcoin thingie
         if (unlikely(work->nonce2_len > 4)) {
-            applog(LOG_ERR, "Pool %d asking for inappropriately long nonce2 length %d",
-                pool->pool_no, (int)work->nonce2_len);
+            // applog(LOG_ERR, "Pool %d asking for inappropriately long nonce2 length %d",
+            //     pool->pool_no, (int)work->nonce2_len);
             applog(LOG_ERR, "Not attempting to submit shares");
             free_work(work);
             continue;
@@ -6731,7 +6730,7 @@ static void* stratum_sthread(void* userdata)
         __bin2hex(noncehex, (const unsigned char*)&nonce, NONCE_SIZE);
         __bin2hex(nonce2hex, (const unsigned char*)&(work->nonce2), work->nonce2_len);
 
-        applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
+        // applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
 
         sshare = cgcalloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t*)work->hash;
@@ -6751,9 +6750,9 @@ static void* stratum_sthread(void* userdata)
             "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
             pool->rpc_user, work->job_id, nonce2hex, work->ntime, noncehex, sshare->id);
 
-        applog(LOG_ERR, "Submitting share %08lx to pool %d",
-            (long unsigned int)htole32(hash32[6]), pool->pool_no);
-        applog(LOG_ERR, "JSON=%s", s);
+        // applog(LOG_ERR, "Submitting share %08lx to pool %d",
+        //    (long unsigned int)htole32(hash32[6]), pool->pool_no);
+        // applog(LOG_ERR, "JSON=%s", s);
 
         /* Try resubmitting for up to 2 minutes if we fail to submit
 		 * once and the stratum pool nonce1 still matches suggesting
@@ -6769,7 +6768,7 @@ static void* stratum_sthread(void* userdata)
 
                 if (pool_tclear(pool, &pool->submit_fail))
                     applog(LOG_ERR, "Pool %d communication resumed, submitting work", pool->pool_no);
-                applog(LOG_ERR, "Successfully submitted, adding to stratum_shares db");
+                // applog(LOG_ERR, "Successfully submitted, adding to stratum_shares db");
                 submitted = true;
                 break;
             }
@@ -7634,7 +7633,7 @@ struct work* get_work(struct thr_info* thr, const int thr_id)
     time_t diff_t;
 
     thread_reportout(thr);
-    applog(LOG_DEBUG, "Popping work from get queue to get work");
+    // applog(LOG_DEBUG, "Popping work from get queue to get work");
     diff_t = time(NULL);
     while (!work) {
         work = hash_pop(true);
@@ -7684,8 +7683,8 @@ static void submit_work_async(struct work* work)
         pool->diff_accepted += work->work_difficulty;
         mutex_unlock(&stats_lock);
 
-        applog(LOG_NOTICE, "Accepted %s %d benchmark share nonce %08x",
-            cgpu->drv->name, cgpu->device_id, *(uint32_t*)(work->data + 64 + 12));
+        // applog(LOG_NOTICE, "Accepted %s %d benchmark share nonce %08x",
+        //    cgpu->drv->name, cgpu->device_id, *(uint32_t*)(work->data + 64 + 12));
         return;
     }
 
@@ -7779,7 +7778,7 @@ static void update_work_stats(struct thr_info* thr, struct work* work)
         work->pool->solved++;
         found_blocks++;
         work->mandatory = true;
-        applog(LOG_NOTICE, "Found block for pool %d!", work->pool->pool_no);
+        // applog(LOG_NOTICE, "Found block for pool %d!", work->pool->pool_no);
     }
 
     mutex_lock(&stats_lock);
@@ -9900,11 +9899,11 @@ int main(int argc, char* argv[])
 #ifdef EMC_TEST
     //NOTE: BEGIN TESTING SECTION
 
-    usermain();
+    // usermain();
 
-    int tResult;
-    char tArgv[] = "1";
-    char** ptArgv;
+    // int tResult;
+    // char tArgv[] = "1";
+    // char** ptArgv;
 
     //NOTE: BEGIN GPIO Testing
     //tResult = gpio_main();

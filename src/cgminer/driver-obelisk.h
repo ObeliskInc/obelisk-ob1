@@ -5,6 +5,7 @@
 #include "elist.h"
 #include "miner.h"
 #include "obelisk/Ob1API.h"
+#include "obelisk/Ob1Models.h"
 #include "obelisk/Ob1Utils.h"
 #include "obelisk/err_codes.h"
 
@@ -16,7 +17,7 @@
 #define NUM_ENGINES_PER_CHIP 64
 
 // Each engine will be given a range this size
-#define NONCE_RANGE_SIZE (4294976296ULL / 4ULL)
+#define NONCE_RANGE_SIZE (4294976296ULL / 4)
 // #define NONCE_RANGE_SIZE (4294976296L / NUM_ENGINES_PER_CHIP) // 67,108,864
 
 #define MAX_WQ_SIZE 2
@@ -50,9 +51,8 @@ was setup already.
 Need to lock access to the SPI if we have three cgpu threads.
 
 Q: How will the interrupt know which card it is for?
-
-
 */
+
 typedef struct chip_info {
 #if (MODEL == SC1)
     // Keep track of busy engines manually, because reading the EBR doesn't seem to work
@@ -104,10 +104,30 @@ typedef struct nonce_fifo {
     nonce_info nonces[MAX_PENDING_NONCES];
 } nonce_fifo;
 
-// Obelisk-specific info stored on the cgpu object - use this to keep track
-// of the state of the chips and which work items are being handled by
-// which chips, among other things.
+// ob_chain is essentially the global state variable for a hashboard. Each
+// hashing board has its own ob_chain.
 typedef struct ob_chain {
+	// Board information.
+	hashBoardModel staticBoardModel;
+	int            staticBoardNumber;
+
+	// Static hashing information.
+	uint8_t  staticChipTarget[32];           // The target that the chip needs to meet before returning a nonce.
+	uint64_t staticHashesPerSuccessfulNonce; // Number of hashes required to find a header meeting the chip target.
+
+	// Work information.
+	// 
+	// The nonce counters in this struct do not use locking even though they are
+	// accessed by multiple threads. That's because only one thread is ever
+	// writing to it, the others are reading. And the ones that are reading are
+	// only displaying output to a user, so if it's occasionally corrupted,
+	// that's not so bad.
+	uint64_t  goodNoncesFound; // Total number of good nonces found.
+	struct    work** chipWork; // The work structures for each chip.
+	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
+	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+
+	// Control loop information.
     int chain_id;
     uint16_t num_chips;
     uint16_t num_cores;
