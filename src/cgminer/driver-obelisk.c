@@ -712,11 +712,11 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define UndertempCheckFrequency 1
 
 // String stability variables.
-#define StartingStringVoltageLevel 20
+#define StartingStringVoltageLevel 32
 #define MaxVoltageLevel 72
 #define VoltageStepSize 12
-#define StringStableTime 360 // How long a string must have the same bias before being considered stable.
-#define StringMaxTime 1200 // After this amount of time, the string is abandoned as being unstable.
+#define StringStableTime 2360 // How long a string must have the same bias before being considered stable.
+#define StringMaxTime 6200 // After this amount of time, the string is abandoned as being unstable.
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
