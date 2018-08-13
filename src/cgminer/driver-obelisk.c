@@ -996,7 +996,7 @@ static void control_loop(ob_chain* ob)
 	// Iterate through the chips and count the number of bad chips.
 	int badChips = 0;
 	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/4 < ob->chipBadNonces[i]) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
 			badChips++;
 		}
 	}
@@ -1008,7 +1008,7 @@ static void control_loop(ob_chain* ob)
 		// Decrease the string voltage level and set the timeout for the next
 		// level to be much higher.
 		applog(LOG_ERR, "Increasing string voltage due to too many bad chips.");
-		ob->control_loop_state.chipAdjustments++;
+		ob->control_loop_state.chipAdjustments = 0;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->chipBadNonces[i] = 0;
@@ -1019,7 +1019,7 @@ static void control_loop(ob_chain* ob)
 	} else if (badChips > 1 && ob->control_loop_state.chipAdjustments > 10 && !atMinLevel) {
 		// Decrease the string voltage level.
 		applog(LOG_ERR, "Increasing string voltage due to too many adjustments for bad chips.");
-		ob->control_loop_state.chipAdjustments++;
+		ob->control_loop_state.chipAdjustments = 0;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->chipBadNonces[i] = 0;
@@ -1030,7 +1030,7 @@ static void control_loop(ob_chain* ob)
 	} else if (badChips == 0) {
 		applog(LOG_ERR, "Decreasing string voltage beacuse there are no bad chips.");
 		// Incrase the string voltage level.
-		ob->control_loop_state.chipAdjustments++;
+		ob->control_loop_state.chipAdjustments = 0;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->chipBadNonces[i] = 0;
@@ -1043,7 +1043,7 @@ static void control_loop(ob_chain* ob)
 	// Decerase the bias on any of the bad chips.
 	applog(LOG_ERR, "Adjusting the voltage on some bad chips.");
 	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/4 < ob->chipBadNonces[i]) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
 			decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
 		}
 	}
