@@ -267,10 +267,6 @@ static void* ob_control_thread(void* arg)
     sprintf(tname, "ob_control_%d", ob->chain_id);
     RenameThread(tname);
 
-    // Set initial clock divider and bias for all chips
-    ControlLoopState* clBoard = &ob->control_loop_state;
-    ob1SetClockDividerAndBias(ob->chain_id, ALL_CHIPS, clBoard->currDivider, clBoard->currBias);
-
     while (true) {
         control_loop(ob);
         cgsleep_ms(100);
@@ -537,19 +533,6 @@ static void obelisk_detect(bool hotplug)
         cgpu->chain_num = i;
         cgpu->device_data = ob = &chains[i];
         chains[i].chain_id = i;
-
-        // Setup control loop initial state
-        chains[i].control_loop_state.boardId = i;
-        chains[i].control_loop_state.currDivider = 8;
-        chains[i].control_loop_state.currBias = MIN_BIAS;
-        chains[i].control_loop_state.lastChangeUp = false;
-        chains[i].control_loop_state.lastTemp = 0;
-        chains[i].control_loop_state.lastTempOnChange = 0;
-        chains[i].control_loop_state.ticksSinceLastChange = 0;
-        chains[i].control_loop_state.printCounter = 0;
-        chains[i].control_loop_state.masterTickCounter = 0;
-        chains[i].control_loop_state.lastGHS = 0.0;
-        chains[i].control_loop_state.lastGHSStatistical = 0.0;
 
         cgtime(&cgpu->dev_start_tv);
 
