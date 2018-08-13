@@ -557,7 +557,6 @@ ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
 	memcpy(&job.blake256.v, nextWork->midstate, ob->staticBoardModel.midstateSize);
 	memcpy(&job.blake256.m, nextWork->header_tail, ob->staticBoardModel.headerTailSize);
-	job.blake256.is_nonce2_roll_only = nextWork->is_nonce2_roll_only;
 
 	// Load the job onto the chip.
 	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
