@@ -23,7 +23,7 @@ APISERVER_ARGS=""
 CGMINER=cgminer
 CGMINER_DAEMON=/usr/sbin/$CGMINER
 CGMINER_PIDFILE=/var/run/$CGMINER.pid
-CGMINER_ARGS="-T --default-config /root/.cgminer/cgminer.conf --api-listen --api-allow W:127.0.0.1 --log 4 --protocol-dump --syslog"
+CGMINER_ARGS="--default-config /root/.cgminer/cgminer.conf --api-listen --api-allow W:127.0.0.1 --log 4 --protocol-dump --syslog"
 
 
 ################################################################################
