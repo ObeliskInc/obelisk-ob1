@@ -692,7 +692,7 @@ static void obelisk_detect(bool hotplug)
 		// configuration file, or boards changed), fallback to default values
 		// based on our thermal models.
 		//
-		// TODO: use a better boardID than i
+		// TODO: use actual boardID in addition to chain_id
 		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
 			&ob->control_loop_state.currentStringVoltage, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
 		if (error != SUCCESS) {
