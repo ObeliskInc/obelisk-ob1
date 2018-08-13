@@ -180,6 +180,9 @@ int validNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
 // and see if the resulting hash has sufficient difficulty to submit to the pool.
 bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Nonce nonce, struct work* engine_work, struct ob_chain* ob)
 {
+	if (engine_work == NULL) {
+		return false;
+	}
 #if (MODEL == SC1)
     // Make the header with the nonce inserted at the right spot
     uint8_t header[SIA_HEADER_SIZE];
@@ -1126,41 +1129,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 #if (MODEL == SC1)
 	// Job queueing handled above already.
 #elif (MODEL == DCR1)
-    // Get a single work item
-    // TODO: We don;t need to get a new work item every time through - Sia has TONS of nonce space,
-    // so we can keep reusing it.
-    // if (!ob->curr_work) {
-    //     struct work* new_work = wq_dequeue(ob, true);
-    //     while (!new_work) {
-    //         cgsleep_ms(10);
-    //         new_work = wq_dequeue(ob, true);
-    //     }
-
-    //     struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-    //     if (engine_work) {
-    //         new_work->is_nonce2_roll_only = strcmp(engine_work->job_id, new_work->job_id) == 0;
-    //     }
-    //     ob->curr_work = new_work;
-
-    //     applog(LOG_ERR, "***************************************************************");
-    //     applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lu  work->id=%llu  stale_share_id=%llu", ob->curr_work->job_id, ob->curr_work->nonce2, ob->curr_work->id, ob->curr_work->pool->stale_share_id);
-    //     applog(LOG_ERR, "***************************************************************");
-
-    //     hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
-
-    //     // Load the current job to all chips
-    //     Job job;
-    //     // TODO: Change ob1LoadJob() to take a byte pointer so we avoid this copy
-    //     memcpy(&job.blake256, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
-
-    //     ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
-    //     if (error != SUCCESS) {
-    //         // TODO: do something
-    //         goto scanwork_exit;
-    //     }
-
-    //     ob->start_of_next_nonce = 0;
-    // }
 
     applog(LOG_ERR, "@@@@@@@@@@@@@@ scanwork() handling work!\n");
     for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
