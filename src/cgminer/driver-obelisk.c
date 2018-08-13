@@ -641,6 +641,17 @@ static void obelisk_detect(bool hotplug)
 			uint64_t hashesPerNonce = 1;
 			hashesPerNonce = hashesPerNonce << 40;
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
+		} else if (boardType == MODEL_DCR1) {
+			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
+
+			// Employ memcpy because we can't set the target directly.
+			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+			memcpy(ob->staticChipTarget, chipTarget, 32);
+
+			// Use a proxy because we can't set the value directly to 1 << 40.
+			uint64_t hashesPerNonce = 1;
+			hashesPerNonce = hashesPerNonce << 32;
+			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 		}
 
         cgtime(&cgpu->dev_start_tv);
@@ -983,21 +994,27 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
-        uint64_t done_bitmask;
-        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, &done_bitmask);
+		// Check whether the chip is done.
+		uint8_t* doneBitmask = malloc(ob->staticBoardModel.enginesPerChip/8);
+        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
 		// done.
-		if (error != SUCCESS || done_bitmask != 0xffffffffffffffff) {
+		if (error != SUCCESS) {
+			continue;
+		}
+		bool wholeChipDone = true;
+		for (int i = 0; i < ob->staticBoardModel.enginesPerChip/8; i++) {
+			if (doneBitmask[i] != 0xff) {
+				wholeChipDone = false;
+				break;
+			}
+		}
+		if (!wholeChipDone) {
 			continue;
 		}
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
-			// Skip this engine if it's not done.
-			if (!(done_bitmask & (1ULL << engine_num))) {
-				continue;
-			}
-
 			// Read any nonces that the engine found.
 			NonceSet nonce_set;
 			nonce_set.count = 0;
