@@ -27,3 +27,16 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 
 	.nonceRange = 4294967296ULL // 2^32
 };
+
+// HASHBOARD_MODEL_DCR1A defines the parameters for our DCR1A hashing card.
+const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
+	.chipsPerBoard = 15,
+	.enginesPerChip = 128,
+	.minStringVoltageLevel = 20,
+	.maxStringVoltageLevel = 127,
+
+	.headerSize = 180,
+	.nonceOffset = 32,
+
+	.nonceRange = 33554432ULL // 2^25
+};
