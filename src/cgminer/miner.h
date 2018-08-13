@@ -1486,7 +1486,6 @@ struct work {
 
     // Field used to pass the nonce in the copied work struct when submitting a nonce
     Nonce nonce_to_submit;
-    bool is_nonce2_roll_only;
 };
 
 #ifdef USE_MODMINER

@@ -98,7 +98,10 @@ bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, 
         
     transfer(fileSPI, pucaTxBuf, pucaRxBuf, uiLength);
     
-    usleep(50);
+    // Only sleep for reads
+    if (eSPIXferType == E_SPI_XFER_READ) {
+        usleep(10);
+    }
 
     return(bError); // return true if error; else false
 }  // end of bSPI5StartDataXfer()
