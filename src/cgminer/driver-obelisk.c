@@ -680,6 +680,10 @@ static void obelisk_detect(bool hotplug)
 		}
 
 		// Set the default chip biases based on the thermal models that we have.
+		//
+		// TODO: If there is a file that contains a previous thermal
+		// configuration for this machine, use that file instead of guessing
+		// blindly.
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			// Figure out the delta based on our thermal models.
 			int64_t chipDelta = 0;
