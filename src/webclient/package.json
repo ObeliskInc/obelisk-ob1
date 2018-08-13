@@ -1,0 +1,63 @@
+{
+  "name": "obelisk_miner_ui",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@types/classnames": "2.2.3",
+    "@types/enzyme": "2.8.11",
+    "@types/jest": "21.1.1",
+    "@types/lodash": "4.14.106",
+    "@types/loglevel": "1.5.1",
+    "@types/node": "8.0.31",
+    "@types/prop-types": "15.5.3",
+    "@types/react": "16.3.8",
+    "@types/react-dom": "16.0.5",
+    "@types/react-redux": "5.0.9",
+    "@types/react-router-dom": "4.2.7",
+    "@types/recharts": "1.0.23",
+    "@types/redux-logger": "3.0.5",
+    "axios": "0.17.1",
+    "classnames": "2.2.5",
+    "csx": "8.5.0",
+    "enzyme": "3.1.0",
+    "formik": "0.11.11",
+    "isemail": "3.0.0",
+    "lodash": "4.17.4",
+    "loglevel": "1.5.0",
+    "moment": "2.22.2",
+    "query-string": "5.1.0",
+    "react": "16.3.1",
+    "react-dom": "16.3.1",
+    "react-dropzone": "4.2.13",
+    "react-redux": "5.0.6",
+    "react-router-dom": "4.3.1",
+    "react-scripts-ts": "2.7.0",
+    "react-typestyle": "0.3.0",
+    "recharts": "1.0.0-beta.10",
+    "redux": "3.7.2",
+    "redux-batch-enhancer": "0.1.3",
+    "redux-logger": "3.0.6",
+    "redux-logic": "0.12.3",
+    "reselect": "3.0.1",
+    "semantic-ui-css": "2.2.12",
+    "semantic-ui-forest-themes": "1.0.3",
+    "semantic-ui-react": "0.82.0",
+    "typescript": "2.8.1",
+    "typescript-fsa": "2.5.0",
+    "typestyle": "1.4.1",
+    "updeep": "1.0.0",
+    "valid-url": "1.0.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "react-scripts-ts start",
+    "build": "react-scripts-ts build",
+    "test": "react-scripts-ts test  --env=jsdom --setupTestFrameworkScriptFile=raf/polyfill",
+    "eject": "react-scripts-ts eject"
+  },
+  "proxy": {
+    "/api": {
+      "target": "http://192.168.1.125:8080"
+    }
+  }
+}

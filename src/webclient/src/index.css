@@ -1,0 +1,244 @@
+/* -------------------------------------------------------------------------------------------------
+ * Copyright 2018 Obelisk Inc.
+ * ------------------------------------------------------------------------------------------------/
+
+/* apply a natural box layout model to all elements, but allowing components to change */
+html {
+  box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Karbon Thin', sans-serif;
+}
+
+.ui.header,
+.ui.menu,
+.ui.button {
+  font-family: 'Karbon Thin', sans-serif;
+  border-radius: 0;
+}
+
+#root {
+  height: 100%;
+  background: #666666;
+}
+
+@font-face {
+  font-family: 'Karbon Thin';
+  src: url('/fonts/karbonthin.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'Karbon Regular';
+  src: url('/fonts/karbonregular.otf') format('opentype');
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: none;
+}
+
+.fullHeight {
+  height: 100%;
+}
+
+.main {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  background: #000000;
+}
+
+.flex1 {
+  flex: 1
+}
+
+.sidebar {
+  width: 200px;
+  background: #1D1D1D;
+}
+
+.pusher {
+  height: 100%;
+}
+
+.ui.basic.segment {
+  margin:0;
+}
+
+.ui.labeled.icon.menu {
+  width: 100%;
+  background: #1D1D1D;
+}
+
+.ui.menu,
+.ui.selection.dropdown,
+.ui.icon.message {
+  border-radius: 0;
+}
+
+.ui.labeled.icon.menu {
+  margin-top: 0;
+}
+
+.ui.vertical.menu>.active.item:first-child,
+.ui.vertical.menu>.active.item:last-child {
+  border-radius: 0;
+}
+
+.ui.vertical.menu>.item:first-child {
+  border-top: 1px solid #2f2f2f;
+}
+
+.ui.vertical.inverted.menu .item:before {
+  background: #2f2f2f;
+}
+
+.ui.vertical.menu>.item:nth-last-child(3) {
+  border-bottom: 1px solid #2f2f2f;
+}
+
+.ui.inverted.menu .item {
+  color: #A0A0A0;
+}
+
+.ui.inverted.menu .active.item {
+  background-color: #000000;
+}
+
+.ui.inverted.menu a.active.item:hover{
+  color: white;
+  background: #000000;
+  border-radius: 0;
+}
+
+.ui.inverted.menu a.item:hover {
+  color: white;
+  background: #303030;
+  border-radius: 0;
+}
+
+.ui.inverted.menu a.item:active {
+  color: white;
+  background: #606060;
+}
+
+.ui.button.hamburgerMenu,
+.ui.button.hamburgerMenu:hover,
+.ui.button.hamburgerMenu:focus {
+  background-color: transparent;
+  max-width: 45px;
+}
+
+.ui.button:hover, .ui.button:focus {
+  background-color: #606060;
+}
+
+h1.ui.header {
+  border-bottom: 1px solid #606060;
+  flex: none;
+}
+
+.ui.form {
+  margin-bottom: 30px;
+}
+
+.ui.form input[type="text"],
+.ui.form input[type="text"]:focus,
+.ui.form input[type="password"],
+.ui.form input[type="password"]:focus {
+  border: 1px solid #404040;
+  background-color: #1D1D1D;
+  color: #B0B0B0;
+  border-radius: 0;
+  font-family: 'Karbon Thin';
+}
+
+.ui.form .field.error input[type="text"]:focus,
+.ui.form .field.error input[type="password"]:focus {
+  background-color: #1D1D1D;
+  border: 1px solid #ed1d25;  
+  color: white;
+}
+
+.ui.form .field.error input[type="text"],
+.ui.form .field.error input[type="password"] {
+  background-color: #1D1D1D;
+  border: 1px solid #ed1d25;  
+}
+
+
+.ui.form input[type="text"]:focus,
+.ui.form input[type="password"]:focus {
+  color: white;
+  border: 1px solid #808080;
+}
+
+.ui.basic.segment {
+  max-width: 600px;
+  width: 100%;
+}
+
+.ui.table {
+  border: none;
+  border-radius: 0;
+}
+
+.ui.table thead tr:first-child > th:last-child,
+.ui.table thead tr:first-child > th:first-child {
+  border-radius: 0;
+}
+
+.ui.horizontal.label {
+    margin: 0;
+}
+
+.ui.progress {
+  margin-bottom: 0.25em;
+}
+
+.ui.progress .bar {
+  height: 30px;
+}
+
+
+/* Make sidebar menu flex */
+.ui.labeled.icon.menu {
+  display: flex;
+  flex: 1;
+}
+
+.main > .sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Remove blue border color from dropdown list */
+.ui.selection.active.dropdown,
+.ui.selection.active.dropdown:hover,
+.ui.selection.active.dropdown .menu,
+.ui.selection.active.dropdown:hover .menu {
+  border-color: black;
+}
+
+.ui.dropdown .menu > .item:hover {
+  background: #a91e24;
+}
+
+.ui.red.buttons .button, .ui.red.button, .ui.red.button:focus {
+  background: #a91e24;
+}
+
+/* Default style makes fields too dark */
+.ui.form .disabled.fields .field, .ui.form .disabled.field, .ui.form .field :disabled {
+    opacity: 1;
+}

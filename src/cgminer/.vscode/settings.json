@@ -1,0 +1,13 @@
+{
+  "files.associations": {
+    "bitset": "c",
+    "iosfwd": "c",
+    "iterator": "c",
+    "string": "c",
+    "string_view": "c",
+    "vector": "c",
+    "ios": "c",
+    "string.h": "c",
+    "__locale": "c"
+  }
+}

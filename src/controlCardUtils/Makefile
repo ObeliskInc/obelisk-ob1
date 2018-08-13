@@ -3,7 +3,7 @@
 TOOLCHAIN_PATH = $(OBELISK_OB1_DIR)/controlCardImage/host/bin
 CC = $(TOOLCHAIN_PATH)/arm-linux-gcc
 CPP = $(TOOLCHAIN_PATH)/arm-linux-cpp
-CFLAGS = -ggdb -O0 -Wformat=2 -Werror -Wall -Wextra -Wswitch-default -Wswitch-enum -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn
+CFLAGS = -ggdb -s -Os -Wformat=2 -Werror -Wall -Wextra -Wswitch-default -Wswitch-enum -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn
 
 DEPS = gpio.h led_control.h
 
