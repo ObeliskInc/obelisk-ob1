@@ -9,7 +9,10 @@ typedef struct hashBoardModel {
 
 	// Information for working with block headers for this algorithm.
 	uint64_t headerSize;
+	uint64_t headerTailSize;
+	uint64_t midstateSize;
 	uint64_t nonceOffset;
+	uint64_t nonceOffsetInTail;
 
 	// Suggested parameters to use when operating the chips.
 	uint64_t nonceRange;
@@ -23,7 +26,10 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.maxStringVoltageLevel = 127,
 
 	.headerSize = 80,
+	.headerTailSize = 0,    // no tail
+	.midstateSize = 0,      // no midstate
 	.nonceOffset = 32,
+	.nonceOffsetInTail = 0, // no tail
 
 	.nonceRange = 4294967296ULL // 2^32
 };
@@ -36,7 +42,10 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.maxStringVoltageLevel = 127,
 
 	.headerSize = 180,
-	.nonceOffset = 32,
+	.headerTailSize = 52,
+	.midstateSize = 32,
+	.nonceOffset = 140,
+	.nonceOffsetInTail = 12,
 
 	.nonceRange = 33554432ULL // 2^25
 };

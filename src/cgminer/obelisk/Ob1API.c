@@ -52,7 +52,6 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         Blake256Job* pBlake256Job = &(pJob->blake256);
 
         if (pBlake256Job->is_nonce2_roll_only) {
-            applog(LOG_ERR, "THIS IS HOW WE ROLL....NONCE2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             // Optimization to only write the nonce2 register when the only thing we did was roll the nonce2
             // which is located in the header tail.
             uint32_t data = pBlake256Job->m[5];
@@ -219,24 +218,20 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         uint64_t fsr;
         ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr);
         if (error != SUCCESS) {
-            return GENERIC_ERROR;
+            return error;
         }
 
         int n = 0;
         uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
         // Quick check to early out if no nonces have been found
         if (fsr_mask > 0) {
-            if (fsr_mask > 1) {
-                applog(LOG_ERR, "***** Found more than 1 nonce!  fsr=0x%016llX", fsr);
-            }
-
             uint8_t fifoDataReg = E_SC1_REG_FDR0;
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
                 // See which bits are set and extract the nonces for them
                 if ((1 << i) & fsr_mask) {
                     error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]));
                     if (error != SUCCESS) {
-                        return GENERIC_ERROR;
+                        return error;
                     }
                     n++;
                 }
@@ -252,17 +247,13 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         uint32_t fsr;
         ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
         if (error != SUCCESS) {
-            return 0;
+            return error;
         }
 
         int n = 0;
         uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
         // Quick check to early out if no nonces have been found
         if (fsr_mask > 0) {
-            if (fsr_mask > 1) {
-                applog(LOG_ERR, "***** Found more than 1 nonce!  fsr=0x%08lX", fsr);
-            }
-
             uint8_t fifoDataReg = E_DCR1_REG_FDR0;
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
                 // See which bits are set and extract the nonces for them
@@ -270,7 +261,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
                     Nonce nonce;
                     error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce);
                     if (error != SUCCESS) {
-                        return 0;
+                        return error;
                     }
                     // applog(LOG_ERR, "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                     // applog(LOG_ERR, "readnonce: 0x%08lX", nonce);
