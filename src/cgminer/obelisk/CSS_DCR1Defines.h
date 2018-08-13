@@ -202,7 +202,7 @@ typedef enum {
     E_DCR1_REG_M11 = 0x22,
     E_DCR1_REG_M12 = 0x23,
 
-    E_DRC1_REG_V0MATCH = 0x1A,
+    E_DCR1_REG_V0MATCH = 0x1A,
 
     E_DCR1_REG_FCR = 0x1C, // Fifo control register
     E_DCR1_REG_UB = 0x1D, //!< Upper bound
@@ -269,7 +269,7 @@ typedef enum {
  * b[12:8] strobe control (test purposes); write as 0's
  * b[31:13] unused; write as 0's
  */
-enum E_DRC1_FCR_bits_T {
+enum E_DCR1_FCR_bits_T {
     E_DCR1_FCR_MASK_D0 = 0x01,
     E_DCR1_FCR_MASK_D1 = 0x02,
     E_DCR1_FCR_MASK_D2 = 0x04,
