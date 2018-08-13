@@ -32,6 +32,21 @@ void dcrPrepareMidstate(uint8_t midstate[64], uint8_t header[180]) {
 	dcrCompressToMidstate(midstate, header);
 }
 
+void dcrMidstateChecksum(uint8_t* checksum, uint8_t midstate[64], uint8_t headerTail[52]) {
+	memcpy(checksum, midstate, 32);
+
+	// TODO: Unclear whether the bytes that we set in m13 and m15 are bytes that
+	// need to be set for every example, or if for some reason they are specific
+	// to this example.
+	uint32_t m[16];
+	memset(m, 0x00, 64);
+	memcpy(m, headerTail, 52);
+	m[13] = 0x80000001U;
+	m[15] = 0x000005A0U;
+
+	dcrBlake256CompressBlock(checksum, m, 0x5A0);
+}
+
 // dcrMidstateMeetsMinimumTarget will take a midstate and a headerTail as input,
 // and return whether the set of them meet the target. The midstate should be
 // the midstate produced by 'dcrPrepareMidstate', and the headerTail should be a

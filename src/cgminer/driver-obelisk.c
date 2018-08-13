@@ -555,7 +555,7 @@ ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	// Load the current job to the current chip and engine
 	Job job;
 	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-	memcpy(&job.blake256.v, nextWork, DECRED_MIDSTATE_SIZE);
+	memcpy(&job.blake256.v, nextWork->midstate, DECRED_MIDSTATE_SIZE);
 	memcpy(&job.blake256.m, nextWork->header_tail, DECRED_HEADER_TAIL_SIZE);
 	job.blake256.is_nonce2_roll_only = nextWork->is_nonce2_roll_only;
 
@@ -1021,8 +1021,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				struct work* engine_work = ob->chipWork[chip_num];
 				int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
-					ob->badNoncesFound++;
 					ob->chipBadNonces[chip_num]++;
+					applog(LOG_ERR, "chip %u bad nonces: %lld", chip_num, ob->chipBadNonces[chip_num]);
 				}
 				if (nonceResult > 0) {
 					ob->goodNoncesFound++;

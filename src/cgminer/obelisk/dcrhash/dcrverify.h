@@ -18,6 +18,10 @@ void dcrCompressToMidstate(uint8_t midstate[64], uint8_t header[180]);
 // pools will provide the header in big-endian format.
 void dcrPrepareMidstate(uint8_t midstate[64], uint8_t header[180]);
 
+// dcrMidstateChecksum will provide the checksum of the provided midstate and
+// header tail.
+void dcrMidstateChecksum(uint8_t* checksum, uint8_t midstate[64], uint8_t headerTail[52]);
+
 // dcrMidstateMeetsMinimumTarget will take a midstate and a headerTail as input,
 // and return whether the set of them meet the target. The midstate should be
 // the midstate produced by 'dcrPrepareMidstate', and the headerTail should be a
