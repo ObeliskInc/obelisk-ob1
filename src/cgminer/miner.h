@@ -271,7 +271,6 @@ extern char* curly;
 #define HASH_SIZE 32 // bytes
 #define ARB_TX_SIZE 137 // bytes (inclues the 0x00 byte)
 #define DECRED_MIDSTATE_SIZE 32 // bytes
-#define DECRED_HEADER_TAIL_SIZE 52 // bytes
 #define DECRED_HEADER_TAIL_OFFSET_IN_BLOCK 128 // bytes
 #define DECRED_HEADER_TAIL_NONCE_OFFSET 12 // bytes
 #define NTIME_STR_SIZE 8
@@ -281,6 +280,7 @@ extern char* curly;
 #else
 
 #endif
+#define DECRED_HEADER_TAIL_SIZE 52 // bytes
 
 /* Put avalon last to make it the last device it tries to detect to prevent it
  * trying to claim same chip but different devices. Adding a device here will
@@ -1418,10 +1418,10 @@ struct work {
     unsigned char merkle_root[HASH_SIZE];
 #elif (ALGO == BLAKE256)
     unsigned char midstate[DECRED_MIDSTATE_SIZE];
-    unsigned char header_tail[DECRED_HEADER_TAIL_SIZE];
 #else
     unsigned char midstate[32];
 #endif
+    unsigned char header_tail[DECRED_HEADER_TAIL_SIZE];
     unsigned char target[32];
     unsigned char hash[32];
 
@@ -1487,7 +1487,6 @@ struct work {
 
     // Field used to pass the nonce in the copied work struct when submitting a nonce
     Nonce nonce_to_submit;
-    bool is_nonce2_roll_only;
 };
 
 #ifdef USE_MODMINER
