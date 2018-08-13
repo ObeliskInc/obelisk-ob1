@@ -983,7 +983,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Check whether the chip is done.
-		uint8_t* doneBitmask = malloc(ob->staticBoardModel.enginesPerChip/8);
+        uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
 		// done.
