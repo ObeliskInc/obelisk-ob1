@@ -1226,6 +1226,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     add_hashes(ob, NONCE_RANGE_SIZE);
 
                     NonceSet nonce_set;
+                    nonce_set.count = 0;
                     error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
                     if (nonce_set.count > 0) {
                         applog(LOG_ERR, "Received %d nonce(s) from %u:%u:%u", nonce_set.count, ob->chain_id, chip_num, engine_num);
