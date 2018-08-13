@@ -36,7 +36,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.maxStringVoltageLevel = 127,
 
 	.headerSize = 180,
-	.nonceOffset = 32,
+	.nonceOffset = 140,
 
 	.nonceRange = 33554432ULL // 2^25
 };

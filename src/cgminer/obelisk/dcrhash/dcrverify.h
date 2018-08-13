@@ -33,3 +33,5 @@ bool dcrMidstateMeetsProvidedTarget(uint8_t midstate[64], uint8_t headerTail[52]
 // dcrMidstateMeetsProvidedDifficulty checks whether the provided midstate and
 // header tail hash to the provided target.
 bool dcrMidstateMeetsProvidedDifficulty(uint8_t midstate[64], uint8_t headerTail[52], double difficulty);
+
+int dcrHeaderMeetsChipTargetAndPoolDifficulty(uint8_t midstate[64], uint8_t headerTail[52], uint8_t chipTarget[32], double poolDifficulty);

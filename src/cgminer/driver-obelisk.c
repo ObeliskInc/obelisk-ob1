@@ -151,14 +151,11 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
-// validNonce returns '0' if the nonce is not valid under either the pool
+// siaValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
 // pool difficulty but is valid under the chip difficutly, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
-//
-// TODO: Instead of calling 'siaHeader...' make a generic function that we can
-// establish when we set up the board in the beginning of the function.
-int validNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
+int siaValidNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
 	// Create the header with the nonce set up correctly.
     uint8_t header[ob->staticBoardModel.headerSize];
     memcpy(header, engine_work->midstate, ob->staticBoardModel.headerSize);
@@ -171,68 +168,21 @@ int validNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
 	return siaHeaderMeetsChipTargetAndPoolDifficulty(header, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
-// Perform a hash on the midstate with the specified nonce inserted in place
-// and see if the resulting hash has sufficient difficulty to submit to the pool.
-bool is_valid_nonce(uint8_t board_num, uint8_t chip_num, uint8_t engine_num, Nonce nonce, struct work* engine_work, struct ob_chain* ob)
-{
-	if (engine_work == NULL) {
-		return false;
-	}
-#if (MODEL == SC1)
-    // Make the header with the nonce inserted at the right spot
-    uint8_t header[SIA_HEADER_SIZE];
-    memcpy(header, engine_work->midstate, SIA_HEADER_SIZE);
-    memcpy(header + 32, &nonce, sizeof(Nonce));
-
-    if (siaHeaderMeetsMinimumTarget(header)) {
-        add_good_nonces(ob, 1);
-        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%016llX (good count=%llu, bad count=%llu)", board_num, nonce, get_good_nonces(ob), get_bad_nonces(ob));
-    } else {
-        add_bad_nonces(ob, 1);
-        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%016llX (good count=%llu, bad count=%llu)",board_num, nonce, get_good_nonces(ob), get_bad_nonces(ob));
-    }
-
-    // Check if it meets the pool's stratum difficulty
-    if (engine_work->pool) {
-        double sdiff = engine_work->pool->sdiff;
-        if (siaHeaderMeetsProvidedDifficulty(header, sdiff)) {
-            return true;
-        }
-    }
-    return false;
-
-#elif (MODEL == DCR1)
-    // Make the header with the nonce inserted at the right spot
+// dcrValidNonce returns '0' if the nonce is not valid under either the pool
+// difficulty nor the chip difficulty, '1' if the nonce is not valid under the
+// pool difficulty but is valid under the chip difficutly, and '2' if the nonce
+// is valid under both the pool difficulty and the chip difficulty.
+int dcrValidNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
+    // Create the midstate + tail with the nonce set up correctly.
     uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
-
-    // Make a copy of the header tail and insert the given nonce
     memcpy(headerTail, &engine_work->header_tail, DECRED_HEADER_TAIL_SIZE);
-    // dump(headerTail, DECRED_HEADER_TAIL_SIZE, "header tail (without nonce)");
     memcpy(headerTail + DECRED_HEADER_TAIL_NONCE_OFFSET, &nonce, sizeof(Nonce));
-    // dump(headerTail, DECRED_HEADER_TAIL_SIZE, "header tail (with nonce)");
-    // dump(engine_work->midstate, DECRED_MIDSTATE_SIZE, "midstate (when validating)");
 
-    if (dcrMidstateMeetsMinimumTarget(engine_work->midstate, headerTail)) {
-        add_good_nonces(ob, 1);
-        applog(LOG_ERR, "CH%u: GOOD NONCE FOUND: 0x%08lX (good count=%llu, bad count=%llu)", board_num, nonce, get_good_nonces(ob), get_bad_nonces(ob));
-    } else {
-        add_bad_nonces(ob, 1);
-        applog(LOG_ERR, "CH%u: BAD NONCE FOUND: 0x%08lX (good count=%llu, bad count=%llu)",board_num, nonce, get_good_nonces(ob), get_bad_nonces(ob));
-    }
-
-    // Check if it meets the pool's stratum difficulty
-    if (engine_work->pool) {
-        double sdiff = engine_work->sdiff;
-        applog(LOG_ERR, "CH%u: NONCE 0x%08lX checking to see if it meets pool sdiff of %f", board_num, nonce, sdiff);
-            // TODO: Anything else to do here?
-        if (dcrMidstateMeetsProvidedDifficulty(engine_work->midstate, headerTail, sdiff)) {
-            applog(LOG_ERR, "CH%u: NONCE 0x%08lX meets pool sdiff of %f", board_num, nonce, sdiff);
-            return true;
-        }
-    }
-    return false;
-
-#endif
+	// Check if it meets the pool's stratum difficulty.
+	if (!engine_work->pool) {
+		return dcrMidstateMeetsProvidedTarget(engine_work->midstate, headerTail, ob->staticChipTarget) ? 1 : 0;
+	}
+	return dcrHeaderMeetsChipTargetAndPoolDifficulty(engine_work->midstate, headerTail, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
 // increaseDivider will increase the clock divider, resulting in a slower chip.
@@ -593,6 +543,39 @@ ApiError siaLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	return SUCCESS;
 }
 
+// dcrLoadNextChipJob will load the next job onto a decred chip.
+ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
+	struct work* nextWork = wq_dequeue(ob, true);
+	ob->chipWork[chipNum] = nextWork;
+	if (nextWork == NULL) {
+		applog(LOG_ERR, "nextWork is NULL");
+		return GENERIC_ERROR;
+	}
+
+	// Load the current job to the current chip and engine
+	Job job;
+	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
+	memcpy(&job.blake256.v, nextWork, DECRED_MIDSTATE_SIZE);
+	memcpy(&job.blake256.m, nextWork->header_tail, DECRED_HEADER_TAIL_SIZE);
+	job.blake256.is_nonce2_roll_only = nextWork->is_nonce2_roll_only;
+
+	// Load the job onto the chip.
+	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "ob1LoadJob failed");
+		return error;
+	}
+
+	// Start the job on the chip.
+	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "ob1StartJob failed");
+		return error;
+	}
+	return SUCCESS;
+}
+
+
 static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
@@ -640,7 +623,10 @@ static void obelisk_detect(bool hotplug)
 			uint64_t hashesPerNonce = 1;
 			hashesPerNonce = hashesPerNonce << 40;
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
+
+			// Functions.
 			ob->loadNextChipJob = siaLoadNextChipJob;
+			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
 
@@ -652,6 +638,10 @@ static void obelisk_detect(bool hotplug)
 			uint64_t hashesPerNonce = 1;
 			hashesPerNonce = hashesPerNonce << 32;
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
+
+			// Functions.
+			ob->loadNextChipJob = dcrLoadNextChipJob;
+			ob->validNonce = dcrValidNonce;
 		}
 
         cgtime(&cgpu->dev_start_tv);
@@ -699,7 +689,7 @@ static void obelisk_detect(bool hotplug)
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+22);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -1011,7 +1001,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		if (!wholeChipDone) {
 			continue;
 		}
-#if (MODEL == SC1)
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
@@ -1030,7 +1019,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			for (uint8_t i = 0; i < nonce_set.count; i++) {
 				// Check that the nonce is valid
 				struct work* engine_work = ob->chipWork[chip_num];
-				int nonceResult = validNonce(ob, engine_work, nonce_set.nonces[i]);
+				int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
 					ob->chipBadNonces[chip_num]++;
 				}
@@ -1053,43 +1042,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
     }
-#elif (MODEL == DCR1)
-            for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-                    // We are done, so count the hashes
-                    add_hashes(ob, NONCE_RANGE_SIZE);
-
-                    NonceSet nonce_set;
-					nonce_set.count = 0;
-                    error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
-                    if (nonce_set.count > 0) {
-                        applog(LOG_ERR, "Received %d nonce(s) from %u:%u:%u", nonce_set.count, ob->chain_id, chip_num, engine_num);
-                    }
-                    for (uint8_t i = 0; i < nonce_set.count; i++) {
-                        // Check that the nonce is valid
-                        struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-                        if (is_valid_nonce(ob->chain_id, chip_num, engine_num, nonce_set.nonces[i], engine_work, ob)) {
-                            // If valid, submit to the pool
-                            applog(LOG_ERR, "===================================================================");
-                            applog(LOG_ERR, "===================================================================");
-                            applog(LOG_ERR, "SUBMITTING NONCE TO DECRED POOL!  0x%08lX", nonce_set.nonces[i]);
-                            applog(LOG_ERR, "===================================================================");
-                            applog(LOG_ERR, "===================================================================");
-                            submit_nonce(cgpu->thr[0], ob->chips[chip_num].engines_curr_work[engine_num], nonce_set.nonces[i]);
-                        } else {
-                            // TODO: handle error in some way
-                            // TODO: Increment a stat for nonces that don't meet pool sdiff?
-                        }
-                    }
-
-                    // Reset the busy flag so it is given a new job below
-                    // applog(LOG_ERR, "Setting engine not busy");
-                    set_engine_busy(ob, chip_num, engine_num, false);
-
-                    // NOTE: We don't clear the engine DONE flag, as that is not possible directly.
-                    //  instead, you need to give it a new job.
-                }
-    }
-#endif
 
     // See if the pool asked us to start clean on new work
     if (ob->curr_work && ob->curr_work->pool->swork.clean) {
@@ -1097,112 +1049,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
         ob->curr_work = NULL;
 		ob->curr_work = wq_dequeue(ob, true);
     }
-
-#if (MODEL == SC1)
-	// Job queueing handled above already.
-#elif (MODEL == DCR1)
-
-    applog(LOG_ERR, "@@@@@@@@@@@@@@ scanwork() handling work!\n");
-    for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
-        for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-            // applog(LOG_ERR, "Checking if engine_num=%d is done", engine_num);
-            
-            if (!is_engine_busy(ob, chip_num, engine_num)) {
-                // If there is no work, get a new one
-                if (!ob->curr_work) {
-                    struct work* new_work = wq_dequeue(ob, true);
-                    while (!new_work) {
-                        cgsleep_ms(10);
-                        new_work = wq_dequeue(ob, true);
-                    }
-
-                    struct work* engine_work = ob->chips[chip_num].engines_curr_work[engine_num];
-                    if (engine_work) {
-                        new_work->is_nonce2_roll_only = strcmp(engine_work->job_id, new_work->job_id) == 0;
-                    }
-                    ob->curr_work = new_work;
-
-                    // applog(LOG_ERR, "***************************************************************");
-                    // applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lu  work->id=%llu  stale_share_id=%llu", ob->curr_work->job_id, ob->curr_work->nonce2, ob->curr_work->id, ob->curr_work->pool->stale_share_id);
-                    // applog(LOG_ERR, "***************************************************************");
-
-                    // applog(LOG_ERR, "midstate");
-                    // hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
-                    // applog(LOG_ERR, "header tail");
-                    // hexdump(ob->curr_work->header_tail, DECRED_HEADER_TAIL_SIZE);
-
-                    // Load the current job to the current chip and engine
-                    Job job;
-                    // TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-                    memcpy(&job.blake256.v, ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
-                    memcpy(&job.blake256.m, ob->curr_work->header_tail, DECRED_HEADER_TAIL_SIZE);
-                    job.blake256.is_nonce2_roll_only = ob->curr_work->is_nonce2_roll_only;
-
-                    // TODO: Can we take advantage of the queued job and just MULTICAST to all chips whenever we switch work?
-                    ApiError error = ob1LoadJob(ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
-                    if (error != SUCCESS) {
-                        // TODO: do something
-                        goto scanwork_exit;
-                    }
-
-                    ob->start_of_next_nonce = 0;
-                }
-
-                // TODO: We are not currently taking advantage of the queued job ability
-
-                // applog(LOG_ERR, "Set nonce range: lower=%llu  upper=%llu", ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-
-                //  Set different nonce ranges
-                ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, ob->start_of_next_nonce, ob->start_of_next_nonce + NONCE_RANGE_SIZE - 1);
-                // ApiError error = ob1SetNonceRange(ob->chain_id, chip_num, engine_num, 0, 0xFFFFFFFF);
-                if (error != SUCCESS) {
-                    // TODO: do something
-                    goto scanwork_exit;
-                }
-                // applog(LOG_ERR, "Start job on: B%u/C%u/E%u", ob->chain_id, chip_num, engine_num);
-
-                // Start everything hashing!
-                // TODO: Should we start things hashing as each engine gets its nonce range
-                // instead of starting them all here at the end?  Does that slow us down much?
-                error = ob1StartJob(ob->chain_id, chip_num, engine_num);
-                if (error != SUCCESS) {
-                    // TODO: do something
-                    goto scanwork_exit;
-                }
-
-                set_engine_busy(ob, chip_num, engine_num, true);
-
-                // Remember what work this engine is working on, so we can use the same one
-                // when testing and submitting a nonce.
-                ob->chips[chip_num].engines_curr_work[engine_num] = ob->curr_work;
-
-                // Increment for next engine
-                ob->start_of_next_nonce += NONCE_RANGE_SIZE;
-                if (ob->start_of_next_nonce + NONCE_RANGE_SIZE >= 0xFFFFFFFFULL) {
-                    // applog(LOG_ERR, "NONCE RANGE EXHAUSTED FOR THIS WORK - NEED A NEW ONE (NONCE_RANGE_SIZE=0x%016llX", NONCE_RANGE_SIZE);
-                    ob->curr_work = NULL;
-                }
-            }
-        }
-    }
-
-#endif
-    //applog(LOG_ERR, "^^^^^^^^^^^^^^^^^^ ob->active_wq.num_elems= %d (obelisk_scan_work)", ob->active_wq.num_elems);
-
-    //applog(LOG_ERR, "sizeof(work)=%d", sizeof(struct work)); // 560 bytes
-
-    // Work seems to need to be held as long as you are still working on it.
-    // dragonmint_t1.c:1009 and 1016 call free_work()
-    // They also hold a pointer to the work in their chip structure
-
-    // WORK SPLITTING
-    // Decred: Split the 32-bit nonce range up into 128 segments and give
-    // each chip one slice.  Have a single work item per chips instead of
-    // per engine, because we would need like 6MB of work jobs otherwise,
-    // which is crazy.
-    //
-    // Sia: Split the nonce range up similarly to the Decred chip.  A 32-bit
-    // range for the whole chip, but split across 64 engines.
 
     // Update hashboard temperatures
     HashboardStatus status = ob1GetHashboardStatus(ob->chain_id);

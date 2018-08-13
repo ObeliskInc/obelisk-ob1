@@ -108,6 +108,7 @@ typedef struct nonce_fifo {
 typedef struct ob_chain ob_chain;
 
 typedef ApiError (*loadNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
+typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
 
 // ob_chain is essentially the global state variable for a hashboard. Each
 // hashing board has its own ob_chain.
@@ -134,6 +135,7 @@ struct ob_chain {
 
 	// Chip specific function pointers.
 	loadNextChipJobFn loadNextChipJob;
+	validNonceFn      validNonce;
 
 	// Control loop information.
     int chain_id;
