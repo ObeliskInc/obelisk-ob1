@@ -71,6 +71,10 @@ typedef struct ControlLoopState {
 	uint64_t goodNoncesSinceVoltageChange;
 	time_t   prevVoltageChangeTime;
 	uint64_t voltageLevelHashrates[128];
+
+	// Voltage management variables - algo 2.
+	time_t   stringAdjustmentTime;
+	uint64_t chipAdjustments;
 } ControlLoopState;
 
 // Functions for adding/subtracting bias and dividers and formatting
