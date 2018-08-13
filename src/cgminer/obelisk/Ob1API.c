@@ -167,7 +167,7 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
 
     // readAndPrintAllJobRegs(boardNum, chipNum, engineNum);
     if (writesAvoided) {
-        applog(LOG_ERR, "++++++++++ writesAvoided= %d (due to shadow registers)", writesAvoided);
+        // applog(LOG_ERR, "++++++++++ writesAvoided= %d (due to shadow registers)", writesAvoided);
     }
 
     return error;
