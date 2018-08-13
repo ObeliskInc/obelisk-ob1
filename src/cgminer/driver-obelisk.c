@@ -690,7 +690,7 @@ static void obelisk_detect(bool hotplug)
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+8);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+12);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -853,7 +853,7 @@ static void displayControlState(ob_chain* ob)
 			uint64_t badNonces = ob->chipBadNonces[chipNum];
 			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
 			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
-			applog(LOG_ERR, "Chip %u: bias=%u.%i  good=%u  bad=%u", chipNum, divider, bias, goodNonces, badNonces);
+			applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
 		}
 
         ob->control_loop_state.lastStatusOutput = currentTime;
@@ -1055,6 +1055,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				if (nonceResult == 0) {
 					ob->chipBadNonces[chip_num]++;
 					applog(LOG_ERR, "chip %u bad nonces: %lld", chip_num, ob->chipBadNonces[chip_num]);
+					for (int cn = 0; cn < ob->staticBoardModel.chipsPerBoard; cn++) {
+						applog(LOG_ERR, "%u: %lld", cn, ob->chipBadNonces[cn]);
+					}
 				}
 				if (nonceResult > 0) {
 					ob->goodNoncesFound++;

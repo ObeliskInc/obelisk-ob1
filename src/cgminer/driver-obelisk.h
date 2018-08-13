@@ -106,6 +106,7 @@ typedef struct nonce_fifo {
 
 // Forward declare the ob_chain
 typedef struct ob_chain ob_chain;
+typedef struct stringSettings stringSettings;
 
 typedef ApiError (*loadNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
 typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
@@ -128,7 +129,7 @@ struct stringSettings {
 	int8_t chipBiases[15];
 	uint8_t chipDividers[15];
 	uint8_t voltageLevel;
-}
+};
 
 // ob_chain is essentially the global state variable for a hashboard. Each
 // hashing board has its own ob_chain.
