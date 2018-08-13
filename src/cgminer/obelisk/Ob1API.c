@@ -52,7 +52,6 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         Blake256Job* pBlake256Job = &(pJob->blake256);
 
         if (pBlake256Job->is_nonce2_roll_only) {
-            applog(LOG_ERR, "THIS IS HOW WE ROLL....NONCE2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             // Optimization to only write the nonce2 register when the only thing we did was roll the nonce2
             // which is located in the header tail.
             uint32_t data = pBlake256Job->m[5];

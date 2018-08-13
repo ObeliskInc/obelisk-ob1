@@ -104,9 +104,14 @@ typedef struct nonce_fifo {
     nonce_info nonces[MAX_PENDING_NONCES];
 } nonce_fifo;
 
+// Forward declare the ob_chain
+typedef struct ob_chain ob_chain;
+
+typedef ApiError (*loadNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
+
 // ob_chain is essentially the global state variable for a hashboard. Each
 // hashing board has its own ob_chain.
-typedef struct ob_chain {
+struct ob_chain {
 	// Board information.
 	hashBoardModel staticBoardModel;
 	int            staticBoardNumber;
@@ -126,6 +131,9 @@ typedef struct ob_chain {
 	struct    work** chipWork; // The work structures for each chip.
 	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
 	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+
+	// Chip specific function pointers.
+	loadNextChipJobFn loadNextChipJob;
 
 	// Control loop information.
     int chain_id;
@@ -177,7 +185,7 @@ typedef struct ob_chain {
 
     // Configs for individual ASICs on the board
     chip_config_t chip_config[NUM_CHIPS_PER_BOARD];
-} ob_chain;
+};
 
 ApiError push_pending_nonce(ob_chain* ob, int chip_num, int engine_num, Nonce nonce, bool nonce_limit_reached);
 ApiError pop_pending_nonce(ob_chain* ob, nonce_info* info);

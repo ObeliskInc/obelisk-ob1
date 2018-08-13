@@ -39,13 +39,8 @@ DCR1:
 // HACK:
 extern void dump(unsigned char* p, int len, char* label);
 
-#if (ALGO == BLAKE2B)
 #include "obelisk/siahash/siaverify.h"
-#endif
-
-#if (ALGO == BLAKE256)
 #include "obelisk/dcrhash/dcrverify.h"
-#endif
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
@@ -573,8 +568,8 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-// loadNextChipJob will load a job into a chip.
-ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum) {
+// siaLoadNextChipJob will load a job into a chip.
+ApiError siaLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	// Mark what job the chip has.
 	ob->chipWork[chipNum] = nextWork;
@@ -645,6 +640,7 @@ static void obelisk_detect(bool hotplug)
 			uint64_t hashesPerNonce = 1;
 			hashesPerNonce = hashesPerNonce << 40;
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
+			ob->loadNextChipJob = siaLoadNextChipJob;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
 
@@ -988,19 +984,18 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	int64_t hashesConfirmed = 0;
 
-#if (MODEL == SC1)
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
 		if(ob->chipWork[chip_num] == NULL) {
-			loadNextChipJob(ob, chip_num);
+			ob->loadNextChipJob(ob, chip_num);
 			continue;
 		}
 
 		// Check whether the chip is done.
 		uint8_t* doneBitmask = malloc(ob->staticBoardModel.enginesPerChip/8);
-        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, doneBitmask);
+        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
 		// done.
 		if (error != SUCCESS) {
@@ -1016,6 +1011,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		if (!wholeChipDone) {
 			continue;
 		}
+#if (MODEL == SC1)
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
@@ -1051,38 +1047,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Give a new job to the chip.
 		// Get the next job.
-		error = loadNextChipJob(ob, chip_num);
+		error = ob->loadNextChipJob(ob, chip_num);
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "Error loading chip job");
 			continue;
 		}
     }
 #elif (MODEL == DCR1)
-    // Look for nonces first so we can give new work in the same iteration below
-    // Look for done engines, and read their nonces
-    for (uint8_t chip_num = 0; chip_num < NUM_CHIPS_PER_BOARD; chip_num++) {
-        uint64_t done_bitmask[2];
-        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, done_bitmask);
-        // if (done_bitmask[0] != 0 || done_bitmask[1] != 0) {
-        //     applog(LOG_ERR, "CH%u: done_bitmask=0x%016llX%016llX (chip_num=%u)", ob->chain_id, done_bitmask[0], done_bitmask[1], chip_num);
-        // }
-        if (error == SUCCESS && (done_bitmask[0] != 0 || done_bitmask[1] != 0)) {
             for (uint8_t engine_num = 0; engine_num < ob1GetNumEnginesPerChip(); engine_num++) {
-                uint64_t curr_done_bitmask;
-                uint64_t engine_bitmask;
-                // TODO: There is probably a better way to do this with a loop or a function, but this works for now
-                // e.g., isBitSetInBuffer(engineNum, done_bitmask);
-                if (engine_num < 64) {
-                    curr_done_bitmask = done_bitmask[1];
-                    engine_bitmask = (1ULL << engine_num);
-                } else {
-                    curr_done_bitmask = done_bitmask[0];
-
-                    engine_bitmask = (1ULL << (engine_num - 64));
-                }
-
-                // If engine is done
-                if (curr_done_bitmask & engine_bitmask) {
                     // We are done, so count the hashes
                     add_hashes(ob, NONCE_RANGE_SIZE);
 
@@ -1116,8 +1088,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     // NOTE: We don't clear the engine DONE flag, as that is not possible directly.
                     //  instead, you need to give it a new job.
                 }
-            }
-        }
     }
 #endif
 
@@ -1152,9 +1122,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
                     }
                     ob->curr_work = new_work;
 
-                    applog(LOG_ERR, "***************************************************************");
-                    applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lu  work->id=%llu  stale_share_id=%llu", ob->curr_work->job_id, ob->curr_work->nonce2, ob->curr_work->id, ob->curr_work->pool->stale_share_id);
-                    applog(LOG_ERR, "***************************************************************");
+                    // applog(LOG_ERR, "***************************************************************");
+                    // applog(LOG_ERR, "Switching to new work: job_id=%s, nonce2=%lu  work->id=%llu  stale_share_id=%llu", ob->curr_work->job_id, ob->curr_work->nonce2, ob->curr_work->id, ob->curr_work->pool->stale_share_id);
+                    // applog(LOG_ERR, "***************************************************************");
 
                     // applog(LOG_ERR, "midstate");
                     // hexdump(ob->curr_work->midstate, DECRED_MIDSTATE_SIZE);
