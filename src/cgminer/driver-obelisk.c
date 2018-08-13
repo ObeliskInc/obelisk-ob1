@@ -250,12 +250,16 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 // string.
 static void commitBoardBias(ob_chain* ob)
 {
-    int i = 0;
-    for (i = 0; i < 15; i++) {
-        ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
+    ControlLoopState *state = &ob->control_loop_state;
+    hashBoardModel *model = &ob->staticBoardModel;
+    for (int i = 0; i < model->chipsPerBoard; i++) {
+        ob1SetClockDividerAndBias(state->boardNumber, i, state->chipDividers[i], state->chipBiases[i]);
     }
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+    state->prevBiasChangeTime = state->currentTime;
+    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+
+    // Write the new biases to disk.
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentStringVoltage, state->chipBiases, state->chipDividers);
 }
 
 // decrease the clock bias of every chip on the string.
@@ -280,22 +284,28 @@ static void increaseStringBias(ob_chain* ob)
 
 static void setVoltageLevel(ob_chain* ob, uint8_t level)
 {
+    ControlLoopState *state = &ob->control_loop_state;
+    hashBoardModel *model = &ob->staticBoardModel;
+
 	// Sanity check on the voltage levels.
-	if (level < ob->staticBoardModel.minStringVoltageLevel) {
-		level = ob->staticBoardModel.minStringVoltageLevel;
-	} else if (level > ob->staticBoardModel.maxStringVoltageLevel) {
-		level = ob->staticBoardModel.maxStringVoltageLevel;
+	if (level < model->minStringVoltageLevel) {
+		level = model->minStringVoltageLevel;
+	} else if (level > model->maxStringVoltageLevel) {
+		level = model->maxStringVoltageLevel;
 	}
 
-    ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
-    ob->control_loop_state.currentVoltageLevel = level;
-    ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+    ob1SetStringVoltage(state->boardNumber, level);
+    state->currentVoltageLevel = level;
+    state->goodNoncesUponLastVoltageChange = state->currentGoodNonces;
+    state->prevVoltageChangeTime = state->currentTime;
 
     // Changing the voltage is significant enough to count as changing the bias
     // too.
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+    state->prevBiasChangeTime = state->currentTime;
+
+    // Write the new voltage level to disk.
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentStringVoltage, state->chipBiases, state->chipDividers);
 }
 
 // Separate thread to handle the control loop so we can react quickly to temp changes
@@ -678,35 +688,39 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.chipDividers[i] = baseDivider;
 		}
 
-		// Set the default chip biases based on the thermal models that we have.
+		// Load the thermal configuration for this machine. If that fails (no
+		// configuration file, or boards changed), fallback to default values
+		// based on our thermal models.
 		//
-		// TODO: If there is a file that contains a previous thermal
-		// configuration for this machine, use that file instead of guessing
-		// blindly.
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			// Figure out the delta based on our thermal models.
-			int64_t chipDelta = 0;
-			if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
-				chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
-			} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
-				chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
-			}
+		// TODO: use a better boardID than i
+		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
+			&ob->control_loop_state.currentStringVoltage, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
+		if (error != SUCCESS) {
+			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+				// Figure out the delta based on our thermal models.
+				int64_t chipDelta = 0;
+				if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+					chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+				} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+					chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+				}
 
-			// Adjust the bias for this chip accordingly. Further from baseline
-			// means bigger adjustment.
-			while (chipDelta > 5) {
-				decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-				chipDelta -= 6;
-			}
-			while (chipDelta < -8) {
-				increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-				chipDelta += 9;
+				// Adjust the bias for this chip accordingly. Further from baseline
+				// means bigger adjustment.
+				while (chipDelta > 5) {
+					decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+					chipDelta -= 6;
+				}
+				while (chipDelta < -8) {
+					increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+					chipDelta += 9;
+				}
 			}
 		}
 		commitBoardBias(ob);

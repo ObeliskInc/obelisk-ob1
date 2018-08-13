@@ -38,6 +38,9 @@ ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engine
 
 void logNonceSet(NonceSet* pNonceSet, char* prefix);
 
+ApiError loadThermalConfig(char *name, int chipsPerBoard, int boardID, double *currentStringVoltage, int8_t *chipBiases, uint8_t *chipDividers);
+ApiError saveThermalConfig(char *name, int chipsPerBoard, int boardID, double currentStringVoltage, int8_t *chipBiases, uint8_t *chipDividers);
+
 typedef struct ControlLoopState {
 	// Determine if we need to initialize the control state.
 	bool initialized;
