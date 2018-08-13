@@ -49,3 +49,10 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 
 	.nonceRange = 33554432ULL // 2^25
 };
+
+// Temperature models according to thermal sims of our boards.
+const int64_t OB1_TEMPS_HASHBOARD_2_0[15] = { 0, 12, -6, -16, -9, 4, -16, -19, -21, -11, -23, -12, -15, -1, -6 };
+const int64_t OB1_TEMPS_HASHBOARD_2_1[15] = { 0, 8, 1, -8, -8, -2, -7, -11, -15, -12, -16, -10, -11, -1, -5 };
+const int64_t OB1_TEMPS_HASHBOARD_3_0[15] = { 0, -7, -10, -16, -12, -19, -19, -9, -28, -27, -30, -28, -22, -18, -13 };
+const int64_t OB1_TEMPS_HASHBOARD_2_1[15] = { 0, 6, 16, -16, -9, 0, 9, -21, -20, -3, -23, -13, -18, -3, -12 };
+const int64_t OB1_TEMPS_HASHBOARD_2_2[15] = { 0, 1, 5, -16, -9, -5, -4, -19, -22, -14, -27, -19, -20, -9, -14 };

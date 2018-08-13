@@ -601,6 +601,7 @@ static void obelisk_detect(bool hotplug)
 
 		// Set the board number.
 		ob->staticBoardNumber = i;
+		ob->staticTotalBoards = numHashboards;
 
 		// Determine the type of board.
 		//
@@ -788,7 +789,6 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
 #define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
-#define HotChipTempRise 15.0 // Thermal sims suggest the hottest chip is this much hotter than the senosr chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
@@ -807,8 +807,6 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define StartingStringVoltageLevel 32
 #define MaxVoltageLevel 72
 #define VoltageStepSize 12
-#define StringStableTime 2360 // How long a string must have the same bias before being considered stable.
-#define StringMaxTime 6200 // After this amount of time, the string is abandoned as being unstable.
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
@@ -862,13 +860,68 @@ static void displayControlState(ob_chain* ob)
     }
 }
 
+// biasToLevel converts the bias and divider fields into a smooth level that
+// goes from 0 to 43, with each step represeting a step up in clock speed.
+int biasToLevel(int8_t bias, uint8_t divider) {
+	if (divider == 8) {
+		return 5 + bias;
+	}
+	if (divider == 4) {
+		return 16 + bias;
+	}
+	if (divider == 2) {
+		return 27 + bias;
+	}
+	if (divider == 1) {
+		return 38 + bias;
+	}
+}
+
 // targetTemp returns the target temperature for the chip we want.
 static double getTargetTemp(ob_chain* ob)
 {
-    // TODO: As we start playing with the individual biases of the chips, we can
-    // extend this function to take into account all the ways that the chips
-    // have been pushed around.
-    return HotChipTargetTemp - ChipTempVariance - HotChipTempRise;
+	// To get the hottest delta, iterate through the 14 chips that don't have a
+	// temperature senosr, use the thermal model plus their bias difference to
+	// determine the delta between that chip and the measured chip.
+	//
+	// Chip 0 has the temp sensor, so we skip chip 0.
+	int hottestDelta = 0;
+	int baseBiasLevel = biasToLevel(ob->control_loop_state.chipBiases[0], ob->control_loop_state.chipDividers[0]);
+	for (int i = 1; i < 15; i++) {
+		// Determine how much to adjust the expected temp based on the chip's
+		// bias level.
+		int biasLevel = biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]);
+		int biasDelta = 0;
+		if (biasLevel > baseBiasLevel) {
+			biasDelta = (biasLevel-baseBiasLevel)*2;
+		} else {
+			biasDelta = (baseBiasLevel-biasLevel)*1;
+		}
+
+		// If there's only one board, assume a delta of 25. We don't have
+		// information for this board.
+		int chipDelta = 25; // Default assumption if we don't have information on this chip.
+		if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+			chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+		} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+			chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+		}
+
+		// Compute the full delta for the chip and see if it's the new hottest
+		// delta.
+		int fullDelta = biasDelta + chipDelta;
+		if (fullDelta > hottestDelta) {
+			hottestDelta = fullDelta;
+		}
+	}
+
+	return HotChipTargetTemp - ChipTempVariance - hottestDelta;
 }
 
 // handleOvertemps will clock down the string if the string is overheating.
@@ -924,41 +977,20 @@ static void control_loop(ob_chain* ob)
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
 
-    // Determine if string is stable.
-    time_t currentTime = ob->control_loop_state.currentTime;
-    time_t lastBiasChange = ob->control_loop_state.prevBiasChangeTime;
-    time_t lastVoltageChange = ob->control_loop_state.prevVoltageChangeTime;
-    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange <= StringMaxTime) {
-        // The string is not stable, but has also not timed out.
-        return;
-    }
+	/*
+	// Determine if the time has come to start collecting hashrate for the
+	// string.
+	if (!ob->settings.started && ob->control_loop_state.currentTime > ob->settings.startTime) {
+		applog(LOG_ERR, "Starting metrics collection for current string.");
+		ob->settings.started = true;
+		ob->settings.startGoodNonces = ob->control_loop_state.currentGoodNonces;
+	}
 
-    // Check if the string is at the final voltage.
-    uint8_t currentLevel = ob->control_loop_state.currentVoltageLevel;
-    if (currentLevel + VoltageStepSize >= MaxVoltageLevel) {
-        // TODO: Begin playing with chip bias.
-        return;
-    }
-
-    // Check if the string is stable or not. If yes, use hashrate since last
-    // bias change. If not, use hashrate since last voltage change.
-    uint64_t hashrate = 0;
-    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange >= StringMaxTime) {
-        // The string is not stable, instead has timed out. Use hashrate over
-        // lifetime of string to estimate hashrate.
-        // applog(LOG_ERR, "HB%u: string is victim of timeout", ob->control_loop_state.boardNumber);
-        ob->control_loop_state.stringTimeouts++;
-        hashrate = ob->control_loop_state.goodNoncesSinceVoltageChange * 1099 / (currentTime - lastVoltageChange + 1);
-    } else {
-        // The string is stable. Use hashrate over lifetime of recent bias
-        // change to esmiate hashrate.
-        hashrate = ob->control_loop_state.goodNoncesSinceBiasChange * 1099 / (currentTime - lastBiasChange + 1);
-    }
-
-    // The string has reached a state where it is time to try the next voltage.
-    ob->control_loop_state.voltageLevelHashrates[currentLevel] = hashrate;
-    setVoltageLevel(ob, currentLevel + VoltageStepSize);
-    return;
+	// Determine if the time has come to switch to the next settings.
+	if (ob->control_loop_state.currentTime > ob->settings.Endtime) {
+		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
+	}
+	*/
 }
 
 /*

@@ -110,12 +110,33 @@ typedef struct ob_chain ob_chain;
 typedef ApiError (*loadNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
 typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
 
+// stringSettings contains a list of settings for the string.
+//
+// TODO: A lot of this is hardcoded, going to have to make this more general.
+struct stringSettings {
+	// How well this string performed.
+	double score;
+
+	// Tracking the number of nonces found during the string's runtime.
+	bool     started;
+	time_t   startTime;
+	time_t   endTime;
+	uint64_t startGoodNonces;
+	uint64_t endGoodNonces;
+
+	// What the explicit settings of the string were.
+	int8_t chipBiases[15];
+	uint8_t chipDividers[15];
+	uint8_t voltageLevel;
+}
+
 // ob_chain is essentially the global state variable for a hashboard. Each
 // hashing board has its own ob_chain.
 struct ob_chain {
 	// Board information.
 	hashBoardModel staticBoardModel;
 	int            staticBoardNumber;
+	int            staticTotalBoards;
 
 	// Static hashing information.
 	uint8_t  staticChipTarget[32];           // The target that the chip needs to meet before returning a nonce.
@@ -132,6 +153,11 @@ struct ob_chain {
 	struct    work** chipWork; // The work structures for each chip.
 	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
 	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+
+	// String setings.
+	stringSettings bestSettings[10];
+	stringSettings settings;
+	uint64_t       stringsTried;
 
 	// Chip specific function pointers.
 	loadNextChipJobFn loadNextChipJob;
