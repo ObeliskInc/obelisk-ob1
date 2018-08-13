@@ -174,9 +174,9 @@ int siaValidNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
 // is valid under both the pool difficulty and the chip difficulty.
 int dcrValidNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
     // Create the midstate + tail with the nonce set up correctly.
-    uint8_t headerTail[DECRED_HEADER_TAIL_SIZE];
-    memcpy(headerTail, &engine_work->header_tail, DECRED_HEADER_TAIL_SIZE);
-    memcpy(headerTail + DECRED_HEADER_TAIL_NONCE_OFFSET, &nonce, sizeof(Nonce));
+    uint8_t headerTail[ob->staticBoardModel.headerTailSize];
+    memcpy(headerTail, &engine_work->header_tail, ob->staticBoardModel.headerTailSize);
+    memcpy(headerTail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
@@ -555,8 +555,8 @@ ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	// Load the current job to the current chip and engine
 	Job job;
 	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-	memcpy(&job.blake256.v, nextWork->midstate, DECRED_MIDSTATE_SIZE);
-	memcpy(&job.blake256.m, nextWork->header_tail, DECRED_HEADER_TAIL_SIZE);
+	memcpy(&job.blake256.v, nextWork->midstate, ob->staticBoardModel.midstateSize);
+	memcpy(&job.blake256.m, nextWork->header_tail, ob->staticBoardModel.headerTailSize);
 	job.blake256.is_nonce2_roll_only = nextWork->is_nonce2_roll_only;
 
 	// Load the job onto the chip.
