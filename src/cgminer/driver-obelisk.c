@@ -603,6 +603,7 @@ static void obelisk_detect(bool hotplug)
 	// Basic initialization.
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
+	gBoardModel = eGetBoardType(0);
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();
