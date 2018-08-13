@@ -667,33 +667,45 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
 
-		// Set the chip biases to minimum.
+		// Start the chip biases at 3 levels above minimum, so there is room to
+		// decrease them via the startup logic.
 		int8_t baseBias = MIN_BIAS;
 		uint8_t baseDivider = 8;
+		increaseBias(&baseBias, &baseDivider);
 		increaseBias(&baseBias, &baseDivider);
 		increaseBias(&baseBias, &baseDivider);
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->control_loop_state.chipBiases[i] = baseBias;
 			ob->control_loop_state.chipDividers[i] = baseDivider;
 		}
-		// Level specific bias shifting.
-		decreaseBias(&ob->control_loop_state.chipBiases[1], &ob->control_loop_state.chipDividers[1]);
-		decreaseBias(&ob->control_loop_state.chipBiases[1], &ob->control_loop_state.chipDividers[1]);
-		increaseBias(&ob->control_loop_state.chipBiases[3], &ob->control_loop_state.chipDividers[3]);
-		increaseBias(&ob->control_loop_state.chipBiases[3], &ob->control_loop_state.chipDividers[3]);
-		increaseBias(&ob->control_loop_state.chipBiases[4], &ob->control_loop_state.chipDividers[4]);
-		increaseBias(&ob->control_loop_state.chipBiases[4], &ob->control_loop_state.chipDividers[4]);
-		increaseBias(&ob->control_loop_state.chipBiases[7], &ob->control_loop_state.chipDividers[7]);
-		increaseBias(&ob->control_loop_state.chipBiases[7], &ob->control_loop_state.chipDividers[7]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[9], &ob->control_loop_state.chipDividers[9]);
-		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
-		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
-		increaseBias(&ob->control_loop_state.chipBiases[11], &ob->control_loop_state.chipDividers[11]);
-		increaseBias(&ob->control_loop_state.chipBiases[12], &ob->control_loop_state.chipDividers[12]);
+
+		// Set the default chip biases based on the thermal models that we have.
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			// Figure out the delta based on our thermal models.
+			int64_t chipDelta = 0;
+			if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+				chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+			} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+				chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+			}
+
+			// Adjust the bias for this chip accordingly. Further from baseline
+			// means bigger adjustment.
+			while (chipDelta > 5) {
+				decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+				chipDelta -= 6;
+			}
+			while (chipDelta < -8) {
+				increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+				chipDelta += 9;
+			}
+		}
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
@@ -1003,7 +1015,7 @@ static void control_loop(ob_chain* ob)
 
 	// If there are more than 3 bad chips, we need to increase the string
 	// voltage.
-	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minVoltageLevel+1;
+	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minStringVoltageLevel;
 	if (badChips > 3 && !atMinLevel) {
 		// Decrease the string voltage level and set the timeout for the next
 		// level to be much higher.
