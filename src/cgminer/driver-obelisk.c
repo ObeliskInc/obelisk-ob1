@@ -1021,6 +1021,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				struct work* engine_work = ob->chipWork[chip_num];
 				int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
+					ob->badNoncesFound++;
 					ob->chipBadNonces[chip_num]++;
 				}
 				if (nonceResult > 0) {
