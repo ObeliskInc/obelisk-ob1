@@ -710,6 +710,23 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
     return SUCCESS;
 }
 
+// Read the Done status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they are done (corresponding bit is 1)
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
+// Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
+
 //==================================================================================================
 // Controller-level API
 //==================================================================================================
