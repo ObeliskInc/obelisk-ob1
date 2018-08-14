@@ -88,6 +88,14 @@ HashboardStatus ob1GetHashboardStatus(uint8_t boardNum);
 // Values for voltage are about 12 to 127, and 127 is the lowest voltage.
 ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage);
 
+// Read the Done status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they are done (corresponding bit is 1)
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue);
+
+// Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue);
+
 //==================================================================================================
 // Controller-level API
 //==================================================================================================
