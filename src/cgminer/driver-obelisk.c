@@ -525,62 +525,57 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-// siaLoadNextChipJob will load a job into a chip.
-ApiError siaLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
+ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
 	struct work* nextWork = wq_dequeue(ob, true);
-	// Mark what job the chip has.
 	ob->chipWork[chipNum] = nextWork;
-	if (nextWork == NULL) {
+	if (ob->chipWork[chipNum] == NULL) {
+		applog(LOG_ERR, "chipWork is null");
 		return GENERIC_ERROR;
 	}
 
-	// Load the job to the chip.
+      // Prepare the job to load on the chip.
+    Job job = ob->prepareNextChipJob(ob, chipNum);
+
+    // Load job
+    cgtimer_t start_ob1LoadJob, end_ob1LoadJob, duration_ob1LoadJob;
+    cgtimer_time(&start_ob1LoadJob);
+    ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, chipNum, ALL_ENGINES, &job);
+    cgtimer_time(&end_ob1LoadJob);
+    cgtimer_sub(&end_ob1LoadJob, &start_ob1LoadJob, &duration_ob1LoadJob);
+    ob->obLoadJobTime += cgtimer_to_ms(&duration_ob1LoadJob);
+    //applog(LOG_NOTICE, "ob1LoadJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1LoadJob), chipNum);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    // Start job
+    cgtimer_t start_ob1StartJob, end_ob1StartJob, duration_ob1StartJob;
+    cgtimer_time(&start_ob1StartJob);
+    error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
+    cgtimer_time(&end_ob1StartJob);
+    cgtimer_sub(&end_ob1StartJob, &start_ob1StartJob, &duration_ob1StartJob);
+    //applog(LOG_NOTICE, "ob1StartJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1StartJob), chipNum);
+    if (error != SUCCESS) {
+    	return error;
+    }
+
+	return SUCCESS;
+}
+
+// siaPrepareNextChipJob will prepare the next job for a sia chip.
+Job siaPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	Job job;
 	memcpy(&job.blake2b, ob->chipWork[chipNum]->midstate, ob->staticBoardModel.headerSize);
-	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
-	if (error != SUCCESS) {
-		return error;
-	}
-
-	// Start the job on the chip.
-	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-	if (error != SUCCESS) {
-		return error;
-	}
-	return SUCCESS;
+    return job;
 }
 
-// dcrLoadNextChipJob will load the next job onto a decred chip.
-ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
-	struct work* nextWork = wq_dequeue(ob, true);
-	ob->chipWork[chipNum] = nextWork;
-	if (nextWork == NULL) {
-		applog(LOG_ERR, "nextWork is NULL");
-		return GENERIC_ERROR;
-	}
-
-	// Load the current job to the current chip and engine
+// dcrPrepareNextChipJob will prepare the next job for a decred chip.
+Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	Job job;
-	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-	memcpy(&job.blake256.v, nextWork->midstate, ob->staticBoardModel.midstateSize);
-	memcpy(&job.blake256.m, nextWork->header_tail, ob->staticBoardModel.headerTailSize);
-
-	// Load the job onto the chip.
-	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
-	if (error != SUCCESS) {
-		applog(LOG_ERR, "ob1LoadJob failed");
-		return error;
-	}
-
-	// Start the job on the chip.
-	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-	if (error != SUCCESS) {
-		applog(LOG_ERR, "ob1StartJob failed");
-		return error;
-	}
-	return SUCCESS;
+	memcpy(&job.blake256.v, ob->chipWork[chipNum]->midstate, ob->staticBoardModel.midstateSize);
+	memcpy(&job.blake256.m, ob->chipWork[chipNum]->header_tail, ob->staticBoardModel.headerTailSize);
+    return job;
 }
-
 
 static void obelisk_detect(bool hotplug)
 {
@@ -608,6 +603,7 @@ static void obelisk_detect(bool hotplug)
 		// Set the board number.
 		ob->staticBoardNumber = i;
 		ob->staticTotalBoards = numHashboards;
+        cgtimer_time(&ob->startTime);
 
 		// Determine the type of board.
 		//
@@ -632,7 +628,7 @@ static void obelisk_detect(bool hotplug)
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 
 			// Functions.
-			ob->loadNextChipJob = siaLoadNextChipJob;
+			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
@@ -647,7 +643,7 @@ static void obelisk_detect(bool hotplug)
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 
 			// Functions.
-			ob->loadNextChipJob = dcrLoadNextChipJob;
+			ob->prepareNextChipJob = dcrPrepareNextChipJob;
 			ob->validNonce = dcrValidNonce;
 		}
 
@@ -860,7 +856,7 @@ static void displayControlState(ob_chain* ob)
         // Compute the hashrate.
         uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
         time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
-        uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
+        uint64_t hashrate = ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed / 1000000000;
 
         // Currently only displays the bias of the first chip.
 		applog(LOG_ERR, "");
@@ -870,6 +866,19 @@ static void displayControlState(ob_chain* ob)
             ob->control_loop_state.currentStringVoltage,
             hashrate,
             ob->control_loop_state.currentVoltageLevel);
+        
+        cgtimer_t currTime, totalTime;
+        cgtimer_time(&currTime);
+        cgtimer_sub(&currTime, &ob->startTime, &totalTime);
+        applog(LOG_NOTICE, "totalTime: %d ms, totalScanWorkTime: %d ms, loadJobTime: %d ms, obLoadJobTime: %d ms,\nobStartJobTime: %d ms, spiLoadJobTime: %d ms, submitNonceTime: %d ms, readNonceTime: %d ms",
+            cgtimer_to_ms(&totalTime),
+            ob->totalScanWorkTime, 
+            ob->loadJobTime, 
+            ob->obLoadJobTime, 
+            ob->obStartJobTime,
+            ob->spiLoadJobTime,
+            ob->submitNonceTime,
+            ob->readNonceTime);
 		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
 			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
 			uint64_t badNonces = ob->chipBadNonces[chipNum];
@@ -1101,12 +1110,21 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	int64_t hashesConfirmed = 0;
 
+    cgtimer_t start_scanwork, end_scanwork, duration_scanwork;
+    cgtimer_time(&start_scanwork);
+
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
+        cgtimer_t start_give_work, end_give_work, duration_give_work;
 		if(ob->chipWork[chip_num] == NULL) {
-			ob->loadNextChipJob(ob, chip_num);
+            cgtimer_time(&start_give_work);
+			loadNextChipJob(ob, chip_num);
+            cgtimer_time(&end_give_work);
+            cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
+            ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
+            //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 			continue;
 		}
 
@@ -1134,7 +1152,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Read any nonces that the engine found.
 			NonceSet nonce_set;
 			nonce_set.count = 0;
+            cgtimer_t start_readNonces, end_readNonces, duration_readNonces;
+            cgtimer_time(&start_readNonces);
 			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
+            cgtimer_time(&end_readNonces);
+            cgtimer_sub(&end_readNonces, &start_readNonces, &duration_readNonces);
+            ob->readNonceTime += cgtimer_to_ms(&duration_readNonces);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "Error reading nonces.");
 				continue;
@@ -1156,14 +1179,25 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
+                    cgtimer_t start_submit_nonce, end_submit_nonce, duration_submit_nonce;
+                    cgtimer_time(&start_submit_nonce);
 					submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
-				}
+                    cgtimer_time(&end_submit_nonce);
+                    cgtimer_sub(&end_submit_nonce, &start_submit_nonce, &duration_submit_nonce);
+                    ob->submitNonceTime += cgtimer_to_ms(&duration_submit_nonce);
+                    //applog(LOG_NOTICE, "submit_nonce for chip %u/%u took %d ms", chip_num, engine_num, cgtimer_to_ms(&duration_submit_nonce));
+            	}
 			}
         }
 
 		// Give a new job to the chip.
 		// Get the next job.
-		error = ob->loadNextChipJob(ob, chip_num);
+        cgtimer_time(&start_give_work);
+		loadNextChipJob(ob, chip_num);
+        cgtimer_time(&end_give_work);
+        cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
+        ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
+        //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "Error loading chip job");
 			continue;
@@ -1194,6 +1228,10 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
 scanwork_exit:
     cgsleep_ms(10);
+
+    cgtimer_time(&end_scanwork);
+    cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
+    ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
 
     return hashesConfirmed;
 }
