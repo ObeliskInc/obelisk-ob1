@@ -293,33 +293,43 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
         uint8_t engineNum = (isr >> 8) & (uint32_t)0x0000003F; // 6 bits for engine number
         uint8_t fifoDataMask = isr & (uint32_t)0x000000FF;   // 8 bits for fifoDataMask
         // Get nonces as long as there are engines which are done.
-        uint8_t lastMask = 0;
-        while ((fifoDataMask > 0) && (fifoDataMask != lastMask)){
-            lastMask = fifoDataMask;
+        uint8_t lastEngine = 0;
+        Nonce nonce;
+        while ((fifoDataMask > 0) && (engineNum != lastEngine)){
+            lastEngine = engineNum;
             applog(LOG_ERR, "board %u, chip %u engineNum %u", boardNum, chipNum, engineNum);
             applog(LOG_ERR, "fifoDataMask %02x", fifoDataMask);
 
+            uint32_t fsr;
+            error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+            if (error != SUCCESS) {
+                return error;
+            }
+            uint8_t valid_vector = fsr & (uint32_t)0x000000FF;
+
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
-                if((1<<i) & fifoDataMask){
+                if((1<<i) & valid_vector){
                     uint8_t fifoDataReg = E_DCR1_REG_FDR0 + i;
 
                     // Read nonce from register.
                     if (nonceSet->count >= (8 * 128)) {
                         return SUCCESS;
                     }
-                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg, &(nonceSet->nonces[nonceSet->count]));
+                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg, &nonce);
                     if (error != SUCCESS) {
                         return error;
                     }
+                    nonceSet->nonces[nonceSet->count] = nonce;
                     nonceSet->count++;
+                    applog(LOG_ERR, "read nonce %08x", nonce);
                 }
             }
-            uint32_t fsr;
-            error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
-            if (error != SUCCESS) {
-                return error;
-            }
-            applog(LOG_ERR, "fsr: %08x", fsr);
+           // uint32_t fsr;
+           // error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+           // if (error != SUCCESS) {
+           //     return error;
+           // }
+           // applog(LOG_ERR, "fsr: %08x", fsr);
 
             uint32_t whatever_you_want = fifoDataMask;
             error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &whatever_you_want);
@@ -327,11 +337,11 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
                 return error;
             }
 
-            error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
-            if (error != SUCCESS) {
-                return error;
-            }
-            applog(LOG_ERR, "fsr2: %08x", fsr);
+            //error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+            //if (error != SUCCESS) {
+            //    return error;
+            //}
+            //applog(LOG_ERR, "fsr2: %08x", fsr);
 
             // Update isr
             error = ob1SpiReadChipReg(boardNum, chipNum, 0x48, &isr);
