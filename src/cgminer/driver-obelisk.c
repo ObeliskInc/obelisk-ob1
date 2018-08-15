@@ -729,6 +729,14 @@ static void obelisk_detect(bool hotplug)
 		commitBoardBias(ob);
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
+		// Initialize the genetic algorithm.
+		// TODO: instead, should be loading these directly from disk
+		ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+		memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
+		memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+		ob->control_loop_state.population[0] = ob->control_loop_state.curChild;
+		ob->control_loop_state.populationSize = 1;
+
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
 		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
