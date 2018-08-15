@@ -1130,14 +1130,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		applog(LOG_ERR, "Failed to read board done flags.");
 		return 0;
 	}
-	/*
 	uint16_t nonceFoundFlags = 0;
 	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
 	if (error != SUCCESS) {
 		applog(LOG_ERR, "Failed to read nonce done flags.");
 		return 0;
 	}
-	*/
 
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
@@ -1182,6 +1180,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
+		// Check if this chip found a nonce. If not, move on.
+		bool chipHasNonce = (nonceFoundFlags >> chip_num) & 1;
+		if (!chipHasNonce) {
+			continue;
+		}
+
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
 			// Read any nonces that the engine found.
@@ -1196,6 +1200,10 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "Error reading nonces.");
 				continue;
+			}
+
+			if (nonce_set.count == 0 && chipHasNonce) {
+				applog(LOG_ERR, "chip reported a nonce, but there is no nonce here.");
 			}
 
 			// Check the nonces and submit them to a pool if valid.
@@ -1261,7 +1269,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     ob->num_cores = 15 * 64;
 
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
-scanwork_exit:
     cgsleep_ms(10);
 
     cgtimer_time(&end_scanwork);
