@@ -26,7 +26,6 @@ typedef struct {
 typedef struct {
     uint32_t m[E_DCR1_NUM_MREGS];  // Midstate
     uint32_t v[E_DCR1_NUM_VREGS];  // Header tail
-    bool is_nonce2_roll_only;
 } Blake256Job;
 
 // Note that these unions have no type discriminator.  Instead, at startup, the API init function

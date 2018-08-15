@@ -842,7 +842,7 @@ int iDCR1DeviceInit(uint8_t uiBoard)
                 sDCR1XferBuf.eMode = E_DCR1_MODE_MULTICAST; // global write to all chips and engines
                 sDCR1XferBuf.uiChip = 0; // chip and core is don't care (set to 0's)
                 sDCR1XferBuf.uiCore = 0;
-                sDCR1XferBuf.uiReg = (uint8_t)E_DRC1_REG_V0MATCH;
+                sDCR1XferBuf.uiReg = (uint8_t)E_DCR1_REG_V0MATCH;
                 sDCR1XferBuf.uiData = DCR1_V0_MATCH_VAL;
                 iResult = iDCR1SpiTransfer(&sDCR1XferBuf);
             } // if (ERR_NONE == iResult)
@@ -1060,7 +1060,7 @@ static int iDCR1CmdPreLoadJob(S_DCR1_JOB_T* psDCR1Job)
     } // if (ERR_NONE == iResult)
     if (ERR_NONE == iResult) {
         sDCR1XferBuf.eMode = E_DCR1_MODE_MULTICAST; // global write to all chips and cores on the board
-        sDCR1XferBuf.uiReg = (uint8_t)E_DRC1_REG_V0MATCH;
+        sDCR1XferBuf.uiReg = (uint8_t)E_DCR1_REG_V0MATCH;
         sDCR1XferBuf.uiData = psDCR1Job->uiMatchReg;
         iResult = iDCR1SpiTransfer(&sDCR1XferBuf);
     } // if (ERR_NONE == iResult)
@@ -1494,13 +1494,13 @@ int iDCR1SpiTransfer(S_DCR1_TRANSFER_T* psDCR1Transfer)
         } // end switch
     }
 
-    if (ERR_NONE == iRetVal) {
-        // Verify the SPI port is idle and ready to go; if not we wait to allow an active transfer to complete.
-        // We don't want to corrupt the transfer buffer or change the SPI mux during an active transfer.
-        if (0 != iIsHBSpiBusy(true)) {
-            iRetVal = ERR_BUSY; // got a timeout?
-        }
-    }
+    // if (ERR_NONE == iRetVal) {
+    //     // Verify the SPI port is idle and ready to go; if not we wait to allow an active transfer to complete.
+    //     // We don't want to corrupt the transfer buffer or change the SPI mux during an active transfer.
+    //     if (0 != iIsHBSpiBusy(true)) {
+    //         iRetVal = ERR_BUSY; // got a timeout?
+    //     }
+    // }
 
     if (ERR_NONE == iRetVal) {
         // Set up the mode-address in bytes [2:0]; big-endian order

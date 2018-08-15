@@ -280,6 +280,13 @@ static void increaseStringBias(ob_chain* ob)
 
 static void setVoltageLevel(ob_chain* ob, uint8_t level)
 {
+	// Sanity check on the voltage levels.
+	if (level < ob->staticBoardModel.minStringVoltageLevel) {
+		level = ob->staticBoardModel.minStringVoltageLevel;
+	} else if (level > ob->staticBoardModel.maxStringVoltageLevel) {
+		level = ob->staticBoardModel.maxStringVoltageLevel;
+	}
+
     ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
     ob->control_loop_state.currentVoltageLevel = level;
     ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
@@ -518,63 +525,57 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-// siaLoadNextChipJob will load a job into a chip.
-ApiError siaLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
+ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
 	struct work* nextWork = wq_dequeue(ob, true);
-	// Mark what job the chip has.
 	ob->chipWork[chipNum] = nextWork;
-	if (nextWork == NULL) {
+	if (ob->chipWork[chipNum] == NULL) {
+		applog(LOG_ERR, "chipWork is null");
 		return GENERIC_ERROR;
 	}
 
-	// Load the job to the chip.
+      // Prepare the job to load on the chip.
+    Job job = ob->prepareNextChipJob(ob, chipNum);
+
+    // Load job
+    cgtimer_t start_ob1LoadJob, end_ob1LoadJob, duration_ob1LoadJob;
+    cgtimer_time(&start_ob1LoadJob);
+    ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, chipNum, ALL_ENGINES, &job);
+    cgtimer_time(&end_ob1LoadJob);
+    cgtimer_sub(&end_ob1LoadJob, &start_ob1LoadJob, &duration_ob1LoadJob);
+    ob->obLoadJobTime += cgtimer_to_ms(&duration_ob1LoadJob);
+    //applog(LOG_NOTICE, "ob1LoadJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1LoadJob), chipNum);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    // Start job
+    cgtimer_t start_ob1StartJob, end_ob1StartJob, duration_ob1StartJob;
+    cgtimer_time(&start_ob1StartJob);
+    error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
+    cgtimer_time(&end_ob1StartJob);
+    cgtimer_sub(&end_ob1StartJob, &start_ob1StartJob, &duration_ob1StartJob);
+    //applog(LOG_NOTICE, "ob1StartJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1StartJob), chipNum);
+    if (error != SUCCESS) {
+    	return error;
+    }
+
+	return SUCCESS;
+}
+
+// siaPrepareNextChipJob will prepare the next job for a sia chip.
+Job siaPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	Job job;
 	memcpy(&job.blake2b, ob->chipWork[chipNum]->midstate, ob->staticBoardModel.headerSize);
-	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
-	if (error != SUCCESS) {
-		return error;
-	}
-
-	// Start the job on the chip.
-	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-	if (error != SUCCESS) {
-		return error;
-	}
-	return SUCCESS;
+    return job;
 }
 
-// dcrLoadNextChipJob will load the next job onto a decred chip.
-ApiError dcrLoadNextChipJob(ob_chain* ob, uint8_t chipNum) {
-	struct work* nextWork = wq_dequeue(ob, true);
-	ob->chipWork[chipNum] = nextWork;
-	if (nextWork == NULL) {
-		applog(LOG_ERR, "nextWork is NULL");
-		return GENERIC_ERROR;
-	}
-
-	// Load the current job to the current chip and engine
+// dcrPrepareNextChipJob will prepare the next job for a decred chip.
+Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 	Job job;
-	// TODO: Change ob1LoadJob() to take a uint8_t* so we avoid this copy
-	memcpy(&job.blake256.v, nextWork->midstate, ob->staticBoardModel.midstateSize);
-	memcpy(&job.blake256.m, nextWork->header_tail, ob->staticBoardModel.headerTailSize);
-	job.blake256.is_nonce2_roll_only = nextWork->is_nonce2_roll_only;
-
-	// Load the job onto the chip.
-	ApiError error = ob1LoadJob(ob->chain_id, chipNum, ALL_ENGINES, &job);
-	if (error != SUCCESS) {
-		applog(LOG_ERR, "ob1LoadJob failed");
-		return error;
-	}
-
-	// Start the job on the chip.
-	error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-	if (error != SUCCESS) {
-		applog(LOG_ERR, "ob1StartJob failed");
-		return error;
-	}
-	return SUCCESS;
+	memcpy(&job.blake256.v, ob->chipWork[chipNum]->midstate, ob->staticBoardModel.midstateSize);
+	memcpy(&job.blake256.m, ob->chipWork[chipNum]->header_tail, ob->staticBoardModel.headerTailSize);
+    return job;
 }
-
 
 static void obelisk_detect(bool hotplug)
 {
@@ -601,6 +602,8 @@ static void obelisk_detect(bool hotplug)
 
 		// Set the board number.
 		ob->staticBoardNumber = i;
+		ob->staticTotalBoards = numHashboards;
+        cgtimer_time(&ob->startTime);
 
 		// Determine the type of board.
 		//
@@ -625,7 +628,7 @@ static void obelisk_detect(bool hotplug)
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 
 			// Functions.
-			ob->loadNextChipJob = siaLoadNextChipJob;
+			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
@@ -640,7 +643,7 @@ static void obelisk_detect(bool hotplug)
 			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 
 			// Functions.
-			ob->loadNextChipJob = dcrLoadNextChipJob;
+			ob->prepareNextChipJob = dcrPrepareNextChipJob;
 			ob->validNonce = dcrValidNonce;
 		}
 
@@ -659,37 +662,53 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
 
-		// Set the chip biases to minimum.
+		// Start the chip biases at 3 levels above minimum, so there is room to
+		// decrease them via the startup logic.
 		int8_t baseBias = MIN_BIAS;
 		uint8_t baseDivider = 8;
+		increaseBias(&baseBias, &baseDivider);
 		increaseBias(&baseBias, &baseDivider);
 		increaseBias(&baseBias, &baseDivider);
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->control_loop_state.chipBiases[i] = baseBias;
 			ob->control_loop_state.chipDividers[i] = baseDivider;
 		}
-		// Level specific bias shifting.
-		decreaseBias(&ob->control_loop_state.chipBiases[1], &ob->control_loop_state.chipDividers[1]);
-		decreaseBias(&ob->control_loop_state.chipBiases[1], &ob->control_loop_state.chipDividers[1]);
-		increaseBias(&ob->control_loop_state.chipBiases[3], &ob->control_loop_state.chipDividers[3]);
-		increaseBias(&ob->control_loop_state.chipBiases[3], &ob->control_loop_state.chipDividers[3]);
-		increaseBias(&ob->control_loop_state.chipBiases[4], &ob->control_loop_state.chipDividers[4]);
-		increaseBias(&ob->control_loop_state.chipBiases[4], &ob->control_loop_state.chipDividers[4]);
-		increaseBias(&ob->control_loop_state.chipBiases[7], &ob->control_loop_state.chipDividers[7]);
-		increaseBias(&ob->control_loop_state.chipBiases[7], &ob->control_loop_state.chipDividers[7]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[8], &ob->control_loop_state.chipDividers[8]);
-		increaseBias(&ob->control_loop_state.chipBiases[9], &ob->control_loop_state.chipDividers[9]);
-		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
-		increaseBias(&ob->control_loop_state.chipBiases[10], &ob->control_loop_state.chipDividers[10]);
-		increaseBias(&ob->control_loop_state.chipBiases[11], &ob->control_loop_state.chipDividers[11]);
-		increaseBias(&ob->control_loop_state.chipBiases[12], &ob->control_loop_state.chipDividers[12]);
+
+		// Set the default chip biases based on the thermal models that we have.
+		//
+		// TODO: If there is a file that contains a previous thermal
+		// configuration for this machine, use that file instead of guessing
+		// blindly.
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			// Figure out the delta based on our thermal models.
+			int64_t chipDelta = 0;
+			if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+				chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+			} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+				chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+				chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+			}
+
+			// Adjust the bias for this chip accordingly. Further from baseline
+			// means bigger adjustment.
+			while (chipDelta > 5) {
+				decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+				chipDelta -= 6;
+			}
+			while (chipDelta < -8) {
+				increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+				chipDelta += 9;
+			}
+		}
 		commitBoardBias(ob);
 
 		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel+8);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -783,12 +802,11 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 30
+#define StatusOutputFrequency 60
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
 #define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
-#define HotChipTempRise 15.0 // Thermal sims suggest the hottest chip is this much hotter than the senosr chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
@@ -807,8 +825,6 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define StartingStringVoltageLevel 32
 #define MaxVoltageLevel 72
 #define VoltageStepSize 12
-#define StringStableTime 2360 // How long a string must have the same bias before being considered stable.
-#define StringMaxTime 6200 // After this amount of time, the string is abandoned as being unstable.
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
@@ -840,7 +856,7 @@ static void displayControlState(ob_chain* ob)
         // Compute the hashrate.
         uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
         time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
-        uint64_t hashrate = 1099 * goodNonces / secondsElapsed;
+        uint64_t hashrate = ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed / 1000000000;
 
         // Currently only displays the bias of the first chip.
 		applog(LOG_ERR, "");
@@ -850,25 +866,93 @@ static void displayControlState(ob_chain* ob)
             ob->control_loop_state.currentStringVoltage,
             hashrate,
             ob->control_loop_state.currentVoltageLevel);
+        
+        cgtimer_t currTime, totalTime;
+        cgtimer_time(&currTime);
+        cgtimer_sub(&currTime, &ob->startTime, &totalTime);
+        applog(LOG_NOTICE, "totalTime: %d ms, totalScanWorkTime: %d ms, loadJobTime: %d ms, obLoadJobTime: %d ms,\nobStartJobTime: %d ms, spiLoadJobTime: %d ms, submitNonceTime: %d ms, readNonceTime: %d ms",
+            cgtimer_to_ms(&totalTime),
+            ob->totalScanWorkTime, 
+            ob->loadJobTime, 
+            ob->obLoadJobTime, 
+            ob->obStartJobTime,
+            ob->spiLoadJobTime,
+            ob->submitNonceTime,
+            ob->readNonceTime);
 		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
 			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
 			uint64_t badNonces = ob->chipBadNonces[chipNum];
 			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
 			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
-			applog(LOG_ERR, "Chip %u: bias=%u.%i  good=%u  bad=%u", chipNum, divider, bias, goodNonces, badNonces);
+			applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
 		}
 
         ob->control_loop_state.lastStatusOutput = currentTime;
     }
 }
 
+// biasToLevel converts the bias and divider fields into a smooth level that
+// goes from 0 to 43, with each step represeting a step up in clock speed.
+int biasToLevel(int8_t bias, uint8_t divider) {
+	if (divider == 8) {
+		return 5 + bias;
+	}
+	if (divider == 4) {
+		return 16 + bias;
+	}
+	if (divider == 2) {
+		return 27 + bias;
+	}
+	if (divider == 1) {
+		return 38 + bias;
+	}
+}
+
 // targetTemp returns the target temperature for the chip we want.
 static double getTargetTemp(ob_chain* ob)
 {
-    // TODO: As we start playing with the individual biases of the chips, we can
-    // extend this function to take into account all the ways that the chips
-    // have been pushed around.
-    return HotChipTargetTemp - ChipTempVariance - HotChipTempRise;
+	// To get the hottest delta, iterate through the 14 chips that don't have a
+	// temperature senosr, use the thermal model plus their bias difference to
+	// determine the delta between that chip and the measured chip.
+	//
+	// Chip 0 has the temp sensor, so we skip chip 0.
+	int hottestDelta = 0;
+	int baseBiasLevel = biasToLevel(ob->control_loop_state.chipBiases[0], ob->control_loop_state.chipDividers[0]);
+	for (int i = 1; i < 15; i++) {
+		// Determine how much to adjust the expected temp based on the chip's
+		// bias level.
+		int biasLevel = biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]);
+		int biasDelta = 0;
+		if (biasLevel > baseBiasLevel) {
+			biasDelta = (biasLevel-baseBiasLevel)*2;
+		} else {
+			biasDelta = (baseBiasLevel-biasLevel)*1;
+		}
+
+		// If there's only one board, assume a delta of 25. We don't have
+		// information for this board.
+		int chipDelta = 25; // Default assumption if we don't have information on this chip.
+		if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+			chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+		} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+			chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+		} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+			chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+		}
+
+		// Compute the full delta for the chip and see if it's the new hottest
+		// delta.
+		int fullDelta = biasDelta + chipDelta;
+		if (fullDelta > hottestDelta) {
+			hottestDelta = fullDelta;
+		}
+	}
+
+	return HotChipTargetTemp - ChipTempVariance - hottestDelta;
 }
 
 // handleOvertemps will clock down the string if the string is overheating.
@@ -924,41 +1008,93 @@ static void control_loop(ob_chain* ob)
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
 
-    // Determine if string is stable.
-    time_t currentTime = ob->control_loop_state.currentTime;
-    time_t lastBiasChange = ob->control_loop_state.prevBiasChangeTime;
-    time_t lastVoltageChange = ob->control_loop_state.prevVoltageChangeTime;
-    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange <= StringMaxTime) {
-        // The string is not stable, but has also not timed out.
-        return;
-    }
+	// Skip the string adjustments if we have not reached the next string
+	// adjustment period.
+	if (ob->control_loop_state.currentTime < ob->control_loop_state.stringAdjustmentTime) {
+		return;
+	}
 
-    // Check if the string is at the final voltage.
-    uint8_t currentLevel = ob->control_loop_state.currentVoltageLevel;
-    if (currentLevel + VoltageStepSize >= MaxVoltageLevel) {
-        // TODO: Begin playing with chip bias.
-        return;
-    }
+	// Enough time has passed to perform chip adjustments.
+	applog(LOG_ERR, "Beginning chip adjustments.");
 
-    // Check if the string is stable or not. If yes, use hashrate since last
-    // bias change. If not, use hashrate since last voltage change.
-    uint64_t hashrate = 0;
-    if (currentTime - lastBiasChange < StringStableTime && currentTime - lastVoltageChange >= StringMaxTime) {
-        // The string is not stable, instead has timed out. Use hashrate over
-        // lifetime of string to estimate hashrate.
-        // applog(LOG_ERR, "HB%u: string is victim of timeout", ob->control_loop_state.boardNumber);
-        ob->control_loop_state.stringTimeouts++;
-        hashrate = ob->control_loop_state.goodNoncesSinceVoltageChange * 1099 / (currentTime - lastVoltageChange + 1);
-    } else {
-        // The string is stable. Use hashrate over lifetime of recent bias
-        // change to esmiate hashrate.
-        hashrate = ob->control_loop_state.goodNoncesSinceBiasChange * 1099 / (currentTime - lastBiasChange + 1);
-    }
+	// Iterate through the chips and count the number of bad chips.
+	int badChips = 0;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
+			badChips++;
+		}
+	}
 
-    // The string has reached a state where it is time to try the next voltage.
-    ob->control_loop_state.voltageLevelHashrates[currentLevel] = hashrate;
-    setVoltageLevel(ob, currentLevel + VoltageStepSize);
-    return;
+	// If there are more than 3 bad chips, we need to increase the string
+	// voltage.
+	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minStringVoltageLevel;
+	if (badChips > 3 && !atMinLevel) {
+		// Decrease the string voltage level and set the timeout for the next
+		// level to be much higher.
+		applog(LOG_ERR, "Increasing string voltage due to too many bad chips.");
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
+		return;
+	} else if (badChips > 1 && ob->control_loop_state.chipAdjustments > 10 && !atMinLevel) {
+		// Decrease the string voltage level.
+		applog(LOG_ERR, "Increasing string voltage due to too many adjustments for bad chips.");
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
+		return;
+	} else if (badChips == 0) {
+		applog(LOG_ERR, "Decreasing string voltage beacuse there are no bad chips.");
+		// Incrase the string voltage level.
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel+1);
+		return;
+	}
+
+	// Decerase the bias on any of the bad chips.
+	applog(LOG_ERR, "Adjusting the voltage on some bad chips.");
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
+			decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+		}
+	}
+	commitBoardBias(ob);
+	// Mark that an adjustment has taken place.
+	ob->control_loop_state.chipAdjustments++;
+	ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		ob->chipBadNonces[i] = 0;
+		ob->chipGoodNonces[i] = 0;
+	}
+
+
+	/*
+	// Determine if the time has come to start collecting hashrate for the
+	// string.
+	if (!ob->settings.started && ob->control_loop_state.currentTime > ob->settings.startTime) {
+		applog(LOG_ERR, "Starting metrics collection for current string.");
+		ob->settings.started = true;
+		ob->settings.startGoodNonces = ob->control_loop_state.currentGoodNonces;
+	}
+
+	// Determine if the time has come to switch to the next settings.
+	if (ob->control_loop_state.currentTime > ob->settings.Endtime) {
+		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
+	}
+	*/
 }
 
 /*
@@ -974,17 +1110,26 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	int64_t hashesConfirmed = 0;
 
+    cgtimer_t start_scanwork, end_scanwork, duration_scanwork;
+    cgtimer_time(&start_scanwork);
+
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
+        cgtimer_t start_give_work, end_give_work, duration_give_work;
 		if(ob->chipWork[chip_num] == NULL) {
-			ob->loadNextChipJob(ob, chip_num);
+            cgtimer_time(&start_give_work);
+			loadNextChipJob(ob, chip_num);
+            cgtimer_time(&end_give_work);
+            cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
+            ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
+            //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 			continue;
 		}
 
 		// Check whether the chip is done.
-		uint8_t* doneBitmask = malloc(ob->staticBoardModel.enginesPerChip/8);
+        uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
 		// done.
@@ -1007,7 +1152,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Read any nonces that the engine found.
 			NonceSet nonce_set;
 			nonce_set.count = 0;
+            cgtimer_t start_readNonces, end_readNonces, duration_readNonces;
+            cgtimer_time(&start_readNonces);
 			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
+            cgtimer_time(&end_readNonces);
+            cgtimer_sub(&end_readNonces, &start_readNonces, &duration_readNonces);
+            ob->readNonceTime += cgtimer_to_ms(&duration_readNonces);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "Error reading nonces.");
 				continue;
@@ -1022,7 +1172,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
 				if (nonceResult == 0) {
 					ob->chipBadNonces[chip_num]++;
-					applog(LOG_ERR, "chip %u bad nonces: %lld", chip_num, ob->chipBadNonces[chip_num]);
 				}
 				if (nonceResult > 0) {
 					ob->goodNoncesFound++;
@@ -1030,14 +1179,25 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
 				}
 				if (nonceResult == 2) {
+                    cgtimer_t start_submit_nonce, end_submit_nonce, duration_submit_nonce;
+                    cgtimer_time(&start_submit_nonce);
 					submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
-				}
+                    cgtimer_time(&end_submit_nonce);
+                    cgtimer_sub(&end_submit_nonce, &start_submit_nonce, &duration_submit_nonce);
+                    ob->submitNonceTime += cgtimer_to_ms(&duration_submit_nonce);
+                    //applog(LOG_NOTICE, "submit_nonce for chip %u/%u took %d ms", chip_num, engine_num, cgtimer_to_ms(&duration_submit_nonce));
+            	}
 			}
         }
 
 		// Give a new job to the chip.
 		// Get the next job.
-		error = ob->loadNextChipJob(ob, chip_num);
+        cgtimer_time(&start_give_work);
+		loadNextChipJob(ob, chip_num);
+        cgtimer_time(&end_give_work);
+        cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
+        ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
+        //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "Error loading chip job");
 			continue;
@@ -1068,6 +1228,10 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
 scanwork_exit:
     cgsleep_ms(10);
+
+    cgtimer_time(&end_scanwork);
+    cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
+    ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
 
     return hashesConfirmed;
 }

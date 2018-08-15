@@ -19,18 +19,57 @@ HashboardModel gBoardModel;
 // We save the last clock divider and bias for each ASIC on each board
 uint64_t gLastOCRWritten[MAX_NUMBER_OF_HASH_BOARDS][NUM_CHIPS_PER_STRING];
 
+// Maintain shadow registers so that we avoid writing SPI registers that already
+// have the same value.
+Job gShadowJobRegs[MAX_NUMBER_OF_HASH_BOARDS];
+
 // TODO: Would be nice to split these up into interfaces and call device-specific functions instead
 //       of combining both device types into each function.
 
+
+void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum) {
+    ApiError error;
+    if (chipNum == ALL_CHIPS) {
+        chipNum = 0;
+    }
+    if (engineNum == ALL_ENGINES) {
+        engineNum = 0;
+    }
+
+    for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
+        uint32_t data;
+        ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data);
+        applog(LOG_ERR, "    V%d: 0x%08lX (readback)", i, data);
+    }
+
+    // The header tail is in the M regsiters
+    for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
+        uint32_t data;
+        int regAddr = E_DCR1_REG_M0 + i;
+        // For some reason, CSS decided to skip register 0x20, so regs M10 onwards are bigger by 1
+        if (i >= 10)  {
+            regAddr += (E_DCR1_REG_M10 - (E_DCR1_REG_M9 + 1));
+        }
+        ob1SpiReadReg(boardNum, chipNum, engineNum,  regAddr, &data);
+        applog(LOG_ERR, "    M%02d: 0x%08lX (readback)", i, data);
+    }
+
+    // The Match register has the same value as V7
+    uint32_t data;
+    ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data);
+    applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
+}
 
 //==================================================================================================
 // Chip-level API
 //==================================================================================================
 
 // Program a job the specified engine(s).
-ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
+ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
 {
     ApiError error = GENERIC_ERROR;
+    int writesAvoided = 0;
+
     switch (gBoardModel) {
     case MODEL_SC1: {
         // Loop over M regs and write them to the engine
@@ -38,89 +77,110 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         for (int i = 0; i < E_SC1_NUM_MREGS; i++) {
             // Skip M4 (the nonce)
             if (i != E_SC1_REG_M4_RSV) {
-                // applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
-                error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &(pBlake2BJob->m[i]));
-                if (error != SUCCESS) {
-                    return error;
+                uint64_t data = pBlake2BJob->m[i];
+                // Only write if the M register differs from the shadow register
+                if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake2b.m[i] != data) {
+                    // applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
+                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &data);
+                    if (error != SUCCESS) {
+                        return error;
+                    }
+                    // Update the shadow register(s)
+                    gShadowJobRegs[boardNum].blake2b.m[i] = data;
+                } else {
+                    writesAvoided++;
                 }
             }
         }
         break;
     }
     case MODEL_DCR1: {
+        cgtimer_t start_WriteReg, end_WriteReg, duration_WriteReg;
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
 
-        if (pBlake256Job->is_nonce2_roll_only) {
-            // Optimization to only write the nonce2 register when the only thing we did was roll the nonce2
-            // which is located in the header tail.
-            uint32_t data = pBlake256Job->m[5];
+        // The Match register has the same value as V7
+        // We handle this first so that the check of the shadow register works correctly.  If we did the check after
+        // setting the V registers, then V7 would have already been updated.
+        uint32_t data = pBlake256Job->v[7];
+        // Only write if the M register differs from the shadow register
+        // TODO: If we decide to start sending separate jobs to each engine for Decred, then we can extend
+        // the shadow register code to keep copies of all engine registers.
+        if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[7] != data) {
             // applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M1, &data);
+            cgtimer_time(&start_WriteReg);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data);
+            cgtimer_time(&end_WriteReg);
+            cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+            *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
             if (error != SUCCESS) {
                 return error;
             }
+            // V7 will be updated in the shadow registers below, so no need to do anything here
+        } else {
+            writesAvoided++;
+        }
 
-            // The Match register has the same value as V7
-            // TODO: Is this necessary?  Tom's code sets it, and it's listed as an input, soooo....I guess it is.
-            data = pBlake256Job->v[7];
-            // applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DRC1_REG_V0MATCH, &data);
-            if (error != SUCCESS) {
-                return error;
-            }
-
-        } else {         
-            // The midstate is in the V registers
-            for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
-                if (i < 8) {
-                    uint32_t data = pBlake256Job->v[i];
+        // The midstate is in the V registers
+        for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
+            if (i < 8) {
+                uint32_t data = pBlake256Job->v[i];
+                // Only write if the V register differs from the shadow register
+                if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[i] != data) {
                     // applog(LOG_ERR, "    V%d: 0x%08lX", i, data);
+                    cgtimer_time(&start_WriteReg);
                     error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data);
+                    cgtimer_time(&end_WriteReg);
+                    cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+                    *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
                         return error;
                     }
+                    // Update the shadow register(s)
+                    // TODO: Make this work for individual engines
+                    gShadowJobRegs[boardNum].blake256.v[i] = data;
+                } else {
+                    writesAvoided++;
                 }
-                // Read back registers that we don't write
-                //  else {
-                //     uint32_t data = 0;
-                //     error = ob1SpiReadReg(boardNum, 0, 0, E_DCR1_REG_V00 + i, &data);
-                //     if (error != SUCCESS) {
-                //         applog(LOG_ERR, "Error reading Vregister %d", i);
-                //         return error;
-                //     }
-                //     applog(LOG_ERR, "    V%d: 0x%08lX (read back)", i, data);
-                // }
             }
+        }
 
-            // The header tail is in the M regsiters
-            for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
-                if (i != 3) {
-                    uint32_t data = pBlake256Job->m[i];
-                    int regAddr = E_DCR1_REG_M0 + i;
-                    // For some reason, CSS decided to skip register 0x20, so regs M10 onwards are bigger by 1
-                    if (i >= 10)  {
-                        regAddr += (E_DCR1_REG_M10 - (E_DCR1_REG_M9 + 1));
-                    }
+        // The header tail is in the M regsiters
+        for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
+            if (i != 3) {
+                uint32_t data = pBlake256Job->m[i];
+                int regAddr = E_DCR1_REG_M0 + i;
+                // For some reason, CSS decided to skip register 0x20, so regs M10 onwards are bigger by 1
+                if (i >= 10)  {
+                    regAddr += (E_DCR1_REG_M10 - (E_DCR1_REG_M9 + 1));
+                }
+                // Only write if the M register differs from the shadow register
+                if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.m[i] != data) {
                     // applog(LOG_ERR, "    M%02d: 0x%08lX  (regAddr = 0x%02X)", i, data, regAddr);
+                    cgtimer_time(&start_WriteReg);
                     error = ob1SpiWriteReg(boardNum, chipNum, engineNum,  regAddr, &data);
+                    cgtimer_time(&end_WriteReg);
+                    cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+                    *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
                         return error;
                     }
-                }
-            }
 
-            // The Match register has the same value as V7
-            // TODO: Is this necessary?  Tom's code sets it, and it's listed as an input, soooo....I guess it is.
-            uint32_t data = pBlake256Job->v[7];
-            // applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DRC1_REG_V0MATCH, &data);
-            if (error != SUCCESS) {
-                return error;
+                    // Update the shadow register(s)
+                    // TODO: Make this work for individual engines
+                    gShadowJobRegs[boardNum].blake256.m[i] = data;
+                } else {
+                    writesAvoided++;
+                }
             }
         }
         break;
     }
+    }
+
+    // readAndPrintAllJobRegs(boardNum, chipNum, engineNum);
+    if (writesAvoided) {
+        // applog(LOG_ERR, "++++++++++ writesAvoided= %d (due to shadow registers)", writesAvoided);
     }
 
     return error;
@@ -649,6 +709,23 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
     UNLOCK(&statusLock);
     return SUCCESS;
 }
+
+// Read the Done status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they are done (corresponding bit is 1)
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
+// Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
 
 //==================================================================================================
 // Controller-level API

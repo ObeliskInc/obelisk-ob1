@@ -34,7 +34,7 @@ const unsigned int SALT_PREFIX_LEN = 3;
 const unsigned int NUM_SALT_CHARS = 64;
 const unsigned int SESSION_ID_LEN = 32;
 
-const string CGMINER_CONFIG_FILE_PATH = "/root/config/cgminer.conf";
+const string CGMINER_CONFIG_FILE_PATH = "/root/.cgminer/cgminer.conf";
 
 static const unsigned char _xcrypt_itoa64[NUM_SALT_CHARS + 1] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

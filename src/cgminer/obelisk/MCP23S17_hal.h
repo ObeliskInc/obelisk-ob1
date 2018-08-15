@@ -68,6 +68,12 @@ typedef struct {
 /***   GLOBAL DATA DECLARATIONS     ***/
 // Task pending globals; for ISR callbacks, etc
 
+// SPI address (7-bit); R/W# bit is lsb in control byte so these get shifted left 1 bit when sent
+#define PEX_DONE_ADR (0x20) // ASIC Done signals
+#define PEX_NONCE_ADR (0x21) // ASIC Nonce signals
+#define PEX_MISC_ADR (0x22) // PS enable, Hash enable, rev ID, etc
+
+
 /***   GLOBAL FUNCTION PROTOTYPES   ***/
 extern int iPexInit(uint8_t uiBoard);
 extern int iReadBoardRevision(uint8_t uiBoard, uint8_t *puiRevision, E_ASIC_TYPE_T *puiType);
