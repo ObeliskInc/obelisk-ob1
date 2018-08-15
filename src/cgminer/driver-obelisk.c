@@ -250,12 +250,16 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 // string.
 static void commitBoardBias(ob_chain* ob)
 {
-    int i = 0;
-    for (i = 0; i < 15; i++) {
-        ob1SetClockDividerAndBias(ob->control_loop_state.boardNumber, i, ob->control_loop_state.chipDividers[i], ob->control_loop_state.chipBiases[i]);
+    ControlLoopState *state = &ob->control_loop_state;
+    hashBoardModel *model = &ob->staticBoardModel;
+    for (int i = 0; i < model->chipsPerBoard; i++) {
+        ob1SetClockDividerAndBias(state->boardNumber, i, state->chipDividers[i], state->chipBiases[i]);
     }
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
+    state->prevBiasChangeTime = state->currentTime;
+    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+
+    // Write the new biases to disk.
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
 }
 
 // decrease the clock bias of every chip on the string.
@@ -280,22 +284,28 @@ static void increaseStringBias(ob_chain* ob)
 
 static void setVoltageLevel(ob_chain* ob, uint8_t level)
 {
+    ControlLoopState *state = &ob->control_loop_state;
+    hashBoardModel *model = &ob->staticBoardModel;
+
 	// Sanity check on the voltage levels.
-	if (level < ob->staticBoardModel.minStringVoltageLevel) {
-		level = ob->staticBoardModel.minStringVoltageLevel;
-	} else if (level > ob->staticBoardModel.maxStringVoltageLevel) {
-		level = ob->staticBoardModel.maxStringVoltageLevel;
+	if (level < model->minStringVoltageLevel) {
+		level = model->minStringVoltageLevel;
+	} else if (level > model->maxStringVoltageLevel) {
+		level = model->maxStringVoltageLevel;
 	}
 
-    ob1SetStringVoltage(ob->control_loop_state.boardNumber, level);
-    ob->control_loop_state.currentVoltageLevel = level;
-    ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+    ob1SetStringVoltage(state->boardNumber, level);
+    state->currentVoltageLevel = level;
+    state->goodNoncesUponLastVoltageChange = state->currentGoodNonces;
+    state->prevVoltageChangeTime = state->currentTime;
 
     // Changing the voltage is significant enough to count as changing the bias
     // too.
-    ob->control_loop_state.goodNoncesUponLastBiasChange = ob->control_loop_state.currentGoodNonces;
-    ob->control_loop_state.prevBiasChangeTime = ob->control_loop_state.currentTime;
+    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+    state->prevBiasChangeTime = state->currentTime;
+
+    // Write the new voltage level to disk.
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
 }
 
 // Separate thread to handle the control loop so we can react quickly to temp changes
@@ -581,7 +591,7 @@ static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
     applog(LOG_ERR, "Initializing Obelisk\n");
-    // ob1Initialize();
+    ob1Initialize();
 	gBoardModel = eGetBoardType(0);
 
 	// Initialize each hashboard.
@@ -659,55 +669,64 @@ static void obelisk_detect(bool hotplug)
         }
 
 		// Set the board number.
+		//
+		// Don't change the voltage at all for the first 5 mintues.
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+300;
 
-		// Start the chip biases at 3 levels above minimum, so there is room to
-		// decrease them via the startup logic.
-		int8_t baseBias = MIN_BIAS;
-		uint8_t baseDivider = 8;
-		increaseBias(&baseBias, &baseDivider);
-		increaseBias(&baseBias, &baseDivider);
-		increaseBias(&baseBias, &baseDivider);
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->control_loop_state.chipBiases[i] = baseBias;
-			ob->control_loop_state.chipDividers[i] = baseDivider;
-		}
-
-		// Set the default chip biases based on the thermal models that we have.
+		// Load the thermal configuration for this machine. If that fails (no
+		// configuration file, or boards changed), fallback to default values
+		// based on our thermal models.
 		//
-		// TODO: If there is a file that contains a previous thermal
-		// configuration for this machine, use that file instead of guessing
-		// blindly.
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			// Figure out the delta based on our thermal models.
-			int64_t chipDelta = 0;
-			if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
-				chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
-			} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
-				chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
-			} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
-				chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+		// TODO: use actual boardID in addition to chain_id
+		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
+			&ob->control_loop_state.currentVoltageLevel, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
+		if (error != SUCCESS) {
+			// Start the chip biases at 3 levels above minimum, so there is room to
+			// decrease them via the startup logic.
+			int8_t baseBias = MIN_BIAS;
+			uint8_t baseDivider = 8;
+			increaseBias(&baseBias, &baseDivider);
+			increaseBias(&baseBias, &baseDivider);
+			increaseBias(&baseBias, &baseDivider);
+			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+				ob->control_loop_state.chipBiases[i] = baseBias;
+				ob->control_loop_state.chipDividers[i] = baseDivider;
 			}
 
-			// Adjust the bias for this chip accordingly. Further from baseline
-			// means bigger adjustment.
-			while (chipDelta > 5) {
-				decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-				chipDelta -= 6;
+			applog(LOG_ERR, "Loading thermal settings failed; using default values");
+			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+				// Figure out the delta based on our thermal models.
+				int64_t chipDelta = 0;
+				if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 0) {
+					chipDelta = OB1_TEMPS_HASHBOARD_2_0[i];
+				} else if (ob->staticTotalBoards == 2 && ob->staticBoardNumber == 1) {
+					chipDelta = OB1_TEMPS_HASHBOARD_2_1[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 0) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_0[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 1) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_1[i];
+				} else if (ob->staticTotalBoards == 3 && ob->staticBoardNumber == 2) {
+					chipDelta = OB1_TEMPS_HASHBOARD_3_2[i];
+				}
+
+				// Adjust the bias for this chip accordingly. Further from baseline
+				// means bigger adjustment.
+				while (chipDelta > 5) {
+					decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+					chipDelta -= 6;
+				}
+				while (chipDelta < -8) {
+					increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+					chipDelta += 9;
+				}
 			}
-			while (chipDelta < -8) {
-				increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-				chipDelta += 9;
-			}
+
+			// Set the string voltage to the highest voltage for starting up.
+			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 		}
 		commitBoardBias(ob);
-
-		// Set the string voltage to the highest voltage for starting up.
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
@@ -794,15 +813,9 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
     temps->curr = curr_temp;
 }
 
-// CONTROL LOOP CONFIG
-#define CONTROL_LOOP_SUPER_HIGH_TEMP 50.0
-#define CONTROL_LOOP_HIGH_TEMP 45.0
-#define CONTROL_LOOP_LOW_TEMP 40.0
-#define TICKS_BETWEEN_BIAS_UPS 1000000000
-
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 60
+#define StatusOutputFrequency 10
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
@@ -814,17 +827,8 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define OvertempCheckFrequency 1
 
 // Undertemp variables.
-#define TempGapCold 40
-#define TempGapWarm 20
-#define TempRiseSpeedCold 3
-#define TempRiseSpeedWarm 2
 #define TempRiseSpeedHot 1
 #define UndertempCheckFrequency 1
-
-// String stability variables.
-#define StartingStringVoltageLevel 32
-#define MaxVoltageLevel 72
-#define VoltageStepSize 12
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
@@ -971,6 +975,7 @@ static void handleOvertemps(ob_chain* ob, double targetTemp)
         // temperature.
         if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
             decreaseStringBias(ob);
+            decreaseStringBias(ob);
         }
         ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
     }
@@ -983,11 +988,7 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     double currentTemp = ob->control_loop_state.currentStringTemp;
     double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
     if (timeElapsed > UndertempCheckFrequency) {
-        if (currentTemp < targetTemp - TempGapCold && currentTemp - prevTemp < TempRiseSpeedCold * UndertempCheckFrequency) {
-            increaseStringBias(ob);
-        } else if (currentTemp < targetTemp - TempGapWarm && currentTemp - prevTemp < TempRiseSpeedWarm * UndertempCheckFrequency) {
-            increaseStringBias(ob);
-        } else if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
+        if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
             increaseStringBias(ob);
         }
         ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
@@ -1078,7 +1079,6 @@ static void control_loop(ob_chain* ob)
 	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 		ob->chipBadNonces[i] = 0;
 		ob->chipGoodNonces[i] = 0;
-
 	}
 
 
@@ -1108,20 +1108,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     struct cgpu_info* cgpu = thr->cgpu;
     ob_chain* ob = cgpu->device_data;
     pthread_cond_signal(&ob->work_cond);
-
-
-
-    if (true) {
-        // HACK: STOP CLOCKING SO I CAN FREAKING TEST THE UI AND API SERVER WITHOUT OVERHEATING!!!!
-        ob1EnableMasterHashClock(ob->chain_id, false);
-        cgsleep_ms(1000);
-        return 10000;
-    }
-
-
-
-
-
 
 	int64_t hashesConfirmed = 0;
 
@@ -1258,25 +1244,21 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     char buffer[32];
 
     applog(LOG_ERR, "***** obelisk_api_stats()");
-    stats = api_add_uint32(stats, "boardId", &ob->chain_id, false);
+    stats = api_add_uint32(stats, "chainId", &ob->chain_id, false);
     stats = api_add_uint16(stats, "numChips", &ob->num_chips, false);
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
-    // stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
-    // stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
-    // stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
-
-    stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
+    stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
+    stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
+    stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
 
     // BUG: Adding more stats below causes the response to never be returned.  Seems like a buffer size issue,
     //      but so far I cannot seem to find it.
-    // stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
-    // stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
-    // stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
-    // stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
-    // stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
-    // stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
-    stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
-    stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
+    stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
+    stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
+    stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
+    stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
+    stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has
     // no support for global stats, so just repeat the fan speeds here
