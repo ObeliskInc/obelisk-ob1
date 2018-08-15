@@ -696,6 +696,7 @@ static void obelisk_detect(bool hotplug)
 		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
 			&ob->control_loop_state.currentVoltageLevel, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
 		if (error != SUCCESS) {
+			applog(LOG_ERR, "Loading thermal settings failed; using default values");
 			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 				// Figure out the delta based on our thermal models.
 				int64_t chipDelta = 0;
@@ -722,11 +723,11 @@ static void obelisk_detect(bool hotplug)
 					chipDelta += 9;
 				}
 			}
+
+			// Set the string voltage to the highest voltage for starting up.
+			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 		}
 		commitBoardBias(ob);
-
-		// Set the string voltage to the highest voltage for starting up.
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
