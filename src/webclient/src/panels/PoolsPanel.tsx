@@ -149,7 +149,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
               <Form onSubmit={formikProps.handleSubmit}>
                 {poolFields}
 
-                <Button type="submit">SAVE</Button>
+                {formikProps.dirty && <Button type="submit">SAVE</Button>}
               </Form>
             )
           }}
