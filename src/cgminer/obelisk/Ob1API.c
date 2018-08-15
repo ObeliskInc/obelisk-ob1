@@ -277,8 +277,8 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
         }
         applog(LOG_ERR, "isr %08x", isr);
 
-        uint8_t engineNum = (isr >> 8) & 0x3F; // 6 bits for engine number
-        uint8_t fifoDataMask = (isr & 0xFF);   // 8 bits for fifoDataMask
+        uint8_t engineNum = (isr >> 8) & (uint32_t)0x0000003F; // 6 bits for engine number
+        uint8_t fifoDataMask = isr & (uint32_t)0x000000FF;   // 8 bits for fifoDataMask
         // Get nonces as long as there are engines which are done.
         while (fifoDataMask > 0){
             applog(LOG_ERR, "board %u, chip %u engineNum %u", boardNum, chipNum, engineNum);
@@ -299,6 +299,7 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
                     nonceSet->count++;
                 }
             }
+            pulseDCR1ReadComplete(boardNum, chipNum, engineNum);
             uint32_t fsr;
             error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
             if (error != SUCCESS) {
@@ -307,7 +308,7 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
             applog(LOG_ERR, "fsr: %08x", fsr);
 
             //fifoDataMask = 0xFF;
-            uint32_t whatever_you_want=fifoDataMask;
+            uint32_t whatever_you_want = fifoDataMask;
             error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &whatever_you_want);
             if (error != SUCCESS) {
                 return error;
@@ -324,11 +325,10 @@ ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSe
             if (error != SUCCESS) {
                 return error;
             }
-            //pulseDCR1ReadComplete(boardNum, chipNum, engineNum);
 
             applog(LOG_ERR, "isr %08x, engineNum %u", isr, engineNum);
-            engineNum = (isr >> 8) & 0x3F; // 6 bits for engine number
-            fifoDataMask = (isr & 0xFF);   // 8 bits for fifoDataMask
+            engineNum = (isr >> 8) & (uint32_t)0x0000003F;
+            fifoDataMask = isr & (uint32_t)0x000000FF; 
         }
     }
     }

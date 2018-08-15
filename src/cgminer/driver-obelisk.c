@@ -1121,8 +1121,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
-        bool is_done = board_done_flags & (1 << chip_num) > 0; 
-        bool nonce_found = nonce_found_flags & (1 << chip_num) > 0; 
+        bool is_done = board_done_flags & (uint16_t)(1 << chip_num) > 0; 
+        bool nonce_found = nonce_found_flags & (uint16_t)(1 << chip_num) > 0; 
         applog(LOG_ERR, "board: %u: board_done_flags: %04x", ob->staticBoardNumber, board_done_flags);
 
         if (!is_done) {
@@ -1132,14 +1132,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
         // Read the nonces from all the engines.
        	NonceSet nonce_set;
+       	nonce_set.count = 0;
         if (nonce_found){
-       		nonce_set.count = 0;
        		error = ob1ReadReadyNonces(ob->staticBoardNumber, chip_num, &nonce_set);
        		if (error != SUCCESS) {
        			applog(LOG_ERR, "Error reading nonces.");
                       return 0;
        		}
             applog(LOG_NOTICE, "%u nonces found", nonce_set.count);
+        }
 
 		// Check the nonces and submit them to a pool if valid.
 		// 
@@ -1163,7 +1164,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
 			}
 		}
-        }
 
 		// Give a new job to the chip.
 		// Get the next job.
