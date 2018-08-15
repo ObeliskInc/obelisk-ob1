@@ -478,3 +478,151 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix)
         applog(LOG_ERR, "    nonces[%u] = 0x%016llX", i, pNonceSet->nonces[i]);
     }
 }
+
+// TODO: avoid redefining these functions
+
+#define MIN_BIAS -5
+#define MAX_BIAS 5
+
+static void increaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 1:
+        *divider *= 2;
+        break;
+    case 2:
+        *divider *= 2;
+        break;
+    case 4:
+        *divider *= 2;
+        break;
+    default:
+        // 8 or any other value means no change
+        break;
+    }
+}
+
+static void decreaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 2:
+        *divider /= 2;
+        break;
+    case 4:
+        *divider /= 2;
+        break;
+    case 8:
+        *divider /= 2;
+        break;
+    default:
+        // 1 or any other value means no change
+        break;
+    }
+}
+
+static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MAX_BIAS) {
+        if (*currentDivider > 1) {
+            decreaseDivider(currentDivider);
+            *currentBias = MIN_BIAS;
+        }
+    } else {
+        *currentBias += 1;
+    }
+}
+
+static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MIN_BIAS) {
+        if (*currentDivider < 8) {
+            increaseDivider(currentDivider);
+            *currentBias = MAX_BIAS;
+        }
+    } else {
+        *currentBias -= 1;
+    }
+}
+
+static uint8_t findWorstChild(ControlLoopState *state)
+{
+    uint8_t worst = 0;
+    for (uint8_t i = 0; i < GENERATION_SIZE; i++) {
+        if (state->population[i].fitness < state->population[worst].fitness) {
+            worst = i;
+        }
+    }
+    return worst;
+}
+
+static GenChild breedChild(ControlLoopState *state)
+{
+    FILE *urandom = fopen("/dev/urandom", "rb");
+    if (!urandom) {
+        applog(LOG_ERR, "No /dev/urandom! Returning first child");
+        return state->population[0];
+    }
+    uint8_t buf[64];
+    fread(buf, 1, sizeof(buf), urandom);
+    fclose(urandom);
+    uint8_t *randByte = buf;
+
+    // pick two random parents
+    GenChild *parent1 = &state->population[(*randByte++) % state->populationSize];
+    GenChild *parent2 = &state->population[(*randByte++) % state->populationSize];
+
+    // for each trait in the child, choosing randomly whether to take trait
+    // from parent1 or parent2
+    GenChild child;
+    child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
+    for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
+        child.chipBiases[i]   = (*randByte     & 1) ? parent1->chipBiases[i]   : parent2->chipBiases[i];
+        child.chipDividers[i] = ((*randByte++) & 2) ? parent1->chipDividers[i] : parent2->chipDividers[i];
+    }
+
+    // mutate each trait by choosing randomly whether to increment it,
+    // decrement it, or leave it unchanged
+    //
+    // TODO: this code doesn't take into account the minimum/maximum levels
+    // for the model. When setVoltageLevel is called, it may overwrite
+    // state->currentVoltageLevel with the minimum or maximum, so we have to
+    // update child.voltageLevel to reflect that.
+    uint8_t r = *randByte++;
+    if (r % 3 == 0) {
+        child.voltageLevel++;
+    } else if (r % 3 == 1) {
+        child.voltageLevel--;
+    }
+    for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
+        r = *randByte++;
+        if (r % 3 == 0) {
+            increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        } else if (r % 3 == 1) {
+            decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        }
+    }
+
+    return child;
+}
+
+void geneticAlgoIter(ControlLoopState *state)
+{
+    // evalulate performance of current child
+    if (state->populationSize < GENERATION_SIZE) {
+        state->population[state->populationSize++] = state->curChild;
+    } else {
+        uint8_t worst = findWorstChild(state);
+        if (state->curChild.fitness > state->population[worst].fitness) {
+            state->population[worst] = state->curChild;
+        }
+    }
+
+    // breed two random parents and mutate the offspring to produce a new child
+    state->curChild = breedChild(state);
+
+    // set voltage and chip biases according to new child
+    // TODO: replace these fields entirely?
+    state->currentVoltageLevel = state->curChild.voltageLevel;
+    memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
+    memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
+}

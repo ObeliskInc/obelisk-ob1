@@ -850,6 +850,13 @@ static void updateControlState(ob_chain* ob)
     ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
 }
 
+static uint64_t computeHashRate(ob_chain *ob)
+{
+    uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
+    time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
+    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed / 1000000000;
+}
+
 // displayControlState will check if enough time has passed, and then display
 // the current state of the hashing board to the user.
 static void displayControlState(ob_chain* ob)
@@ -857,18 +864,13 @@ static void displayControlState(ob_chain* ob)
     time_t lastStatus = ob->control_loop_state.lastStatusOutput;
     time_t currentTime = ob->control_loop_state.currentTime;
     if (currentTime - lastStatus > StatusOutputFrequency) {
-        // Compute the hashrate.
-        uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
-        time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
-        uint64_t hashrate = ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed / 1000000000;
-
         // Currently only displays the bias of the first chip.
 		applog(LOG_ERR, "");
         applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Hashrate: %lld GH/s  VLevel: %u",
             ob->control_loop_state.boardNumber,
             ob->control_loop_state.currentStringTemp,
             ob->control_loop_state.currentStringVoltage,
-            hashrate,
+            computeHashRate(ob),
             ob->control_loop_state.currentVoltageLevel);
         
         cgtimer_t currTime, totalTime;
@@ -1026,76 +1028,27 @@ static void control_loop(ob_chain* ob)
 		}
 	}
 
-	// If there are more than 3 bad chips, we need to increase the string
-	// voltage.
-	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minStringVoltageLevel;
-	if (badChips > 3 && !atMinLevel) {
-		// Decrease the string voltage level and set the timeout for the next
-		// level to be much higher.
-		applog(LOG_ERR, "Increasing string voltage due to too many bad chips.");
-		ob->control_loop_state.chipAdjustments = 0;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
-		return;
-	} else if (badChips > 1 && ob->control_loop_state.chipAdjustments > 10 && !atMinLevel) {
-		// Decrease the string voltage level.
-		applog(LOG_ERR, "Increasing string voltage due to too many adjustments for bad chips.");
-		ob->control_loop_state.chipAdjustments = 0;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
-		return;
-	} else if (badChips == 0) {
-		applog(LOG_ERR, "Decreasing string voltage beacuse there are no bad chips.");
-		// Incrase the string voltage level.
-		ob->control_loop_state.chipAdjustments = 0;
+	if (ob->control_loop_state.goodNoncesUponLastVoltageChange > 75) {
+		// Set the fitness of the current child.
+		ob->control_loop_state.curChild.fitness = computeHashRate(ob);
+		// HACK: setVoltageLevel may have changed curentVoltageLevel; update
+		// curChild to match
+		ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+
+		// Run the genetic algorithm, recording the performance of the current
+		// settings and breeding the population to produce new settings.
+		geneticAlgoIter(&ob->control_loop_state);
+
+		// Commit the new settings and mark that an adjustment has taken place.
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
+		commitBoardBias(ob);
+		ob->control_loop_state.chipAdjustments++;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->chipBadNonces[i] = 0;
 			ob->chipGoodNonces[i] = 0;
 		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel+1);
-		return;
 	}
-
-	// Decerase the bias on any of the bad chips.
-	applog(LOG_ERR, "Adjusting the voltage on some bad chips.");
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
-			decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-		}
-	}
-	commitBoardBias(ob);
-	// Mark that an adjustment has taken place.
-	ob->control_loop_state.chipAdjustments++;
-	ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		ob->chipBadNonces[i] = 0;
-		ob->chipGoodNonces[i] = 0;
-	}
-
-
-	/*
-	// Determine if the time has come to start collecting hashrate for the
-	// string.
-	if (!ob->settings.started && ob->control_loop_state.currentTime > ob->settings.startTime) {
-		applog(LOG_ERR, "Starting metrics collection for current string.");
-		ob->settings.started = true;
-		ob->settings.startGoodNonces = ob->control_loop_state.currentGoodNonces;
-	}
-
-	// Determine if the time has come to switch to the next settings.
-	if (ob->control_loop_state.currentTime > ob->settings.Endtime) {
-		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
-	}
-	*/
 }
 
 /*
