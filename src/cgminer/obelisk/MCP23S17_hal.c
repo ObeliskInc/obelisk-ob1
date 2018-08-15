@@ -102,11 +102,6 @@
 #define MISC_GPPU_DEFAULT (0xFFFC) // pull-ups on all inputs; none on outputs
 #define MISC_OLAT_DEFAULT (HASHOFF) // Hashing clock off (high); PSENB off (low)
 
-// SPI address (7-bit); R/W# bit is lsb in control byte so these get shifted left 1 bit when sent
-#define PEX_DONE_ADR (0x20) // ASIC Done signals
-#define PEX_NONCE_ADR (0x21) // ASIC Nonce signals
-#define PEX_MISC_ADR (0x22) // PS enable, Hash enable, rev ID, etc
-
 /***    LOCAL STRUCTURES/ENUMS      ***/
 
 /***    LOCAL FUNCTION PROTOTYPES   ***/

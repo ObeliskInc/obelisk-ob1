@@ -44,7 +44,8 @@ class App extends React.PureComponent<CombinedProps> {
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
-      padding: '0 !important',
+      width: '100%',
+      padding: '20px !important',
     },
     header: {
       $debugName: 'header',
@@ -170,7 +171,7 @@ class App extends React.PureComponent<CombinedProps> {
                   <Button onClick={this.handleLogout} icon="log out" content="LOGOUT" />
                 </Menu>
               </Responsive>
-              <Segment basic={true} className={classNames.segment}>
+              <div className={classNames.segment}>
                 <Responsive maxWidth={768}>
                   <div className={classNames.header}>
                     <Button onClick={this.toggleVisibility} className="hamburgerMenu">
@@ -193,7 +194,7 @@ class App extends React.PureComponent<CombinedProps> {
                     <Route component={Dashboard} />
                   </Switch>
                 </div>
-              </Segment>
+              </div>
             </div>
           </Sidebar.Pusher>
         </Sidebar.Pushable>

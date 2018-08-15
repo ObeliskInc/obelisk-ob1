@@ -215,7 +215,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     error={!!_.get(formikProps.errors, ['ntpServer'], '')}
                     disabled={true}
                   />
-                  <Button type="Submit">SAVE</Button>
+                  {formikProps.dirty && <Button type="submit">SAVE</Button>}
                 </Form>
 
                 <Form onSubmit={formikProps.handleSubmit}>

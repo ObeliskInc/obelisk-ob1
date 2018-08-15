@@ -196,7 +196,7 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                 <div className={classNames.formFieldError}>
                   {_.get(formikProps.errors, ['dnsServer'], ' ')}
                 </div>
-                <Button type="submit">SAVE</Button>
+                {formikProps.dirty && <Button type="submit">SAVE</Button>}
               </Form>
             )
           }}

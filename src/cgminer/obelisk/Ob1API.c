@@ -65,7 +65,7 @@ void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
 //==================================================================================================
 
 // Program a job the specified engine(s).
-ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
+ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
 {
     ApiError error = GENERIC_ERROR;
     int writesAvoided = 0;
@@ -95,6 +95,7 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         break;
     }
     case MODEL_DCR1: {
+        cgtimer_t start_WriteReg, end_WriteReg, duration_WriteReg;
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
 
@@ -107,7 +108,11 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
         // the shadow register code to keep copies of all engine registers.
         if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[7] != data) {
             // applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
+            cgtimer_time(&start_WriteReg);
             error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data);
+            cgtimer_time(&end_WriteReg);
+            cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+            *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
             if (error != SUCCESS) {
                 return error;
             }
@@ -123,7 +128,11 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
                 // Only write if the V register differs from the shadow register
                 if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[i] != data) {
                     // applog(LOG_ERR, "    V%d: 0x%08lX", i, data);
+                    cgtimer_time(&start_WriteReg);
                     error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data);
+                    cgtimer_time(&end_WriteReg);
+                    cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+                    *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -148,7 +157,11 @@ ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* p
                 // Only write if the M register differs from the shadow register
                 if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.m[i] != data) {
                     // applog(LOG_ERR, "    M%02d: 0x%08lX  (regAddr = 0x%02X)", i, data, regAddr);
+                    cgtimer_time(&start_WriteReg);
                     error = ob1SpiWriteReg(boardNum, chipNum, engineNum,  regAddr, &data);
+                    cgtimer_time(&end_WriteReg);
+                    cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
+                    *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -696,6 +709,23 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
     UNLOCK(&statusLock);
     return SUCCESS;
 }
+
+// Read the Done status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they are done (corresponding bit is 1)
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
+// Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
+// which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
+{
+    int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
+}
+
 
 //==================================================================================================
 // Controller-level API
