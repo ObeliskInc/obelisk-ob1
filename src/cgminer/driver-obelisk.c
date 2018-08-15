@@ -669,20 +669,11 @@ static void obelisk_detect(bool hotplug)
         }
 
 		// Set the board number.
+		//
+		// Don't change the voltage at all for the first 5 mintues.
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
-
-		// Start the chip biases at 3 levels above minimum, so there is room to
-		// decrease them via the startup logic.
-		int8_t baseBias = MIN_BIAS;
-		uint8_t baseDivider = 8;
-		increaseBias(&baseBias, &baseDivider);
-		increaseBias(&baseBias, &baseDivider);
-		increaseBias(&baseBias, &baseDivider);
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->control_loop_state.chipBiases[i] = baseBias;
-			ob->control_loop_state.chipDividers[i] = baseDivider;
-		}
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+300;
 
 		// Load the thermal configuration for this machine. If that fails (no
 		// configuration file, or boards changed), fallback to default values
@@ -692,6 +683,18 @@ static void obelisk_detect(bool hotplug)
 		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
 			&ob->control_loop_state.currentVoltageLevel, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
 		if (error != SUCCESS) {
+			// Start the chip biases at 3 levels above minimum, so there is room to
+			// decrease them via the startup logic.
+			int8_t baseBias = MIN_BIAS;
+			uint8_t baseDivider = 8;
+			increaseBias(&baseBias, &baseDivider);
+			increaseBias(&baseBias, &baseDivider);
+			increaseBias(&baseBias, &baseDivider);
+			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+				ob->control_loop_state.chipBiases[i] = baseBias;
+				ob->control_loop_state.chipDividers[i] = baseDivider;
+			}
+
 			applog(LOG_ERR, "Loading thermal settings failed; using default values");
 			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 				// Figure out the delta based on our thermal models.
@@ -724,6 +727,7 @@ static void obelisk_detect(bool hotplug)
 			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 		}
 		commitBoardBias(ob);
+		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -809,15 +813,9 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
     temps->curr = curr_temp;
 }
 
-// CONTROL LOOP CONFIG
-#define CONTROL_LOOP_SUPER_HIGH_TEMP 90.0
-#define CONTROL_LOOP_HIGH_TEMP 85.0
-#define CONTROL_LOOP_LOW_TEMP 80.0
-#define TICKS_BETWEEN_BIAS_UPS 100
-
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 60
+#define StatusOutputFrequency 10
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
@@ -829,17 +827,12 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define OvertempCheckFrequency 1
 
 // Undertemp variables.
-#define TempGapCold 40
-#define TempGapWarm 20
+#define TempGapCold 65
+#define TempGapWarm 35
 #define TempRiseSpeedCold 3
 #define TempRiseSpeedWarm 2
 #define TempRiseSpeedHot 1
 #define UndertempCheckFrequency 1
-
-// String stability variables.
-#define StartingStringVoltageLevel 32
-#define MaxVoltageLevel 72
-#define VoltageStepSize 12
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
@@ -985,6 +978,7 @@ static void handleOvertemps(ob_chain* ob, double targetTemp)
         // Rapidly reduce the string bias again if we are at an urgent
         // temperature.
         if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
+            decreaseStringBias(ob);
             decreaseStringBias(ob);
         }
         ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
