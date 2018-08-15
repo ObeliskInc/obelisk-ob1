@@ -1146,19 +1146,17 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	*/
 
 	// Print out the result of ReadBoardDoneFlags.
-	/*
 	bool dones[16];
 	bool print = false;
-	for (int i = 0; i < 16; i++) {
-		dones[i] = boardDoneFlags & (1 << i) > 0;
+	for (uint16_t i = 0; i < 15; i++) {
+		dones[i] = (boardDoneFlags >> i) & 1;
 		if (dones[i]) {
 			print = true;
 		}
 	}
 	if (print) {
-		applog(LOG_ERR, "0-%u, 1-%u, 2-%u, 3-%u, 4-%u, 5-%u, 6-%u, 7-%u, 8-%u, 9-%u, 10-%u, 11-%u, 12-%u, 13-%u, 14-%u, 15-%u", dones[0], dones[1], dones[2], dones[3], dones[4], dones[5], dones[6], dones[7], dones[8], dones[9], dones[10], dones[11], dones[12], dones[13], dones[14], dones[15]);
+		applog(LOG_ERR, "%04X :::::::: 0-%d, 1-%d, 2-%d, 3-%d, 4-%d, 5-%d, 6-%d, 7-%d, 8-%d, 9-%d, 10-%d, 11-%d, 12-%d, 13-%d, 14-%d, 15-%d", boardDoneFlags, dones[0], dones[1], dones[2], dones[3], dones[4], dones[5], dones[6], dones[7], dones[8], dones[9], dones[10], dones[11], dones[12], dones[13], dones[14], dones[15]);
 	}
-	*/
 
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
