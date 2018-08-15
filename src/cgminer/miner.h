@@ -5,7 +5,9 @@
 #include "config.h"
 
 // TODO: Why isn't this already defined by the configure system?
+#ifndef USE_OBELISK
 #define USE_OBELISK
+#endif
 
 #include <jansson.h>
 #include <pthread.h>
