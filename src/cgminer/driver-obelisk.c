@@ -1130,12 +1130,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		applog(LOG_ERR, "Failed to read board done flags.");
 		return 0;
 	}
+	/*
 	uint16_t nonceFoundFlags = 0;
 	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
 	if (error != SUCCESS) {
 		applog(LOG_ERR, "Failed to read nonce done flags.");
 		return 0;
 	}
+	*/
 
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
@@ -1176,15 +1178,17 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 		// Compare whole chip done reading to board done flags.
 		if (!wholeChipDone) {
-			applog(LOG_ERR, "False positive detected on the chip done message: %u.%u", ob->staticBoardNumber, chip_num);
+			// applog(LOG_ERR, "False positive detected on the chip done message: %u.%u", ob->staticBoardNumber, chip_num);
 			continue;
 		}
 
 		// Check if this chip found a nonce. If not, move on.
+		/*
 		bool chipHasNonce = (nonceFoundFlags >> chip_num) & 1;
 		if (!chipHasNonce) {
-			continue;
+			// continue;
 		}
+		*/
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
@@ -1202,9 +1206,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				continue;
 			}
 
+			/*
 			if (nonce_set.count == 0 && chipHasNonce) {
-				applog(LOG_ERR, "chip reported a nonce, but there is no nonce here.");
+				// applog(LOG_ERR, "chip reported a nonce, but there is no nonce here.");
 			}
+			if (nonce_set.count > 0 && !chipHashNonce) {
+				applog(LOG_ERR, "----- would have skipped over a nonce -----");
+			}
+			*/
 
 			// Check the nonces and submit them to a pool if valid.
 			// 
