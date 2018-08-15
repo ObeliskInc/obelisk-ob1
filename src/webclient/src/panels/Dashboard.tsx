@@ -82,23 +82,29 @@ class Dashboard extends React.PureComponent<CombinedProps> {
 
     const mapPoolHeaders = dashboardStatus.poolStatus.map((_, i) => {
       return (
-        <Table.HeaderCell textAlign="center">Pool {i + 1}</Table.HeaderCell>
+        <Table.HeaderCell key={i} textAlign="center">
+          Pool {i + 1}
+        </Table.HeaderCell>
       )
     })
     const mapBoardHeaders = dashboardStatus.hashboardStatus.map((_, i) => {
       return (
-        <Table.HeaderCell textAlign="center">Board {i + 1}</Table.HeaderCell>
+        <Table.HeaderCell key={i} textAlign="center">
+          Board {i + 1}
+        </Table.HeaderCell>
       )
     })
 
     const hashboardTableMap = {
       Hashrate: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
-          <Table.Cell textAlign="center">{h.hashrate} GH/s</Table.Cell>
+          <Table.Cell key={i} textAlign="center">
+            {h.hashrate} GH/s
+          </Table.Cell>
         )),
       Active: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
-          <Table.Cell textAlign="center">
+          <Table.Cell key={i} textAlign="center">
             <Label
               color={h.status === 'Active' ? 'green' : 'red'}
               horizontal={true}
@@ -109,32 +115,40 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         )),
       ['Accepts/Rejects']: (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
-          <Table.Cell textAlign="center">
+          <Table.Cell key={i} textAlign="center">
             {h.accepted}/{h.rejected}
           </Table.Cell>
         )),
       ['Board Temp']: (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
-          <Table.Cell textAlign="center">{h.boardTemp} C</Table.Cell>
+          <Table.Cell key={i} textAlign="center">
+            {h.boardTemp} C
+          </Table.Cell>
         )),
       ['Chip Temp']: (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
-          <Table.Cell textAlign="center">{h.chipTemp} C</Table.Cell>
+          <Table.Cell key={i} textAlign="center">
+            {h.chipTemp} C
+          </Table.Cell>
         )),
     }
 
     const poolTableMap = {
       Url: (s: PoolStatus[]) =>
         _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell textAlign="center">{p.url}</Table.Cell>
+          <Table.Cell key={i} textAlign="center">
+            {p.url}
+          </Table.Cell>
         )),
       Worker: (s: PoolStatus[]) =>
         _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell textAlign="center">{p.worker}</Table.Cell>
+          <Table.Cell key={i} textAlign="center">
+            {p.worker}
+          </Table.Cell>
         )),
       Status: (s: PoolStatus[]) =>
         _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell textAlign="center">
+          <Table.Cell key={i} textAlign="center">
             <Label
               color={p.status === 'Active' ? 'green' : 'red'}
               horizontal={true}
@@ -145,7 +159,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         )),
       ['Accepts/Rejects']: (s: PoolStatus[]) =>
         _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell textAlign="center">
+          <Table.Cell key={i} textAlign="center">
             {p.accepted}/{p.rejected}
           </Table.Cell>
         )),
