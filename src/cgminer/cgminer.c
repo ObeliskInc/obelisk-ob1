@@ -8321,7 +8321,12 @@ void hash_queued_work(struct thr_info* mythr)
 
         fill_queue(mythr, cgpu, drv, thr_id);
 
+        cgtimer_t start, end, duration;
+        cgtimer_time(&start);
         hashes = drv->scanwork(mythr);
+        cgtimer_time(&end);
+        cgtimer_sub(&end, &start, &duration);
+        //applog(LOG_NOTICE, "hash_queued_work scanwork took %d ms", cgtimer_to_ms(&duration));
 
         /* Reset the bool here in case the driver looks for it
 		 * synchronously in the scanwork loop. */
@@ -8371,7 +8376,12 @@ void hash_driver_work(struct thr_info* mythr)
         struct timeval diff;
         int64_t hashes;
 
+        cgtimer_t start, end, duration;
+        cgtimer_time(&start);
         hashes = drv->scanwork(mythr);
+        cgtimer_time(&end);
+        cgtimer_sub(&end, &start, &duration);
+        //applog(LOG_NOTICE, "hash_driver_work scanwork took %d ms", cgtimer_to_ms(&duration));
 
         /* Reset the bool here in case the driver looks for it
 		 * synchronously in the scanwork loop. */

@@ -72,43 +72,105 @@ class Dashboard extends React.PureComponent<CombinedProps> {
       <Stat label={info.name} value={info.value} key={info.name} />
     ))
 
-    const poolEntries = _.map(
-      dashboardStatus.poolStatus,
-      (poolEntry: PoolStatus, index: number) => (
-        <Table.Row key={index}>
-          <Table.Cell>{index + 1}</Table.Cell>
-          <Table.Cell>{poolEntry.url}</Table.Cell>
-          <Table.Cell textAlign="center">
-            <Label color={poolEntry.status === 'Active' ? 'green' : 'red'} horizontal={true}>
-              {poolEntry.status}
-            </Label>
-          </Table.Cell>
-          <Table.Cell textAlign="center">
-            {poolEntry.accepted}/{poolEntry.rejected}
-          </Table.Cell>
-        </Table.Row>
-      ),
-    )
+    const mapPoolHeaders = dashboardStatus.poolStatus.map((_, i) => {
+      return (
+        <Table.HeaderCell key={i} textAlign="center">
+          Pool {i + 1}
+        </Table.HeaderCell>
+      )
+    })
+    const mapBoardHeaders = dashboardStatus.hashboardStatus.map((_, i) => {
+      return (
+        <Table.HeaderCell key={i} textAlign="center">
+          Board {i + 1}
+        </Table.HeaderCell>
+      )
+    })
 
-    const hashboardEntries = _.map(
-      dashboardStatus.hashboardStatus,
-      (hashboardEntry: HashboardStatus, index: number) => (
-        <Table.Row key={index}>
-          <Table.Cell>{index + 1}</Table.Cell>
-          <Table.Cell textAlign="center">{hashboardEntry.hashrate} GH/s</Table.Cell>
-          <Table.Cell textAlign="center">
-            <Label color={hashboardEntry.status === 'Active' ? 'green' : 'red'} horizontal={true}>
-              {hashboardEntry.status}
+    const hashboardTableMap = {
+      Hashrate: (s: HashboardStatus[]) =>
+        _.map(s, (h, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.hashrate} GH/s
+          </Table.Cell>
+        )),
+      Active: (s: HashboardStatus[]) =>
+        _.map(s, (h, i) => (
+          <Table.Cell key={i} textAlign="center">
+            <Label color={h.status === 'Active' ? 'green' : 'red'} horizontal={true}>
+              {h.status}
             </Label>
           </Table.Cell>
-          <Table.Cell textAlign="center">
-            {hashboardEntry.accepted}/{hashboardEntry.rejected}
+        )),
+      ['Accepts/Rejects']: (s: HashboardStatus[]) =>
+        _.map(s, (h: HashboardStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.accepted}/{h.rejected}
           </Table.Cell>
-          <Table.Cell textAlign="center">{hashboardEntry.boardTemp} C</Table.Cell>
-          <Table.Cell textAlign="center">{hashboardEntry.chipTemp} C</Table.Cell>
-        </Table.Row>
-      ),
-    )
+        )),
+      ['Board Temp']: (s: HashboardStatus[]) =>
+        _.map(s, (h: HashboardStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.boardTemp} C
+          </Table.Cell>
+        )),
+      ['Chip Temp']: (s: HashboardStatus[]) =>
+        _.map(s, (h: HashboardStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.chipTemp} C
+          </Table.Cell>
+        )),
+    }
+
+    const poolTableMap = {
+      Url: (s: PoolStatus[]) =>
+        _.map(s, (p: PoolStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {p.url}
+          </Table.Cell>
+        )),
+      Worker: (s: PoolStatus[]) =>
+        _.map(s, (p: PoolStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {p.worker}
+          </Table.Cell>
+        )),
+      Status: (s: PoolStatus[]) =>
+        _.map(s, (p: PoolStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            <Label color={p.status === 'Active' ? 'green' : 'red'} horizontal={true}>
+              {p.status}
+            </Label>
+          </Table.Cell>
+        )),
+      ['Accepts/Rejects']: (s: PoolStatus[]) =>
+        _.map(s, (p: PoolStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {p.accepted}/{p.rejected}
+          </Table.Cell>
+        )),
+    }
+    const mapPoolCols =
+      dashboardStatus.poolStatus.length > 0 &&
+      _.map(Object.keys(poolTableMap), (name: string, index: number) => {
+        return (
+          <Table.Row key={index}>
+            <Table.Cell>{name}</Table.Cell>
+            {poolTableMap[name](dashboardStatus.poolStatus)}
+          </Table.Row>
+        )
+      })
+
+    const mapBoardCols =
+      dashboardStatus.hashboardStatus.length > 0 &&
+      _.map(Object.keys(hashboardTableMap), (name: string, index: number) => {
+        return (
+          <Table.Row key={index}>
+            <Table.Cell>{name}</Table.Cell>
+            {hashboardTableMap[name](dashboardStatus.hashboardStatus)}
+          </Table.Row>
+        )
+      })
 
     // Add lines based on how many board entries are in the data in the first entry
     const firstEntry = _.get(dashboardStatus.hashrateData, 0, {})
@@ -155,31 +217,25 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         </ResponsiveContainer>
 
         <Header as="h2">Pool Info</Header>
-        <Table striped={true} unstackable={true} className={classNames.table}>
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Header>
             <Table.Row>
-              <Table.HeaderCell>#</Table.HeaderCell>
-              <Table.HeaderCell>URL</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Status</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Accepted/Rejected</Table.HeaderCell>
+              <Table.HeaderCell />
+              {mapPoolHeaders}
             </Table.Row>
           </Table.Header>
-          <Table.Body>{poolEntries}</Table.Body>
+          <Table.Body>{mapPoolCols}</Table.Body>
         </Table>
 
         <Header as="h2">Hashing Board Info</Header>
-        <Table striped={true} unstackable={true} className={classNames.table}>
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Header>
             <Table.Row>
-              <Table.HeaderCell>#</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Hashrate</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Status</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Accepted/Rejected</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Board Temp</Table.HeaderCell>
-              <Table.HeaderCell textAlign="center">Chip Temp</Table.HeaderCell>
+              <Table.HeaderCell />
+              {mapBoardHeaders}
             </Table.Row>
           </Table.Header>
-          <Table.Body>{hashboardEntries}</Table.Body>
+          <Table.Body>{mapBoardCols}</Table.Body>
         </Table>
 
         <Header as="h2">System Info</Header>
