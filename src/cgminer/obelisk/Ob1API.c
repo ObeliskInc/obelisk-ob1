@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern pthread_mutex_t spiLock;
 // Globals
 HashboardModel gBoardModel;
 
@@ -714,7 +715,9 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
 // which ASICs on the board are signaling they are done (corresponding bit is 1)
 ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 
@@ -722,7 +725,9 @@ ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 // which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
 ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 
