@@ -6,7 +6,7 @@
 //==================================================================================================
 
 // Program a job the specified engine(s).
-ApiError ob1LoadJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob);
+ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob);
 
 // Set the upper and lower bounds for the specified engine(s).
 ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound);

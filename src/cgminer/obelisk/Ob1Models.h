@@ -8,6 +8,7 @@ typedef struct hashBoardModel {
 	uint16_t maxStringVoltageLevel;
 
 	// Information for working with block headers for this algorithm.
+	uint64_t chipDifficulty;
 	uint64_t headerSize;
 	uint64_t headerTailSize;
 	uint64_t midstateSize;
@@ -25,6 +26,7 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.minStringVoltageLevel = 20,
 	.maxStringVoltageLevel = 127,
 
+	.chipDifficulty = 1099511627776ULL,
 	.headerSize = 80,
 	.headerTailSize = 0,    // no tail
 	.midstateSize = 0,      // no midstate
@@ -41,6 +43,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.minStringVoltageLevel = 20,
 	.maxStringVoltageLevel = 127,
 
+	.chipDifficulty = 4294976296ULL,
 	.headerSize = 180,
 	.headerTailSize = 52,
 	.midstateSize = 32,
