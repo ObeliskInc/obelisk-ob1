@@ -67,7 +67,7 @@ typedef uint32_t Nonce;
 
 typedef struct {
     Nonce nonces[MAX_NONCE_FIFO_LENGTH*128];
-    uint8_t count;
+    uint16_t count;
 } NonceSet;
 
 #define ALL_BOARDS 255

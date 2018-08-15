@@ -1121,15 +1121,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
-        bool is_done = board_done_flags & (uint16_t)(1 << chip_num) > 0; 
-        bool nonce_found = nonce_found_flags & (uint16_t)(1 << chip_num) > 0; 
+        bool is_done = (board_done_flags & (uint16_t)(1 << chip_num)) > 0; 
+        bool nonce_found = (nonce_found_flags & (uint16_t)(1 << chip_num)) > 0; 
         applog(LOG_ERR, "board: %u: board_done_flags: %04x", ob->staticBoardNumber, board_done_flags);
 
         if (!is_done) {
             continue;
         }
         
-
         // Read the nonces from all the engines.
        	NonceSet nonce_set;
        	nonce_set.count = 0;

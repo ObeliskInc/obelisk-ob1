@@ -11,10 +11,10 @@
 #define SC1 1
 #define DCR1 2
 
-// #define ALGO BLAKE256
-// #define MODEL DCR1
+#define ALGO BLAKE256
+#define MODEL DCR1
 
-#define ALGO BLAKE2B
-#define MODEL SC1
+//#define ALGO BLAKE2B
+//#define MODEL SC1
 
 #endif
