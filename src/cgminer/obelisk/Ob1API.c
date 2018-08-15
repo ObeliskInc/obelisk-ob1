@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern pthread_mutex_t spiLock;
 // Globals
 HashboardModel gBoardModel;
 
@@ -256,10 +257,87 @@ ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound
     return SUCCESS;
 }
 
+ApiError ob1ReadReadyNonces(uint8_t boardNum, uint8_t chipNum, NonceSet* nonceSet){
+    nonceSet->count = 0;
+    applog(LOG_ERR, "board: %u: chip: %u", boardNum, chipNum);
+
+
+    applog(LOG_ERR, "ob1ReadReadyNonces");
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        // TODO implement
+    }
+    case MODEL_DCR1: {
+        // Get highest engine with a nonce and the corresponding entry in the
+        // fifo.
+        uint32_t isr;
+        ApiError error = ob1SpiReadChipReg(boardNum, chipNum, 0x48, &isr);
+        if (error != SUCCESS) {
+            return error;
+        }
+        applog(LOG_ERR, "isr %08x", isr);
+
+        uint8_t engineNum = (isr >> 8) & 0x3F; // 6 bits for engine number
+        uint8_t fifoDataMask = (isr & 0xFF);   // 8 bits for fifoDataMask
+        // Get nonces as long as there are engines which are done.
+        while (fifoDataMask > 0){
+            applog(LOG_ERR, "board %u, chip %u engineNum %u", boardNum, chipNum, engineNum);
+            applog(LOG_ERR, "fifoDataMask %02x", fifoDataMask);
+
+            for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
+                if((1<<i) & fifoDataMask){
+                    uint8_t fifoDataReg = E_DCR1_REG_FDR0 + i;
+
+                    // Read nonce from register.
+                    if (nonceSet->count >= 8 * 128) {
+                        return SUCCESS;
+                    }
+                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg, &(nonceSet->nonces[nonceSet->count]));
+                    if (error != SUCCESS) {
+                        return error;
+                    }
+                    nonceSet->count++;
+                }
+            }
+            uint32_t fsr;
+            error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+            if (error != SUCCESS) {
+                return error;
+            }
+            applog(LOG_ERR, "fsr: %08x", fsr);
+
+            //fifoDataMask = 0xFF;
+            uint32_t whatever_you_want=fifoDataMask;
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &whatever_you_want);
+            if (error != SUCCESS) {
+                return error;
+            }
+
+            error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+            if (error != SUCCESS) {
+                return error;
+            }
+            applog(LOG_ERR, "fsr2: %08x", fsr);
+
+            // Update isr
+            error = ob1SpiReadChipReg(boardNum, chipNum, 0x48, &isr);
+            if (error != SUCCESS) {
+                return error;
+            }
+            //pulseDCR1ReadComplete(boardNum, chipNum, engineNum);
+
+            applog(LOG_ERR, "isr %08x, engineNum %u", isr, engineNum);
+            engineNum = (isr >> 8) & 0x3F; // 6 bits for engine number
+            fifoDataMask = (isr & 0xFF);   // 8 bits for fifoDataMask
+        }
+    }
+    }
+    return SUCCESS;
+}
+
 // Read the nonces of the specified engine
 ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet)
 {
-    Nonce nonce;
     switch (gBoardModel) {
     case MODEL_SC1: {
         uint64_t fsr;
@@ -701,7 +779,9 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
 // which ASICs on the board are signaling they are done (corresponding bit is 1)
 ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 
@@ -709,7 +789,9 @@ ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 // which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
 ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 

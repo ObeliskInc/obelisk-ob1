@@ -1101,64 +1101,68 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	int64_t hashesConfirmed = 0;
 
+    uint16_t board_done_flags, nonce_found_flags; 
+    ApiError error = ob1ReadBoardDoneFlags(ob->staticBoardNumber, &board_done_flags);
+    if (error != SUCCESS) {
+        applog(LOG_ERR, "failed to read board done flags");
+    }
+    error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonce_found_flags);
+    if (error != SUCCESS) {
+        applog(LOG_ERR, "failed to read nonce flags");
+    }
+
     // Look for nonces first so we can give new work in the same iteration below
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
 		if(ob->chipWork[chip_num] == NULL) {
+            applog(LOG_ERR, "chipjob: board %u chip %u", ob->staticBoardNumber, chip_num);
 			ob->loadNextChipJob(ob, chip_num);
 			continue;
 		}
 
-		// Check whether the chip is done.
-        uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
-        ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
-		// Skip this chip if there was an error, or if the entire chip is not
-		// done.
-		if (error != SUCCESS) {
-			continue;
-		}
-		bool wholeChipDone = true;
-		for (int i = 0; i < ob->staticBoardModel.enginesPerChip/8; i++) {
-			if (doneBitmask[i] != 0xff) {
-				wholeChipDone = false;
-				break;
-			}
-		}
-		if (!wholeChipDone) {
-			continue;
-		}
+        bool is_done = board_done_flags & (1 << chip_num) > 0; 
+        bool nonce_found = nonce_found_flags & (1 << chip_num) > 0; 
+        applog(LOG_ERR, "board: %u: board_done_flags: %04x", ob->staticBoardNumber, board_done_flags);
 
-		// Check all the engines on the chip.
-		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
-			// Read any nonces that the engine found.
-			NonceSet nonce_set;
-			nonce_set.count = 0;
-			error = ob1ReadNonces(ob->chain_id, chip_num, engine_num, &nonce_set);
-			if (error != SUCCESS) {
-				applog(LOG_ERR, "Error reading nonces.");
-				continue;
-			}
+        if (!is_done) {
+            continue;
+        }
+        
 
-			// Check the nonces and submit them to a pool if valid.
-			// 
-			// TODO: Make sure the pool submission code is low-impact.
-			for (uint8_t i = 0; i < nonce_set.count; i++) {
-				// Check that the nonce is valid
-				struct work* engine_work = ob->chipWork[chip_num];
-				int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
-				if (nonceResult == 0) {
-					ob->chipBadNonces[chip_num]++;
-				}
-				if (nonceResult > 0) {
-					ob->goodNoncesFound++;
-					ob->chipGoodNonces[chip_num]++;
-					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
-				}
-				if (nonceResult == 2) {
-					submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
-				}
+        // Read the nonces from all the engines.
+       	NonceSet nonce_set;
+        if (nonce_found){
+       		nonce_set.count = 0;
+       		error = ob1ReadReadyNonces(ob->staticBoardNumber, chip_num, &nonce_set);
+       		if (error != SUCCESS) {
+       			applog(LOG_ERR, "Error reading nonces.");
+                      return 0;
+       		}
+            applog(LOG_NOTICE, "%u nonces found", nonce_set.count);
+
+		// Check the nonces and submit them to a pool if valid.
+		// 
+		// TODO: Make sure the pool submission code is low-impact.
+		for (uint8_t i = 0; i < nonce_set.count; i++) {
+			// Check that the nonce is valid
+			struct work* engine_work = ob->chipWork[chip_num];
+			int nonceResult = ob->validNonce(ob, engine_work, nonce_set.nonces[i]);
+			if (nonceResult == 0) {
+                applog(LOG_ERR, "bad nonce");
+				ob->chipBadNonces[chip_num]++;
 			}
+			if (nonceResult > 0) {
+                applog(LOG_ERR, "good nonce");
+				ob->goodNoncesFound++;
+				ob->chipGoodNonces[chip_num]++;
+				hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
+			}
+			if (nonceResult == 2) {
+                applog(LOG_ERR, "submitted successful nonce");
+				submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
+			}
+		}
         }
 
 		// Give a new job to the chip.
@@ -1168,6 +1172,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			applog(LOG_ERR, "Error loading chip job");
 			continue;
 		}
+        applog(LOG_ERR, "chipjob2: board %u chip %u", ob->staticBoardNumber, chip_num);
     }
 
     // See if the pool asked us to start clean on new work
