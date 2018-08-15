@@ -581,7 +581,7 @@ static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
     applog(LOG_ERR, "Initializing Obelisk\n");
-    ob1Initialize();
+    // ob1Initialize();
 	gBoardModel = eGetBoardType(0);
 
 	// Initialize each hashboard.
@@ -795,10 +795,10 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 }
 
 // CONTROL LOOP CONFIG
-#define CONTROL_LOOP_SUPER_HIGH_TEMP 90.0
-#define CONTROL_LOOP_HIGH_TEMP 85.0
-#define CONTROL_LOOP_LOW_TEMP 80.0
-#define TICKS_BETWEEN_BIAS_UPS 100
+#define CONTROL_LOOP_SUPER_HIGH_TEMP 50.0
+#define CONTROL_LOOP_HIGH_TEMP 45.0
+#define CONTROL_LOOP_LOW_TEMP 40.0
+#define TICKS_BETWEEN_BIAS_UPS 1000000000
 
 // Status display variables.
 #define ChipCount 15
@@ -1078,6 +1078,7 @@ static void control_loop(ob_chain* ob)
 	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 		ob->chipBadNonces[i] = 0;
 		ob->chipGoodNonces[i] = 0;
+
 	}
 
 
@@ -1107,6 +1108,20 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     struct cgpu_info* cgpu = thr->cgpu;
     ob_chain* ob = cgpu->device_data;
     pthread_cond_signal(&ob->work_cond);
+
+
+
+    if (true) {
+        // HACK: STOP CLOCKING SO I CAN FREAKING TEST THE UI AND API SERVER WITHOUT OVERHEATING!!!!
+        ob1EnableMasterHashClock(ob->chain_id, false);
+        cgsleep_ms(1000);
+        return 10000;
+    }
+
+
+
+
+
 
 	int64_t hashesConfirmed = 0;
 
@@ -1243,21 +1258,25 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     char buffer[32];
 
     applog(LOG_ERR, "***** obelisk_api_stats()");
-    stats = api_add_uint32(stats, "chainId", &ob->chain_id, false);
+    stats = api_add_uint32(stats, "boardId", &ob->chain_id, false);
     stats = api_add_uint16(stats, "numChips", &ob->num_chips, false);
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
-    stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
-    stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
-    stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
+    // stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
+    // stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
+    // stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
+
+    stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
 
     // BUG: Adding more stats below causes the response to never be returned.  Seems like a buffer size issue,
     //      but so far I cannot seem to find it.
-    stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
-    stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
-    stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
-    stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
-    stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
-    stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
+    // stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
+    // stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
+    // stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
+    // stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
+    // stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
+    // stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
+    stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has
     // no support for global stats, so just repeat the fan speeds here
