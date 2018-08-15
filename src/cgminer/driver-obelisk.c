@@ -1128,7 +1128,34 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     cgtimer_t start_scanwork, end_scanwork, duration_scanwork;
     cgtimer_time(&start_scanwork);
 
-    // Look for nonces first so we can give new work in the same iteration below
+	// Get flags indicating which chips are done, and which chips have nonce
+	// flags.
+	uint16_t boardDoneFlags = 0;
+	uint16_t nonceFoundFlags = 0;
+	ApiError error = ob1ReadBoardDoneFlags(ob->staticBoardNumber, &boardDoneFlags);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "Failed to read board done flags.");
+		return 0;
+	}
+	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "Failed to read nonce done flags.");
+		return 0;
+	}
+
+	// Print out the result of ReadBoardDoneFlags.
+	bool dones[16];
+	bool print = false;
+	for (int i = 0; i < 16; i++) {
+		dones[i] = boardDoneFlags & (1 << i) > 0;
+		if (dones[i]) {
+			print = true;
+		}
+	}
+	if (print) {
+		applog(LOG_ERR, "0-%u, 1-%u, 2-%u, 3-%u, 4-%u, 5-%u, 6-%u, 7-%u, 8-%u, 9-%u, 10-%u, 11-%u, 12-%u, 13-%u, 14-%u, 15-%u", dones[0], dones[1], dones[2], dones[3], dones[4], dones[5], dones[6], dones[7], dones[8], dones[9], dones[10], dones[11], dones[12], dones[13], dones[14], dones[15]);
+	}
+
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
@@ -1143,7 +1170,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
-		// Check whether the chip is done.
+		// Check whether the chip is done by looking at the 'GetDoneEngines'
+		// read.
         uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
@@ -1158,9 +1186,29 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				break;
 			}
 		}
+
+		// Compare 'GetDoneEngines' to ReadBoardDoneFlags.
+		/*
+		error = ob1ReadBoardDoneFlags(ob->staticBoardNumber, &boardDoneFlags);
+		if (error != SUCCESS) {
+			applog(LOG_ERR, "Failed to read board done flags.");
+			return 0;
+		}
+		bool chipDone = boardDoneFlags & (1 << chip_num) > 0;
+		if (wholeChipDone && chipDone) {
+			applog(LOG_ERR, "wcd&&cd");
+		} else if (wholeChipDone && !chipDone) {
+			applog(LOG_ERR, "WCD  &&  !CD  -----");
+		} else if (chipDone && !wholeChipDone) {
+			applog(LOG_ERR, "CHIPDONE, but not WHOLECHIPDONE");
+		}
+		*/
+
+		// Compare whole chip done reading to board done flags.
 		if (!wholeChipDone) {
 			continue;
 		}
+		applog("we found a done chip at %u", chip_num);
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
