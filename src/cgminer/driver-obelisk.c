@@ -259,7 +259,7 @@ static void commitBoardBias(ob_chain* ob)
     state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
 
     // Write the new biases to disk.
-    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentStringVoltage, state->chipBiases, state->chipDividers);
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
 }
 
 // decrease the clock bias of every chip on the string.
@@ -305,7 +305,7 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
     state->prevBiasChangeTime = state->currentTime;
 
     // Write the new voltage level to disk.
-    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentStringVoltage, state->chipBiases, state->chipDividers);
+    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
 }
 
 // Separate thread to handle the control loop so we can react quickly to temp changes
@@ -694,7 +694,7 @@ static void obelisk_detect(bool hotplug)
 		//
 		// TODO: use actual boardID in addition to chain_id
 		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
-			&ob->control_loop_state.currentStringVoltage, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
+			&ob->control_loop_state.currentVoltageLevel, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
 		if (error != SUCCESS) {
 			for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 				// Figure out the delta based on our thermal models.
