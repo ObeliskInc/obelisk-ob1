@@ -12,11 +12,7 @@ import {
   setSystemConfig,
   uploadFirmwareFile,
 } from 'modules/Main/actions'
-import {
-  getLastError,
-  getSystemConfig,
-  getUploadStatus,
-} from 'modules/Main/selectors'
+import { getLastError, getSystemConfig, getUploadStatus } from 'modules/Main/selectors'
 import { SystemConfig, UploadStatus } from 'modules/Main/types'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
@@ -96,10 +92,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
             newPassword: '',
           }}
           enableReinitialize={true}
-          onSubmit={(
-            values: SystemConfig,
-            formikBag: FormikProps<SystemConfig>
-          ) => {
+          onSubmit={(values: SystemConfig, formikBag: FormikProps<SystemConfig>) => {
             if (this.props.dispatch) {
               const valuesToSend = {
                 ntpServer: values.ntpServer,
@@ -139,7 +132,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                   if (
                     confirm(
                       'This will immediately reboot the device and log you out of this app.\n\n' +
-                        'Do you want to continue?'
+                        'Do you want to continue?',
                     )
                   ) {
                     dispatch(rebootMiner.started({}))
@@ -158,7 +151,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                       username: 'admin',
                       oldPassword: oldPassword || '',
                       newPassword: newPassword || '',
-                    })
+                    }),
                   )
                 }
               },
@@ -172,10 +165,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
               },
 
               handleOpenFirmwareLink: () => {
-                const win: any = window.open(
-                  'http://obelisk.tech/downloads.html',
-                  '_blank'
-                )
+                const win: any = window.open('http://obelisk.tech/downloads.html', '_blank')
                 win.focus()
               },
             }
@@ -249,10 +239,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     value={formikProps.values.newPassword}
                     error={!!_.get(formikProps.errors, ['newPassword'], '')}
                   />
-                  <Button
-                    type="button"
-                    onClick={formikProps.handleChangePassword}
-                  >
+                  <Button type="button" onClick={formikProps.handleChangePassword}>
                     CHANGE PASSWORD
                   </Button>
                 </Form>
@@ -260,24 +247,15 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                 <Form>
                   <Header as="h2">Firmware</Header>
                   {false ? ( // Temporarily remove the firmware upload view
-                    <Dropzone
-                      className={classNames.upload}
-                      onDrop={formikProps.handleDrop}
-                    >
+                    <Dropzone className={classNames.upload} onDrop={formikProps.handleDrop}>
                       <div className={classNames.uploadDesc}>{uploadTitle}</div>
 
                       {filename
                         ? [
-                            <div
-                              key="filename"
-                              className={classNames.uploadFilename}
-                            >
+                            <div key="filename" className={classNames.uploadFilename}>
                               {filename}
                             </div>,
-                            <div
-                              key="uploadError"
-                              className={classNames.uploadError}
-                            >
+                            <div key="uploadError" className={classNames.uploadError}>
                               {uploadError}
                             </div>,
                             <Progress

@@ -22,12 +22,7 @@ import Content from 'components/Content'
 import Stat from 'components/Stat'
 import { fetchDashboardStatus } from 'modules/Main/actions'
 import { getDashboardStatus } from 'modules/Main/selectors'
-import {
-  DashboardStatus,
-  HashboardStatus,
-  PoolStatus,
-  StatsEntry,
-} from 'modules/Main/types'
+import { DashboardStatus, HashboardStatus, PoolStatus, StatsEntry } from 'modules/Main/types'
 import { formatTime } from 'utils'
 
 interface ConnectProps {
@@ -73,12 +68,9 @@ class Dashboard extends React.PureComponent<CombinedProps> {
   render() {
     const { classNames, dashboardStatus } = this.props
 
-    const systemStats = _.map(
-      dashboardStatus.systemInfo,
-      (info: StatsEntry) => (
-        <Stat label={info.name} value={info.value} key={info.name} />
-      )
-    )
+    const systemStats = _.map(dashboardStatus.systemInfo, (info: StatsEntry) => (
+      <Stat label={info.name} value={info.value} key={info.name} />
+    ))
 
     const mapPoolHeaders = dashboardStatus.poolStatus.map((_, i) => {
       return (
@@ -105,10 +97,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
       Active: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            <Label
-              color={h.status === 'Active' ? 'green' : 'red'}
-              horizontal={true}
-            >
+            <Label color={h.status === 'Active' ? 'green' : 'red'} horizontal={true}>
               {h.status}
             </Label>
           </Table.Cell>
@@ -149,10 +138,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
       Status: (s: PoolStatus[]) =>
         _.map(s, (p: PoolStatus, i) => (
           <Table.Cell key={i} textAlign="center">
-            <Label
-              color={p.status === 'Active' ? 'green' : 'red'}
-              horizontal={true}
-            >
+            <Label color={p.status === 'Active' ? 'green' : 'red'} horizontal={true}>
               {p.status}
             </Label>
           </Table.Cell>
@@ -231,12 +217,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         </ResponsiveContainer>
 
         <Header as="h2">Pool Info</Header>
-        <Table
-          definition={true}
-          striped={true}
-          unstackable={true}
-          className={classNames.table}
-        >
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell />
@@ -247,12 +228,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         </Table>
 
         <Header as="h2">Hashing Board Info</Header>
-        <Table
-          definition={true}
-          striped={true}
-          unstackable={true}
-          className={classNames.table}
-        >
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell />
