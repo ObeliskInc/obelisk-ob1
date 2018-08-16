@@ -703,11 +703,9 @@ HashboardStatus ob1GetHashboardStatus(uint8_t boardNum)
     // TODO: Wrap in a mutex to control access to the temp/voltage sensors
     HashboardStatus status;
     iUpdateTempSensors(boardNum);
-    status.boardTemp = getIntTemp(boardNum);
+    status.boardTemp = (double)getBoardTempInt(boardNum);
     status.chipTemp = (double)getAsicTempInt(boardNum);
-    // int16_t chipTempFracs = getAsicTempFracs(boardNum);
-    // applog(LOG_ERR, "chipTemp=%f", status.chipTemp);
-    status.powerSupplyTemp = getPSTemp(boardNum);
+    status.powerSupplyTemp = (double)getPSTempInt(boardNum);
 
     iADS1015ReadVoltages(boardNum); // Update the voltages
     status.asicV1 = getASIC_V1(boardNum);
