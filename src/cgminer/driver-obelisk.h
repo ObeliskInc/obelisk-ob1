@@ -151,11 +151,11 @@ struct ob_chain {
 	// writing to it, the others are reading. And the ones that are reading are
 	// only displaying output to a user, so if it's occasionally corrupted,
 	// that's not so bad.
-	uint64_t  goodNoncesFound; // Total number of good nonces found.
-	struct    work** chipWork; // The work structures for each chip.
-	struct    work** nextChipWork; // The next work structures for each chip.
-	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
-	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+	uint64_t      goodNoncesFound; // Total number of good nonces found.
+	struct work** chipWork;        // The work structures for each chip.
+	struct work** nextChipWork;    // The next work structures for each chip.
+	uint64_t*     chipGoodNonces;  // The good nonce counts for each chip.
+	uint64_t*     chipBadNonces;   // The bad nonce counts for each chip.
 
     // Timers
     cgtimer_t startTime;
