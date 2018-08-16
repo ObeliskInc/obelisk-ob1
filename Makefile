@@ -179,6 +179,8 @@ apiserver:
 
 webclient:
 	# Create the webclient
+	rm -rf src/webclient/build
+	rm -rf $(IMAGEROOT)/var/www
 	cd src/webclient && yarn
 	rm -rf src/webclient/node_modules/@types/*/node_modules
 	cd src/webclient && yarn build
