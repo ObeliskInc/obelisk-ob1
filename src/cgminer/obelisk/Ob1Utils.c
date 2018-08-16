@@ -540,14 +540,14 @@ static GenChild breedChild(ControlLoopState *state)
 
     applog(LOG_ERR, "Parent voltages: %u, %u", parent1->voltageLevel, parent2->voltageLevel);
 
-    // for each trait in the child, choosing randomly whether to take trait
+    // for each trait in the child, choosing randomly whether to take the trait
     // from parent1 or parent2
     GenChild child;
     child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
-        child.chipBiases[i]   = (*randByte & 1) ? parent1->chipBiases[i]   : parent2->chipBiases[i];
-        child.chipDividers[i] = (*randByte & 2) ? parent1->chipDividers[i] : parent2->chipDividers[i];
-        randByte++;
+        uint8_t r = *randByte++;
+        child.chipBiases[i]   = (r & 1) ? parent1->chipBiases[i]   : parent2->chipBiases[i];
+        child.chipDividers[i] = (r & 1) ? parent1->chipDividers[i] : parent2->chipDividers[i];
     }
 
     // mutate each trait by choosing randomly whether to increment it,
