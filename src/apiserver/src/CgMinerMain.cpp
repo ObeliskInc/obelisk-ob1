@@ -52,11 +52,11 @@ public:
         lastResp = resp;
         // CROW_LOG_DEBUG << "Send/receive complete";
         // CROW_LOG_DEBUG << "Data = " << resp.json;
-        int i = 0;
-        while (i < resp.json.length()) {
-          CROW_LOG_DEBUG << resp.json.substr(i, 80);
-          i += 80;
-        }
+        // int i = 0;
+        // while (i < resp.json.length()) {
+        //   CROW_LOG_DEBUG << resp.json.substr(i, 80);
+        //   i += 80;
+        // }
       }
 
       // Call the callback with the last response now that all commands are done
