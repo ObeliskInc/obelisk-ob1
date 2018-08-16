@@ -714,7 +714,7 @@ static void obelisk_detect(bool hotplug)
 			}
 
 			// Set the string voltage to the highest voltage for starting up.
-			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
+			ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
@@ -723,6 +723,7 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.population[0] = ob->control_loop_state.curChild;
 			ob->control_loop_state.populationSize = 1;
 		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
 		commitBoardBias(ob);
 
 		// Set the nonce range for every chip.

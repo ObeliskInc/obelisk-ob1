@@ -631,6 +631,7 @@ ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
     }
 
     // set voltage and chip biases according to curChild
+    state->currentVoltageLevel = state->curChild.voltageLevel;
     memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
     memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
 
