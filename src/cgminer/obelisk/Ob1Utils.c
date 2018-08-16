@@ -607,6 +607,15 @@ static GenChild breedChild(ControlLoopState *state)
 
 void geneticAlgoIter(ControlLoopState *state)
 {
+    // depreciate the fitness of current population
+    //
+    // NOTE: this prevents the algo from falling into local maxima, and also
+    // helps it adapt to changing environmental factors (e.g. ambient
+    // temperature)
+    for (int i = 0; i < state->populationSize; i++) {
+        state->population[i].fitness *= 0.997;
+    }
+
     // evalulate performance of current child
     if (state->populationSize < POPULATION_SIZE) {
         state->population[state->populationSize++] = state->curChild;
