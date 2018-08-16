@@ -484,47 +484,12 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix)
 #define MIN_BIAS -5
 #define MAX_BIAS 5
 
-static void increaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 1:
-        *divider *= 2;
-        break;
-    case 2:
-        *divider *= 2;
-        break;
-    case 4:
-        *divider *= 2;
-        break;
-    default:
-        // 8 or any other value means no change
-        break;
-    }
-}
-
-static void decreaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 2:
-        *divider /= 2;
-        break;
-    case 4:
-        *divider /= 2;
-        break;
-    case 8:
-        *divider /= 2;
-        break;
-    default:
-        // 1 or any other value means no change
-        break;
-    }
-}
-
 static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
 {
     if (*currentBias == MAX_BIAS) {
-        if (*currentDivider > 1) {
-            decreaseDivider(currentDivider);
+        switch (*currentDivider) {
+        case 2: case 4: case 8:
+            *currentDivider /= 2;
             *currentBias = MIN_BIAS;
         }
     } else {
@@ -535,8 +500,9 @@ static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
 static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 {
     if (*currentBias == MIN_BIAS) {
-        if (*currentDivider < 8) {
-            increaseDivider(currentDivider);
+        switch (*currentDivider) {
+        case 2: case 4: case 8:
+            *currentDivider *= 2;
             *currentBias = MAX_BIAS;
         }
     } else {
@@ -557,6 +523,7 @@ static uint8_t findWorstChild(ControlLoopState *state)
 
 static GenChild breedChild(ControlLoopState *state)
 {
+    // read all of the randomness we need up-front
     FILE *urandom = fopen("/dev/urandom", "rb");
     if (!urandom) {
         applog(LOG_ERR, "No /dev/urandom! Returning first child");
