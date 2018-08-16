@@ -88,16 +88,10 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     })
 
     const hashboardTableMap = {
-      Hashrate: (s: HashboardStatus[]) =>
-        _.map(s, (h, i) => (
-          <Table.Cell key={i} textAlign="center">
-            {h.hashrate} GH/s
-          </Table.Cell>
-        )),
       Active: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            <Label color={h.status === 'Active' ? 'green' : 'red'} horizontal={true}>
+            <Label color={h.status.toLowerCase() == 'active' ? 'green' : 'red'} horizontal={true}>
               {h.status}
             </Label>
           </Table.Cell>
@@ -120,6 +114,36 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             {h.chipTemp} C
           </Table.Cell>
         )),
+      ['Power Supply Temp']: (s: HashboardStatus[]) =>
+        _.map(s, (h: HashboardStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.powerSupplyTemp} C
+          </Table.Cell>
+        )),
+      ['MHS Average']: (s: HashboardStatus[]) =>
+      _.map(s, (h, i) => (
+        <Table.Cell key={i} textAlign="center">
+          {h.mhsAvg} MH/s
+        </Table.Cell>
+      )),
+      ['MHS 1m']: (s: HashboardStatus[]) =>
+      _.map(s, (h, i) => (
+        <Table.Cell key={i} textAlign="center">
+          {h.mhs1m} MH/s
+        </Table.Cell>
+      )),
+      ['MHS 5m']: (s: HashboardStatus[]) =>
+      _.map(s, (h, i) => (
+        <Table.Cell key={i} textAlign="center">
+          {h.mhs5m} MH/s
+        </Table.Cell>
+      )),
+      ['MHS 15m']: (s: HashboardStatus[]) =>
+      _.map(s, (h, i) => (
+        <Table.Cell key={i} textAlign="center">
+          {h.mhs15m} MH/s
+        </Table.Cell>
+      )),
     }
 
     const poolTableMap = {
