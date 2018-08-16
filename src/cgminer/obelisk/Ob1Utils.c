@@ -554,7 +554,6 @@ static GenChild breedChild(ControlLoopState *state)
     GenChild *parent1 = &state->population[(*randByte++) % state->populationSize];
     GenChild *parent2 = &state->population[(*randByte++) % state->populationSize];
 
-    applog(LOG_ERR, "Parent voltages: %u, %u", parent1->voltageLevel, parent2->voltageLevel);
 
     // for each trait in the child, choosing randomly whether to take the trait
     // from parent1 or parent2
@@ -579,7 +578,6 @@ static GenChild breedChild(ControlLoopState *state)
     } else if (r % 8 == 1) {
         child.voltageLevel--;
     }
-    applog(LOG_ERR, "Mutated voltage: %u", child.voltageLevel);
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
         if (r % 8 == 0) {
@@ -605,6 +603,20 @@ void geneticAlgoIter(ControlLoopState *state)
         state->population[i].fitness *= 0.997;
     }
 
+    applog(LOG_ERR, "Current generation (%u):", state->populationSize);
+    for (int i = 0; i < state->populationSize; i++) {
+        GenChild c = state->population[i];
+        int8_t *b = c.chipBiases;
+        uint8_t *d = c.chipDividers;
+        applog(LOG_ERR, "  %u: fitness %f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            i, c.fitness, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+    }
+    GenChild c = state->curChild;
+    int8_t *b = c.chipBiases;
+    uint8_t *d = c.chipDividers;
+    applog(LOG_ERR, "Current child: fitness %f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            c.fitness, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+
     // evalulate performance of current child
     if (state->populationSize < POPULATION_SIZE) {
         state->population[state->populationSize++] = state->curChild;
@@ -617,6 +629,13 @@ void geneticAlgoIter(ControlLoopState *state)
 
     // breed two random parents and mutate the offspring to produce a new child
     state->curChild = breedChild(state);
+
+    c = state->curChild;
+    b = c.chipBiases;
+    d = c.chipDividers;
+    applog(LOG_ERR, "New child: voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+
 
     // set voltage and chip biases according to new child
     // TODO: replace these fields entirely?
