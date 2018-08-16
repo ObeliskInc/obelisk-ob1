@@ -22,20 +22,15 @@ mkdir -p /tmp/upgrades
 /etc/init.d/S25watchdogd stop &>/dev/null
 killall -q cgminer
 killall -q apiserver
-killall -q led_alternate
-killall -q led_flash_red
-killall -q led_flash_green
 exit 0
 EOF
 `
 
 finish_cmd=`cat <<EOF
-/tmp/upgrades/detect
-if [ "$?" == "3" ]
+/tmp/upgrades/detect -T --default-config /tmp/upgrades/cgminer.conf
+echo -e "error code: $?"
+if [ "$?" != "3" ]
 then
-	killall -q led_alternate
-	killall -q led_flash_red
-	killall -q led_flash_green
 	nohup /usr/sbin/led_flash_red &>/dev/null &
 	exit 77
 fi
@@ -43,6 +38,7 @@ fi
 mv /tmp/upgrades/led_flash_green /usr/sbin/led_flash_green
 mv /tmp/upgrades/led_flash_red /usr/sbin/led_flash_red
 mv /tmp/upgrades/led_alternate /usr/sbin/led_alternate
+mv /tmp/upgrades/led_off /usr/sbin/led_off
 mv /tmp/upgrades/cgminer /usr/sbin/cgminer
 mkdir -p /root/.cgminer
 mv /tmp/upgrades/cgminer.conf /root/.cgminer/cgminer.conf
@@ -50,11 +46,11 @@ mv /tmp/upgrades/apiserver /usr/sbin/apiserver
 rm -rf /var/www/*
 mv /tmp/upgrades/webclient/* /var/www/
 mv /tmp/upgrades/S25watchdogd /etc/init.d/S25watchdogd
+mv /tmp/upgrades/watchdog.sh /usr/sbin/watchdog.sh
 mv /tmp/upgrades/burn-in /tmp/burn-in
 rm -rf /tmp/upgrades
 
 /usr/sbin/led_alternate &
-
 
 if /tmp/burn-in &>/dev/null; then
 	touch /root/.upgrade1_complete
@@ -81,11 +77,13 @@ mkdir upgrades
 cp controlCardUtils/bin/led_flash_green upgrades/
 cp controlCardUtils/bin/led_flash_red upgrades/
 cp controlCardUtils/bin/led_alternate upgrades/
+cp controlCardUtils/bin/led_off upgrades/
 cp cgminer/cgminer upgrades/
 cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/.cgminer/cgminer.conf upgrades/
 cp apiserver/bin/apiserver upgrades/
 cp -R webclient/build upgrades/webclient
 cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/etc/init.d/S25watchdogd upgrades/
+cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/watchdog.sh upgrades/
 cp detect upgrades/
 cp burn-in upgrades/
 
