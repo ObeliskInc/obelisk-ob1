@@ -501,7 +501,7 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 {
     if (*currentBias == MIN_BIAS) {
         switch (*currentDivider) {
-        case 2: case 4: case 8:
+        case 1: case 2: case 4:
             *currentDivider *= 2;
             *currentBias = MAX_BIAS;
         }
