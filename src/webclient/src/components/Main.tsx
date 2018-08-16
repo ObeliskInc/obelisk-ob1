@@ -44,7 +44,7 @@ class App extends React.PureComponent<CombinedProps> {
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
-      width: '100%',
+      width: 'calc(100% - 200px)',
       padding: '20px !important',
     },
     header: {
@@ -119,14 +119,14 @@ class App extends React.PureComponent<CombinedProps> {
         onClick={() => this.navigateToPath('/pools')}
         active={this.isActive('/pools')}
       />,
-      <SidebarMenuItem
-        key="mining"
-        name="mining"
-        label="MINING"
-        iconName="diamond"
-        onClick={() => this.navigateToPath('/mining')}
-        active={this.isActive('/mining')}
-      />,
+      // <SidebarMenuItem
+      //   key="mining"
+      //   name="mining"
+      //   label="MINING"
+      //   iconName="diamond"
+      //   onClick={() => this.navigateToPath('/mining')}
+      //   active={this.isActive('/mining')}
+      // />,
       <SidebarMenuItem
         key="system"
         name="system"

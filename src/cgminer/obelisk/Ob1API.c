@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern pthread_mutex_t spiLock;
 // Globals
 HashboardModel gBoardModel;
 
@@ -677,11 +678,9 @@ HashboardStatus ob1GetHashboardStatus(uint8_t boardNum)
     // TODO: Wrap in a mutex to control access to the temp/voltage sensors
     HashboardStatus status;
     iUpdateTempSensors(boardNum);
-    status.boardTemp = getIntTemp(boardNum);
+    status.boardTemp = (double)getBoardTempInt(boardNum);
     status.chipTemp = (double)getAsicTempInt(boardNum);
-    // int16_t chipTempFracs = getAsicTempFracs(boardNum);
-    // applog(LOG_ERR, "chipTemp=%f", status.chipTemp);
-    status.powerSupplyTemp = getPSTemp(boardNum);
+    status.powerSupplyTemp = (double)getPSTempInt(boardNum);
 
     iADS1015ReadVoltages(boardNum); // Update the voltages
     status.asicV1 = getASIC_V1(boardNum);
@@ -714,7 +713,9 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
 // which ASICs on the board are signaling they are done (corresponding bit is 1)
 ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 
@@ -722,7 +723,9 @@ ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
 // which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
 ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
 {
+    LOCK(&spiLock);
     int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 

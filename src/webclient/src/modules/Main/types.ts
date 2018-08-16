@@ -85,12 +85,16 @@ export interface PoolStatus {
 }
 
 export interface HashboardStatus {
-  hashrate: number
   status: string
   accepted: number
   rejected: number
   boardTemp: number
   chipTemp: number
+  powerSupplyTemp: number
+  mhsAvg: number
+  mhs1m: number
+  mhs5m: number
+  mhs15m: number
 }
 
 export interface DashboardStatus {
