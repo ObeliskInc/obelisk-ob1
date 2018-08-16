@@ -9905,6 +9905,9 @@ static void initialise_usb(void)
 
 int main(int argc, char* argv[])
 {
+
+    return obelisk_detect_exit();
+
 // #define EMC_TEST
 #ifdef EMC_TEST
     //NOTE: BEGIN TESTING SECTION

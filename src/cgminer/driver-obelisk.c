@@ -587,31 +587,30 @@ Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
     return job;
 }
 
-static void obelisk_detect_exit(bool hotplug)
+int obelisk_detect_exit()
 {
-    applog(LOG_ERR, "Detecting boards\n");
-	ob1Initialize();
-	int numSC1 = 0;
-	int numDCR1 = 0;
-	int numUnknown = 0;
-	int numHashboards = ob1GetNumPresentHashboards();
-	for (int i = 0; i < numHashboards; i++) {
-		switch (eGetBoardType(i)) {
-		case MODEL_SC1:  numSC1++;     break;
-		case MODEL_DCR1: numDCR1++;    break;
-		default:         numUnknown++; break;
-		}
-	}
-	if (numUnknown > 0) {
-		exit(1);
-	} else if (numSC1 > 0 && numDCR1 > 0) {
-		exit(2);
-	} else if (numSC1 > 0) {
-		exit(3);
-	} else if (numDCR1 > 0) {
-		exit(4);
-	}
-	exit(255);
+    ob1Initialize();
+    int numSC1 = 0;
+    int numDCR1 = 0;
+    int numUnknown = 0;
+    int numHashboards = ob1GetNumPresentHashboards();
+    for (int i = 0; i < numHashboards; i++) {
+        switch (eGetBoardType(i)) {
+        case MODEL_SC1:  numSC1++;     break;
+        case MODEL_DCR1: numDCR1++;    break;
+        default:         numUnknown++; break;
+        }
+    }
+    if (numUnknown > 0) {
+        return 1;
+    } else if (numSC1 > 0 && numDCR1 > 0) {
+        return 2;
+    } else if (numSC1 > 0) {
+        return 3;
+    } else if (numDCR1 > 0) {
+        return 4;
+    }
+    return 255;
 }
 
 static void obelisk_detect(bool hotplug)
