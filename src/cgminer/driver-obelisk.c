@@ -827,10 +827,6 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define OvertempCheckFrequency 1
 
 // Undertemp variables.
-#define TempGapCold 65
-#define TempGapWarm 35
-#define TempRiseSpeedCold 3
-#define TempRiseSpeedWarm 2
 #define TempRiseSpeedHot 1
 #define UndertempCheckFrequency 1
 
@@ -992,11 +988,7 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     double currentTemp = ob->control_loop_state.currentStringTemp;
     double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
     if (timeElapsed > UndertempCheckFrequency) {
-        if (currentTemp < targetTemp - TempGapCold && currentTemp - prevTemp < TempRiseSpeedCold * UndertempCheckFrequency) {
-            increaseStringBias(ob);
-        } else if (currentTemp < targetTemp - TempGapWarm && currentTemp - prevTemp < TempRiseSpeedWarm * UndertempCheckFrequency) {
-            increaseStringBias(ob);
-        } else if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
+        if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
             increaseStringBias(ob);
         }
         ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
