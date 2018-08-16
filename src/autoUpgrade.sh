@@ -28,12 +28,19 @@ mv /tmp/upgrades/webclient/* /var/www/
 mv /tmp/upgrades/S25watchdogd /etc/init.d/S25watchdogd
 rm -rf /tmp/upgrades
 
-# TODO start burn-in test here/
-# nohup ./burn-in &>/dev/null &
+./burn-in &>/dev/null
+rc=$?
+if [ $rc == 0 ]
+then
+	killall -q led_alternate
+	nohup /usr/sbin/led_flash_green &>/dev/null &
+	touch /root/.upgrade_complete
+elif
+	killall -q led_alternate
+	nohup /usr/sbin/led_flash_red &>/dev/null &
+	exit $rc
+fi
 
-touch /root/.upgrade_complete
-killall -q led_alternate
-nohup /usr/sbin/led_flash_green &>/dev/null &
 exit
 EOF
 `
