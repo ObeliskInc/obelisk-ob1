@@ -63,6 +63,8 @@ export const setMiningConfig = actionCreator.async<MiningConfig, ApiOK, ApiError
   'SET_MINING_CONFIG',
 )
 
+export const resetConfig = actionCreator.async<{}, ApiOK, ApiError>('RESET_CONFIG')
+
 export const setRouteOnRequestSuccessAC = actionCreator<{ route: string }>(
   'SET_ROUTE_ON_REQUEST_SUCCESS_STATUS',
 )

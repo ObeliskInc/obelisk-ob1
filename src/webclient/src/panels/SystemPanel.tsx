@@ -12,6 +12,7 @@ import {
   setSystemConfig,
   uploadFirmwareFile,
   clearFormStatus,
+  resetConfig,
 } from 'modules/Main/actions'
 import { getLastError, getSystemConfig, getUploadStatus } from 'modules/Main/selectors'
 import { SystemConfig, UploadStatus } from 'modules/Main/types'
@@ -162,6 +163,21 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                 }
               },
 
+              handleConfigReset: () => {
+                const { dispatch } = this.props
+                if (dispatch) {
+                  if (
+                    confirm(
+                      'This will remove your current configuration settings and reset it to system default.\n\n' +
+                        'Do you want to continue?',
+                    )
+                  ) {
+                    dispatch(resetConfig.started({}))
+                    history.push('/login')
+                  }
+                }
+              },
+
               handleChangePassword: () => {
                 const { dispatch } = this.props
                 const { oldPassword, newPassword } = formikProps.values
@@ -306,6 +322,12 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     }
                   />
                   <Button onClick={formikProps.handleReboot}>REBOOT</Button>
+                  <Message
+                    icon="warning sign"
+                    header="Reset the Config"
+                    content={'This will reset machine config files to default settings.'}
+                  />
+                  <Button onClick={formikProps.handleConfigReset}>RESET</Button>
                 </Form>
               </div>
             )
