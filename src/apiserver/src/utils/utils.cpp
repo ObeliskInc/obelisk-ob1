@@ -240,6 +240,12 @@ string runCmd(string cmd) {
   return output;
 }
 
+void copyFile(string fromPath, string toPath) {
+  ostringstream cmd;
+  cmd << "cp " << fromPath << " " << toPath;
+  runCmd(cmd.str());
+}
+
 // TODO: Could optimize this:
 //    free -m | awk '/^Mem/ {print $2 $3 $4}'
 // then split on space to get the three numbers all at once and return an array.

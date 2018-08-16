@@ -29,6 +29,8 @@ bool changePassword(string username, string oldPassword, string newPassword, str
 
 string runCmd(string cmd);
 
+void copyFile(string fromPath, string toPath);
+
 // System info
 int getFreeMemory();
 int getTotalMemory();
