@@ -626,3 +626,52 @@ void geneticAlgoIter(ControlLoopState *state)
     memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
     memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
 }
+
+ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
+{
+    char path[64];
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_%s_%d.bin", name, boardID);
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        return GENERIC_ERROR;
+    }
+    fread(&state->populationSize, sizeof(uint8_t), 1, file);
+    fread(state->population, sizeof(GenChild), state->populationSize, file);
+    fread(&state->curChild, sizeof(GenChild), 1, file);
+    fclose(file);
+    if (ferror(file) != 0) {
+        return GENERIC_ERROR;
+    }
+
+    // set voltage and chip biases according to curChild
+    // TODO: replace these fields entirely?
+    state->currentVoltageLevel = state->curChild.voltageLevel;
+    memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
+    memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
+
+    return SUCCESS;
+}
+
+ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
+{
+    char path[64];
+    char tmppath[64];
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_%s_%d.bin_tmp", name, boardID);
+    FILE *file = fopen(tmppath, "wb");
+    if (file == NULL) {
+        return GENERIC_ERROR;
+    }
+    fwrite(&state->populationSize, sizeof(uint8_t), 1, file);
+    fwrite(state->population, sizeof(GenChild), state->populationSize, file);
+    fwrite(&state->curChild, sizeof(GenChild), 1, file);
+    fflush(file);
+    fclose(file);
+    if (ferror(file) != 0) {
+        return GENERIC_ERROR;
+    }
+    if (rename(tmppath, path) != 0) {
+        return GENERIC_ERROR;
+    }
+    return SUCCESS;
+}

@@ -259,7 +259,7 @@ static void commitBoardBias(ob_chain* ob)
     state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
 
     // Write the new biases to disk.
-    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
+    saveThermalConfig(model->name, ob->chain_id, state);
 }
 
 // decrease the clock bias of every chip on the string.
@@ -305,7 +305,7 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
     state->prevBiasChangeTime = state->currentTime;
 
     // Write the new voltage level to disk.
-    saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
+    saveThermalConfig(model->name, ob->chain_id, state);
 }
 
 // Separate thread to handle the control loop so we can react quickly to temp changes
@@ -680,8 +680,7 @@ static void obelisk_detect(bool hotplug)
 		// based on our thermal models.
 		//
 		// TODO: use actual boardID in addition to chain_id
-		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardModel.chipsPerBoard, ob->chain_id,
-			&ob->control_loop_state.currentVoltageLevel, ob->control_loop_state.chipBiases, ob->control_loop_state.chipDividers);
+		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->chain_id, &ob->control_loop_state);
 		if (error != SUCCESS) {
 			// Start the chip biases at 3 levels above minimum, so there is room to
 			// decrease them via the startup logic.
@@ -725,17 +724,17 @@ static void obelisk_detect(bool hotplug)
 
 			// Set the string voltage to the highest voltage for starting up.
 			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
+
+			// Initialize the genetic algorithm.
+			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
+			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+			ob->control_loop_state.population[0] = ob->control_loop_state.curChild;
+			ob->control_loop_state.populationSize = 1;
 		}
 		commitBoardBias(ob);
 		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
-		// Initialize the genetic algorithm.
-		// TODO: instead, should be loading these directly from disk
-		ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
-		memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
-		memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
-		ob->control_loop_state.population[0] = ob->control_loop_state.curChild;
-		ob->control_loop_state.populationSize = 1;
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;

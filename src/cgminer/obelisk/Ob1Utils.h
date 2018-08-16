@@ -103,4 +103,7 @@ void formatDividerAndBias(char* buffer, ControlLoopState* clState);
 
 // Functions for executing the genetic algorithm.
 void geneticAlgoIter(ControlLoopState *state);
+ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state);
+ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state);
+
 #endif
