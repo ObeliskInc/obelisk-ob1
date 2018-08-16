@@ -305,11 +305,14 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
     string user = poolEntry["worker"].s();
     string pass = poolEntry["password"].s();
 
-    json::wvalue entry = json::load("{}");
-    entry["url"] = url;
-    entry["user"] = user;
-    entry["pass"] = pass;
-    newPools[i] = to_rvalue(entry);
+    // Don't include entries that have empty URLs, because CGminer will crash, of course
+    if (url != "") {
+      json::wvalue entry = json::load("{}");
+      entry["url"] = url;
+      entry["user"] = user;
+      entry["pass"] = pass;
+      newPools[i] = to_rvalue(entry);
+    }
   }
 
   // Set new pools entry into the wvalue
