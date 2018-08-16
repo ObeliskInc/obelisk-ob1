@@ -8745,7 +8745,7 @@ namespace crow
 
         void check_destroy()
         {
-            CROW_LOG_DEBUG << this << " is_reading " << is_reading << " is_writing " << is_writing;
+            // CROW_LOG_DEBUG << this << " is_reading " << is_reading << " is_writing " << is_writing;
             if (!is_reading && !is_writing)
             {
                 CROW_LOG_DEBUG << this << " delete (idle) ";
@@ -8755,7 +8755,7 @@ namespace crow
 
         void cancel_deadline_timer()
         {
-            CROW_LOG_DEBUG << this << " timer cancelled: " << timer_cancel_key_.first << ' ' << timer_cancel_key_.second;
+            // CROW_LOG_DEBUG << this << " timer cancelled: " << timer_cancel_key_.first << ' ' << timer_cancel_key_.second;
             timer_queue.cancel(timer_cancel_key_);
         }
 
