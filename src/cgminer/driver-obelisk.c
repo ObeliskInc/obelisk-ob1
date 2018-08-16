@@ -673,7 +673,8 @@ static void obelisk_detect(bool hotplug)
 		// Don't change the voltage at all for the first 5 mintues.
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+300;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
+		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 
 		// Load the thermal configuration for this machine. If that fails (no
 		// configuration file, or boards changed), fallback to default values
@@ -869,6 +870,7 @@ static void displayControlState(ob_chain* ob)
             ob->control_loop_state.currentStringVoltage,
             hashrate,
             ob->control_loop_state.currentVoltageLevel);
+		applog(LOG_ERR, "");
         
         cgtimer_t currTime, totalTime;
         cgtimer_time(&currTime);
