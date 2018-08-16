@@ -606,14 +606,21 @@ void geneticAlgoIter(ControlLoopState *state)
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_%s_%d.bin", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1_%s_%d.bin", name, boardID);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
         return GENERIC_ERROR;
     }
     fread(&state->populationSize, sizeof(uint8_t), 1, file);
-    fread(state->population, sizeof(GenChild), state->populationSize, file);
-    fread(&state->curChild, sizeof(GenChild), 1, file);
+    if (state->populationSize >= POPULATION_SIZE) {
+        return GENERIC_ERROR;
+    }
+    if (fread(state->population, sizeof(GenChild), state->populationSize, file) != state->populationSize) {
+        return GENERIC_ERROR;
+    }
+    if (fread(&state->curChild, sizeof(GenChild), 1, file) != 1) {
+        return GENERIC_ERROR;
+    }
     fclose(file);
     if (ferror(file) != 0) {
         return GENERIC_ERROR;
@@ -630,8 +637,8 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     char tmppath[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_%s_%d.bin", name, boardID);
-    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_%s_%d.bin_tmp", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1_%s_%d.bin_tmp", name, boardID);
     FILE *file = fopen(tmppath, "wb");
     if (file == NULL) {
         return GENERIC_ERROR;
