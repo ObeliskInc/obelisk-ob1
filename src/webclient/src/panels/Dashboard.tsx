@@ -124,25 +124,25 @@ class Dashboard extends React.PureComponent<CombinedProps> {
       ['HASHRATE: AVG.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhsAvg} MH/s
+            {Number(h.mhsAvg/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
       ['HASHRATE: 1 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs1m} MH/s
+            {Number(h.mhs1m/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
       ['HASHRATE: 5 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs5m} MH/s
+            {Number(h.mhs5m/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
       ['HASHRATE: 15 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs15m} MH/s
+            {Number(h.mhs15m/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
     }
