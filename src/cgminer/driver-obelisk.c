@@ -632,11 +632,6 @@ static void obelisk_detect(bool hotplug)
 			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 			memcpy(ob->staticChipTarget, chipTarget, 32);
 
-			// Use a proxy because we can't set the value directly to 1 << 40.
-			uint64_t hashesPerNonce = 1;
-			hashesPerNonce = hashesPerNonce << 40;
-			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
-
 			// Functions.
 			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->validNonce = siaValidNonce;
@@ -646,11 +641,6 @@ static void obelisk_detect(bool hotplug)
 			// Employ memcpy because we can't set the target directly.
 			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 			memcpy(ob->staticChipTarget, chipTarget, 32);
-
-			// Use a proxy because we can't set the value directly to 1 << 40.
-			uint64_t hashesPerNonce = 1;
-			hashesPerNonce = hashesPerNonce << 32;
-			ob->staticHashesPerSuccessfulNonce = hashesPerNonce;
 
 			// Functions.
 			ob->prepareNextChipJob = dcrPrepareNextChipJob;
@@ -733,7 +723,6 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.populationSize = 1;
 		}
 		commitBoardBias(ob);
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 
 		// Set the nonce range for every chip.
@@ -861,7 +850,7 @@ static uint64_t computeHashRate(ob_chain *ob)
 {
     uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
     time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
-    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed / 1000000000;
+    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
 }
 
 // displayControlState will check if enough time has passed, and then display
@@ -877,7 +866,7 @@ static void displayControlState(ob_chain* ob)
             ob->control_loop_state.boardNumber,
             ob->control_loop_state.currentStringTemp,
             ob->control_loop_state.currentStringVoltage,
-            computeHashRate(ob),
+            computeHashRate(ob) / 1000000000,
             ob->control_loop_state.currentVoltageLevel);
         
         cgtimer_t currTime, totalTime;
@@ -1005,6 +994,51 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     }
 }
 
+// handleVoltageAndBiasTuning will adjust the voltage of the string and the
+// biases of the chips as deemed beneficial to the overall hashrate.
+static void handleVoltageAndBiasTuning(ob_chain* ob) {
+	// Determine whether the string is running slowly. The string is considered
+	// to be running slowly if the chips are not producing nonces as fast as
+	// expected.
+	uint64_t requiredNonces = 75;
+	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
+	// The max time allowed is twice the expected amount of time for the whole
+	// string to hit the required number of nonces.
+	time_t maxTime = ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed * requiredNonces * 2 / ob->staticBoardModel.chipsPerBoard / ob->staticBoardModel.enginesPerChip;
+	bool slowString = timeElapsed >= maxTime;
+
+	// If we haven't found enough nonces and also not too much time has passed,
+	// no changges are made to voltage or bias.
+	if (ob->control_loop_state.goodNoncesUponLastVoltageChange < requiredNonces && !slowString) {
+		return;
+	}
+
+	// Set the fitness of the current child.
+	ob->control_loop_state.curChild.fitness = computeHashRate(ob);
+
+	// Set the curChild voltage and bias levels to equal what they've been
+	// changed to by the temp regulation and any other external factors.
+	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+	memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
+	memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+
+	// Run the genetic algorithm, recording the performance of the current
+	// settings and breeding the population to produce new settings.
+	geneticAlgoIter(&ob->control_loop_state);
+
+	// Commit the new settings and mark that an adjustment has taken place.
+	setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
+	commitBoardBias(ob);
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		ob->chipBadNonces[i] = 0;
+		ob->chipGoodNonces[i] = 0;
+	}
+
+	// Set the curChild voltage and bias levels to equal what they've been
+	// changed to by any no-ops that occured after the voltage was updated.
+	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+}
+
 // control_loop runs the hashing boards and attempts to work towards an optimal
 // hashrate.
 static void control_loop(ob_chain* ob)
@@ -1018,44 +1052,8 @@ static void control_loop(ob_chain* ob)
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
 
-	// Skip the string adjustments if we have not reached the next string
-	// adjustment period.
-	if (ob->control_loop_state.currentTime < ob->control_loop_state.stringAdjustmentTime) {
-		return;
-	}
-
-	// Enough time has passed to perform chip adjustments.
-	applog(LOG_ERR, "Beginning chip adjustments.");
-
-	// Iterate through the chips and count the number of bad chips.
-	int badChips = 0;
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
-			badChips++;
-		}
-	}
-
-	if (ob->control_loop_state.goodNoncesUponLastVoltageChange > 75) {
-		// Set the fitness of the current child.
-		ob->control_loop_state.curChild.fitness = computeHashRate(ob);
-		// HACK: setVoltageLevel may have changed curentVoltageLevel; update
-		// curChild to match
-		ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
-
-		// Run the genetic algorithm, recording the performance of the current
-		// settings and breeding the population to produce new settings.
-		geneticAlgoIter(&ob->control_loop_state);
-
-		// Commit the new settings and mark that an adjustment has taken place.
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
-		commitBoardBias(ob);
-		ob->control_loop_state.chipAdjustments++;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-	}
+	// Perform any adjustments to the voltage and bias that may be required.
+	handleVoltageAndBiasTuning(ob);
 }
 
 /*

@@ -41,7 +41,7 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix);
 #define POPULATION_SIZE 10
 
 typedef struct GenChild {
-	uint64_t fitness; // actually GH/s
+	double fitness; // hashes / second
 	uint8_t voltageLevel;
 	// TODO: these don't necessarily match model.chipsPerBoard
 	int8_t chipBiases[15];

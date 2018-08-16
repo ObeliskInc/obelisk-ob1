@@ -549,22 +549,26 @@ static GenChild breedChild(ControlLoopState *state)
 
     // mutate each trait by choosing randomly whether to increment it,
     // decrement it, or leave it unchanged
+	//
+	// 256 % 5 has a slight preference for landing on the value '0'. To prevent
+	// a bias between moving up and down, we make sure that '0' corresponds to
+	// no-change.
     //
     // TODO: this code doesn't take into account the minimum/maximum levels
     // for the model. When setVoltageLevel is called, it may overwrite
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 3 == 0) {
+    if (r % 5 == 3) {
         child.voltageLevel++;
-    } else if (r % 3 == 1) {
+    } else if (r % 5 == 4) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 3 == 0) {
+        if (r % 5 == 3) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 3 == 1) {
+        } else if (r % 5 == 4) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         }
     }
@@ -620,8 +624,6 @@ ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
     }
 
     // set voltage and chip biases according to curChild
-    // TODO: replace these fields entirely?
-    state->currentVoltageLevel = state->curChild.voltageLevel;
     memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
     memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
 
