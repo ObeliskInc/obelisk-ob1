@@ -90,6 +90,7 @@ typedef struct ControlLoopState {
 	GenChild population[POPULATION_SIZE];
 	uint8_t populationSize;
 	GenChild curChild; // same values as currentVoltageLevel, chipBiases, and chipDividers
+	bool hasReset;
 
 } ControlLoopState;
 

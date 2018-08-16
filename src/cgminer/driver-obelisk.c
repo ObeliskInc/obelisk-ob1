@@ -665,6 +665,7 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.hasReset = false;
 
 		// Load the thermal configuration for this machine. If that fails (no
 		// configuration file, or boards changed), fallback to default values
@@ -1016,12 +1017,23 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Determine whether the string is running slowly. The string is considered
 	// to be running slowly if the chips are not producing nonces as fast as
 	// expected.
-	uint64_t requiredNonces = 75;
+	uint64_t requiredNonces = 45;
+	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
 	// The max time allowed is twice the expected amount of time for the whole
 	// string to hit the required number of nonces.
 	time_t maxTime = ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed * requiredNonces * 2 / ob->staticBoardModel.chipsPerBoard / ob->staticBoardModel.enginesPerChip;
 	bool slowString = timeElapsed >= maxTime;
+
+	if (timeElapsed > resetTime && !ob->control_loop_state.hasReset) {
+		ob->control_loop_state.hasReset = true;
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+		return;
+	}
 
 	// If we haven't found enough nonces and also not too much time has passed,
 	// no changges are made to voltage or bias.
@@ -1053,6 +1065,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Set the curChild voltage and bias levels to equal what they've been
 	// changed to by any no-ops that occured after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
+	ob->control_loop_state.hasReset = false;
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
