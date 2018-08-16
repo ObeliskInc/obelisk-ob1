@@ -303,6 +303,7 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
     // too.
     state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
     state->prevBiasChangeTime = state->currentTime;
+	state->timeExtensions = 0;
 
     // Write the new voltage level to disk.
     saveThermalConfig(model->name, model->chipsPerBoard, ob->chain_id, state->currentVoltageLevel, state->chipBiases, state->chipDividers);
@@ -727,7 +728,6 @@ static void obelisk_detect(bool hotplug)
 			setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 		}
 		commitBoardBias(ob);
-		setVoltageLevel(ob, ob->staticBoardModel.minStringVoltageLevel);
 
 		// Set the nonce range for every chip.
 		uint64_t nonceRangeFailures = 0;
@@ -1004,6 +1004,124 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     }
 }
 
+// handleBiasAndVoltageAdjustments will check the chips for statistical
+// significance in the number of nonces found, and then if enough nonces have
+// been found on the chips a bias adjustment will be performed.
+static void handleBiasAndVoltageAdjustments(ob_chain* ob) {
+	// Skip the string adjustments if we have not reached the next string
+	// adjustment period.
+	if (ob->control_loop_state.currentTime < ob->control_loop_state.stringAdjustmentTime) {
+		return;
+	}
+
+	// Determine how many nonces have been found on our most active chip.
+	int mostGoodNonces = 0;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		int chipNonces = ob->chipGoodNonces[i] + ob->chipBadNonces[i];
+		if (chipNonces > mostGoodNonces) {
+			mostGoodNonces = chipNonces;
+		}
+	}
+
+	// Some local constants that regulate the algorithms.
+	int acceptableTimeExtensions = 10;
+	int acceptableChipAdjustments = 10;
+	int requiredMostGoodNonces = 15;
+	time_t expectedTimePerNonce = ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed / ob->staticBoardModel.enginesPerChip;
+
+	// If the most active chip has not found enough nonces, let the string run
+	// for a bit longer.
+	if (mostGoodNonces < requiredMostGoodNonces && ob->control_loop_state.timeExtensions < acceptableTimeExtensions) {
+		ob->control_loop_state.timeExtensions++;
+		time_t expectedTimeNeeded = expectedTimePerNonce * (requiredMostGoodNonces-mostGoodNonces);
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + expectedTimeNeeded;
+		return;
+	}
+
+	// If we don't have enough good nonces, but we have surpassed the number of
+	// acceptable time extensions, set the mostGoodNonces equal to the
+	// requiredGoodNonces - this shouldn't happen unless every chip on the
+	// string is substantially underperforming.
+	if (mostGoodNonces < requiredMostGoodNonces) {
+		// Decrease the string voltage level.
+		applog(LOG_ERR, "Increasing string voltage due to too many underperforming chips.");
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + (expectedTimePerNonce * requiredMostGoodNonces);
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
+		return;
+	}
+
+	// Check which chips are bad.
+	int badChips = 0;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i] || ob->chipGoodNonces[i] < mostGoodNonces/3) {
+			badChips++;
+		}
+	}
+
+	// If there are more than 3 bad chips, we need to increase the string
+	// voltage. If there are no bad chips, we need to decrease the string
+	// voltage.
+	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minStringVoltageLevel;
+	if (badChips > 3 && !atMinLevel) {
+		// Decrease the string voltage level and set the timeout for the next
+		// level to be much higher.
+		applog(LOG_ERR, "Increasing string voltage due to too many bad chips.");
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + (expectedTimePerNonce * requiredMostGoodNonces);
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
+		return;
+	} else if (badChips > 1 && ob->control_loop_state.chipAdjustments > acceptableChipAdjustments && !atMinLevel) {
+		// Decrease the string voltage level.
+		applog(LOG_ERR, "Increasing string voltage due to too many adjustments for bad chips.");
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + (expectedTimePerNonce * requiredMostGoodNonces);
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
+		return;
+	} else if (badChips == 0) {
+		applog(LOG_ERR, "Decreasing string voltage beacuse there are no bad chips.");
+		// Incrase the string voltage level.
+		ob->control_loop_state.chipAdjustments = 0;
+		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + (expectedTimePerNonce * requiredMostGoodNonces);
+		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+			ob->chipBadNonces[i] = 0;
+			ob->chipGoodNonces[i] = 0;
+		}
+		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel+1);
+		return;
+	}
+
+	// Adjust the bias of any bad chips.
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i] || ob->chipGoodNonces[i] < mostGoodNonces/3) {
+			applog(LOG_ERR, "Decreasing the bias on a chip with lots of bad nonces: %u", i);
+			decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+		}
+	}
+	commitBoardBias(ob);
+
+	// Mark that an adjustment has taken place.
+	ob->control_loop_state.chipAdjustments++;
+	ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + (expectedTimePerNonce * requiredMostGoodNonces);
+	ob->control_loop_state.timeExtensions = 0;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		ob->chipBadNonces[i] = 0;
+		ob->chipGoodNonces[i] = 0;
+	}
+}
+
 // control_loop runs the hashing boards and attempts to work towards an optimal
 // hashrate.
 static void control_loop(ob_chain* ob)
@@ -1017,93 +1135,8 @@ static void control_loop(ob_chain* ob)
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
 
-	// Skip the string adjustments if we have not reached the next string
-	// adjustment period.
-	if (ob->control_loop_state.currentTime < ob->control_loop_state.stringAdjustmentTime) {
-		return;
-	}
-
-	// Enough time has passed to perform chip adjustments.
-	applog(LOG_ERR, "Beginning chip adjustments.");
-
-	// Iterate through the chips and count the number of bad chips.
-	int badChips = 0;
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
-			badChips++;
-		}
-	}
-
-	// If there are more than 3 bad chips, we need to increase the string
-	// voltage.
-	bool atMinLevel = ob->control_loop_state.currentVoltageLevel <= ob->staticBoardModel.minStringVoltageLevel;
-	if (badChips > 3 && !atMinLevel) {
-		// Decrease the string voltage level and set the timeout for the next
-		// level to be much higher.
-		applog(LOG_ERR, "Increasing string voltage due to too many bad chips.");
-		ob->control_loop_state.chipAdjustments = 0;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
-		return;
-	} else if (badChips > 1 && ob->control_loop_state.chipAdjustments > 10 && !atMinLevel) {
-		// Decrease the string voltage level.
-		applog(LOG_ERR, "Increasing string voltage due to too many adjustments for bad chips.");
-		ob->control_loop_state.chipAdjustments = 0;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 1200;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel-1);
-		return;
-	} else if (badChips == 0) {
-		applog(LOG_ERR, "Decreasing string voltage beacuse there are no bad chips.");
-		// Incrase the string voltage level.
-		ob->control_loop_state.chipAdjustments = 0;
-		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
-		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-			ob->chipBadNonces[i] = 0;
-			ob->chipGoodNonces[i] = 0;
-		}
-		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel+1);
-		return;
-	}
-
-	// Decerase the bias on any of the bad chips.
-	applog(LOG_ERR, "Adjusting the voltage on some bad chips.");
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		if (ob->chipGoodNonces[i]/3 < ob->chipBadNonces[i]) {
-			decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-		}
-	}
-	commitBoardBias(ob);
-	// Mark that an adjustment has taken place.
-	ob->control_loop_state.chipAdjustments++;
-	ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime + 300;
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		ob->chipBadNonces[i] = 0;
-		ob->chipGoodNonces[i] = 0;
-	}
-
-
-	/*
-	// Determine if the time has come to start collecting hashrate for the
-	// string.
-	if (!ob->settings.started && ob->control_loop_state.currentTime > ob->settings.startTime) {
-		applog(LOG_ERR, "Starting metrics collection for current string.");
-		ob->settings.started = true;
-		ob->settings.startGoodNonces = ob->control_loop_state.currentGoodNonces;
-	}
-
-	// Determine if the time has come to switch to the next settings.
-	if (ob->control_loop_state.currentTime > ob->settings.Endtime) {
-		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
-	}
-	*/
+	// Handle any required bias and voltage adjustments.
+	handleBiasAndVoltageAdjustments(ob);
 }
 
 /*
@@ -1122,7 +1155,23 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     cgtimer_t start_scanwork, end_scanwork, duration_scanwork;
     cgtimer_time(&start_scanwork);
 
-    // Look for nonces first so we can give new work in the same iteration below
+	// Get flags indicating which chips are done, and which chips have nonce
+	// flags.
+	uint16_t boardDoneFlags = 0;
+	ApiError error = ob1ReadBoardDoneFlags(ob->staticBoardNumber, &boardDoneFlags);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "Failed to read board done flags.");
+		return 0;
+	}
+	/*
+	uint16_t nonceFoundFlags = 0;
+	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
+	if (error != SUCCESS) {
+		applog(LOG_ERR, "Failed to read nonce done flags.");
+		return 0;
+	}
+	*/
+
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
@@ -1137,7 +1186,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			continue;
 		}
 
-		// Check whether the chip is done.
+		// If the chip is not reporting as done, continue.
+		bool chipDone = (boardDoneFlags >> chip_num) & 1;
+		if (!chipDone) {
+			continue;
+		}
+
+		// Check whether the chip is done by looking at the 'GetDoneEngines'
+		// read. This is necessary because our board level check can have false
+		// positives.
         uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
         ApiError error = ob1GetDoneEngines(ob->chain_id, chip_num, (uint64_t*)doneBitmask);
 		// Skip this chip if there was an error, or if the entire chip is not
@@ -1152,9 +1209,19 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				break;
 			}
 		}
+		// Compare whole chip done reading to board done flags.
 		if (!wholeChipDone) {
+			// applog(LOG_ERR, "False positive detected on the chip done message: %u.%u", ob->staticBoardNumber, chip_num);
 			continue;
 		}
+
+		// Check if this chip found a nonce. If not, move on.
+		/*
+		bool chipHasNonce = (nonceFoundFlags >> chip_num) & 1;
+		if (!chipHasNonce) {
+			// continue;
+		}
+		*/
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
@@ -1171,6 +1238,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				applog(LOG_ERR, "Error reading nonces.");
 				continue;
 			}
+
+			/*
+			if (nonce_set.count == 0 && chipHasNonce) {
+				// applog(LOG_ERR, "chip reported a nonce, but there is no nonce here.");
+			}
+			if (nonce_set.count > 0 && !chipHashNonce) {
+				applog(LOG_ERR, "----- would have skipped over a nonce -----");
+			}
+			*/
 
 			// Check the nonces and submit them to a pool if valid.
 			// 
@@ -1235,7 +1311,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     ob->num_cores = 15 * 64;
 
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
-scanwork_exit:
     cgsleep_ms(10);
 
     cgtimer_time(&end_scanwork);

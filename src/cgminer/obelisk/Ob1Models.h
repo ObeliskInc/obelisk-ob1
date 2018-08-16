@@ -18,6 +18,7 @@ typedef struct hashBoardModel {
 	uint64_t nonceOffsetInTail;
 
 	// Suggested parameters to use when operating the chips.
+	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
 	uint64_t nonceRange;
 } hashBoardModel;
 
@@ -36,6 +37,7 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.nonceOffset = 32,
 	.nonceOffsetInTail = 0, // no tail
 
+	.chipSpeed =  100000000ULL,  // 100 MHz
 	.nonceRange = 4294967296ULL // 2^32
 };
 
@@ -54,6 +56,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.nonceOffset = 140,
 	.nonceOffsetInTail = 12,
 
+	.chipSpeed =  2000000ULL,  // 2 MHs - NOTE: this will go up as we finish spi optimization.
 	.nonceRange = 33554432ULL // 2^25
 };
 

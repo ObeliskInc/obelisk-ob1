@@ -75,6 +75,7 @@ typedef struct ControlLoopState {
 	// Voltage management variables - algo 2.
 	time_t   stringAdjustmentTime;
 	uint64_t chipAdjustments;
+	uint64_t timeExtensions;
 } ControlLoopState;
 
 // Functions for adding/subtracting bias and dividers and formatting
