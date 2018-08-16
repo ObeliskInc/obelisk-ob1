@@ -165,6 +165,9 @@ struct ob_chain {
     int spiLoadJobTime;
     int submitNonceTime;
     int readNonceTime;
+	int doneNonceTime;
+	int chipScanTime;
+	int statsTime;
 
 	// String setings.
 	stringSettings bestSettings[10];

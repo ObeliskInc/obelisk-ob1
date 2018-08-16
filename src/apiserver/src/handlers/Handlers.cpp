@@ -35,9 +35,7 @@ void sendJson(string json, crow::response &resp) {
 
 void sendCgMinerCmds(CgMiner::Commands commands, CgMiner::RequestCallback callback) {
   CgMiner::Request cgMinerReq{commands, callback};
-  CROW_LOG_DEBUG << "enqueue request";
   gRequestQueue.enqueue(cgMinerReq);
-  CROW_LOG_DEBUG << "enqueue request done";
 }
 
 void sendCgMinerCmd(string command, string param, CgMiner::RequestCallback callback) {
@@ -50,13 +48,99 @@ void sendCgMinerCmd(string command, string param, CgMiner::RequestCallback callb
 bool isCgMinerError(json::rvalue json) { return json["STATUS"][0]["STATUS"].s() == "E"; }
 
 // TODO: This is stupid!
-json::rvalue toRvalue(json::wvalue &v) { return json::load(json::dump(v)); }
+json::rvalue to_rvalue(json::wvalue &v) { return json::load(json::dump(v)); }
+
+// Find the index of the entry with the specified name
+// the jsonArr must be an array
+int indexOfEntryWithId(json::rvalue jsonArr, string id) {
+  if (jsonArr.t() == json::type::List) {
+    for (int i = 0; i < jsonArr.size(); i++) {
+      json::rvalue entry = jsonArr[i];
+      if (entry.has(id)) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+int findIndexByFieldValue(json::rvalue jsonArr, string fieldName, int value) {
+  if (jsonArr.t() == json::type::List) {
+    for (int i = 0; i < jsonArr.size(); i++) {
+      json::rvalue entry = jsonArr[i];
+      if (entry.has(fieldName) && entry[fieldName].i() == value) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+json::rvalue makeSystemInfoEntry(string name, string value) {
+  json::wvalue obj = json::load("{}");
+  obj["name"] = name;
+  obj["value"] = value;
+  return to_rvalue(obj);
+}
+
+// Structure to store data from cgminer
+
+#define MAX_HASHRATE_HISTORY_ENTRIES (60) // We keep one hour of history for now
+hashrate_t hashrate_history_secs[MAX_HASHRATE_HISTORY_ENTRIES];
+int num_hashrate_entries = 0;
+
+// Timer callback to poll for updated hashrates
+void poll_for_hashrate() {
+  CROW_LOG_DEBUG << "Polling for hashrates";
+
+  sendCgMinerCmd("dashdevs", "", [&](CgMiner::Response cgMinerResp) {
+    if (cgMinerResp.error) {
+      // No data to append - oh well
+      return;
+    }
+
+    // No error, so build up the response that the user is expecting
+    try {
+      // CROW_LOG_DEBUG << "json = " << cgMinerResp.json;
+
+      json::rvalue cgMinerJson = json::load(cgMinerResp.json);
+      time_t now = time(0);
+      double values[MAX_HASHBOARDS];
+      json::rvalue devsArr = cgMinerJson["DEVS"];
+      for (int i = 0; i < devsArr.size(); i++) {
+        json::rvalue entry = devsArr[i];
+        values[i] = entry["mhsRolling"].d();
+      }
+
+
+      // See if we need to move the old data
+      int entry_index = num_hashrate_entries;
+      if (num_hashrate_entries >= MAX_HASHRATE_HISTORY_ENTRIES) {
+        // Need to slide the other entries down first, then set new data into the last entry
+        memmove(hashrate_history_secs, &hashrate_history_secs[1],
+                sizeof(hashrate_t) * (MAX_HASHRATE_HISTORY_ENTRIES - 1));
+        entry_index = MAX_HASHRATE_HISTORY_ENTRIES - 1;
+      } else {
+        num_hashrate_entries++;
+      }
+
+      // Record the new data
+      hashrate_history_secs[entry_index].time = now;
+      for (int i = 0; i < devsArr.size(); i++) {
+        hashrate_history_secs[entry_index].hashrates[i] = values[i];
+      }
+
+    } catch (...) {
+      return;
+    }
+  });
+}
 
 //--------------------------------------------------------------------------------------------------
 // INVENTORY HANDLERS
 //--------------------------------------------------------------------------------------------------
 
-void getInventoryVersions(std::string path, query_string &urlParams, const crow::request &req,
+void getInventoryVersions(string path, query_string &urlParams, const crow::request &req,
                           crow::response &resp) {
   sendCgMinerCmd("version", "", [&](CgMiner::Response cgMinerResp) {
     if (cgMinerResp.error) {
@@ -78,7 +162,7 @@ void getInventoryVersions(std::string path, query_string &urlParams, const crow:
   });
 }
 
-void getInventorySystem(std::string path, query_string &urlParams, const crow::request &req,
+void getInventorySystem(string path, query_string &urlParams, const crow::request &req,
                         crow::response &resp) {
   string osName = getOSName();
   string osVersion = getOSVersion();
@@ -106,13 +190,13 @@ TODO: Define a standard handler or a handler wrapper to handle error case
                               }
                               */
 
-void getInventoryAsicCount(std::string path, query_string &urlParams, const crow::request &req,
+void getInventoryAsicCount(string path, query_string &urlParams, const crow::request &req,
                            crow::response &resp) {
   sendCgMinerCmd("asccount", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getInventoryDevices(std::string path, query_string &urlParams, const crow::request &req,
+void getInventoryDevices(string path, query_string &urlParams, const crow::request &req,
                          crow::response &resp) {
   sendCgMinerCmd("devs", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
@@ -122,7 +206,7 @@ void getInventoryDevices(std::string path, query_string &urlParams, const crow::
 // CONFIG GET HANDLERS
 //--------------------------------------------------------------------------------------------------
 
-void getConfigPools(std::string path, query_string &urlParams, const crow::request &req,
+void getConfigPools(string path, query_string &urlParams, const crow::request &req,
                     crow::response &resp) {
   json::rvalue conf = readCgMinerConfig();
 
@@ -140,12 +224,12 @@ void getConfigPools(std::string path, query_string &urlParams, const crow::reque
     resEntry["worker"] = entry["user"].s();
     resEntry["url"] = entry["url"].s();
     resEntry["password"] = entry["pass"].s();
-    result[i] = toRvalue(resEntry);
+    result[i] = to_rvalue(resEntry);
   }
   sendJson(json::dump(result), resp);
 }
 
-void getConfigNetwork(std::string path, query_string &urlParams, const crow::request &req,
+void getConfigNetwork(string path, query_string &urlParams, const crow::request &req,
                       crow::response &resp) {
   json::wvalue jsonResp = json::load("{}");
   jsonResp["hostname"] = getHostname(INTF_NAME);
@@ -160,7 +244,7 @@ void getConfigNetwork(std::string path, query_string &urlParams, const crow::req
   sendJson(jsonStr, resp);
 }
 
-void getConfigSystem(std::string path, query_string &urlParams, const crow::request &req,
+void getConfigSystem(string path, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
   json::wvalue jsonResp = json::load("{}");
   jsonResp["timezone"] = getTimezone();
@@ -169,7 +253,7 @@ void getConfigSystem(std::string path, query_string &urlParams, const crow::requ
   sendJson(jsonStr, resp);
 }
 
-void getConfigMining(std::string path, query_string &urlParams, const crow::request &req,
+void getConfigMining(string path, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
   json::wvalue jsonResp = json::load("{}");
   // jsonResp["optimizationMode"] = getOptimizationMode();
@@ -178,7 +262,7 @@ void getConfigMining(std::string path, query_string &urlParams, const crow::requ
   sendJson(jsonStr, resp);
 }
 
-void getConfigConfig(std::string path, query_string &urlParams, const crow::request &req,
+void getConfigConfig(string path, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
   sendCgMinerCmd("config", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
@@ -187,7 +271,7 @@ void getConfigConfig(std::string path, query_string &urlParams, const crow::requ
 //--------------------------------------------------------------------------------------------------
 // CONFIG SET HANDLERS
 //--------------------------------------------------------------------------------------------------
-void setConfigPools(std::string path, json::rvalue &args, const crow::request &req,
+void setConfigPools(string path, json::rvalue &args, const crow::request &req,
                     crow::response &resp) {
   if (args.t() != json::type::List) {
     resp.code = HttpStatus_BadRequest;
@@ -218,11 +302,11 @@ void setConfigPools(std::string path, json::rvalue &args, const crow::request &r
     entry["url"] = url;
     entry["user"] = user;
     entry["pass"] = pass;
-    newPools[i] = toRvalue(entry);
+    newPools[i] = to_rvalue(entry);
   }
 
   // Set new pools entry into the wvalue
-  newConf["pools"] = toRvalue(newPools);
+  newConf["pools"] = to_rvalue(newPools);
 
   // Write out config file
   writeCgMinerConfig(newConf);
@@ -230,7 +314,7 @@ void setConfigPools(std::string path, json::rvalue &args, const crow::request &r
   sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
-void setConfigNetwork(std::string path, json::rvalue &args, const crow::request &req,
+void setConfigNetwork(string path, json::rvalue &args, const crow::request &req,
                       crow::response &resp) {
   if (args.t() != json::type::Object) {
     resp.code = HttpStatus_BadRequest;
@@ -256,7 +340,7 @@ void setConfigNetwork(std::string path, json::rvalue &args, const crow::request 
   return;
 }
 
-void setConfigSystem(std::string path, json::rvalue &args, const crow::request &req,
+void setConfigSystem(string path, json::rvalue &args, const crow::request &req,
                      crow::response &resp) {
   if (args.t() != json::type::Object) {
     resp.code = HttpStatus_BadRequest;
@@ -271,7 +355,7 @@ void setConfigSystem(std::string path, json::rvalue &args, const crow::request &
   return;
 }
 
-void setConfigMining(std::string path, json::rvalue &args, const crow::request &req,
+void setConfigMining(string path, json::rvalue &args, const crow::request &req,
                      crow::response &resp) {
   if (args.t() != json::type::Object) {
     resp.code = HttpStatus_BadRequest;
@@ -285,7 +369,7 @@ void setConfigMining(std::string path, json::rvalue &args, const crow::request &
   return;
 }
 
-void setConfigAsic(std::string path, json::rvalue &args, const crow::request &req,
+void setConfigAsic(string path, json::rvalue &args, const crow::request &req,
                    crow::response &resp) {
   if (args.t() != json::type::List) {
     resp.code = HttpStatus_BadRequest;
@@ -314,87 +398,159 @@ void setConfigAsic(std::string path, json::rvalue &args, const crow::request &re
 // STATUS HANDLERS (CGMINER)
 //--------------------------------------------------------------------------------------------------
 
-void getStatusDashboard(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusDashboard(string path, query_string &urlParams, const crow::request &req,
                         crow::response &resp) {
-  string json =
-      "{\"hashrateData\":[{\"time\":1530657000000,\"board1\":1660,\"board2\":1420,\"board3\":"
-      "900,\"total\":3980},"
-      "{\"time\":1530657300000,\"board1\":1469,\"board2\":1574,\"board3\":800,\"total\":"
-      "3843},"
-      "{\"time\":1530657600000,\"board1\":1602,\"board2\":900,\"board3\":700,\"total\":"
-      "3202},"
-      "{\"time\":1530657900000,\"board1\":1610,\"board2\":1200,\"board3\":1000,"
-      "\"total\":3810},"
-      "{\"time\":1530658200000,\"board1\":907,\"board2\":1700,\"board3\":1100,\"total\":"
-      "3707},"
-      "{\"time\":1530658500000,\"board1\":1860,\"board2\":1654,\"board3\":1050,"
-      "\"total\":4564}],"
-      "\"poolStatus\":[{\"url\":\"http://"
-      "us-east.luxor.tech:3333\",\"worker\":\"abc\",\"status\":\"Active\",\"rejected\":"
-      "0,"
-      "\"accepted\":79},"
-      "{\"url\":\"http://"
-      "us-west.luxor.tech:3333\",\"worker\":\"abc\",\"status\":\"Offline\",\"rejected\":"
-      "0,"
-      "\"accepted\":78},"
-      "{\"url\":\"http://"
-      "us-east.siamining.com:3333\",\"worker\":\"abc\",\"status\":\"Active\","
-      "\"rejected\":0,"
-      "\"accepted\":123}],"
-      "\"hashboardStatus\":["
-      "{\"hashrate\":407,\"status\":\"Active\",\"accepted\":45,\"rejected\":0,"
-      "\"boardTemp\":82,"
-      "\"chipTemp\":86},"
-      "{\"hashrate\":486,\"status\":\"Error\",\"accepted\":54,\"rejected\":0,"
-      "\"boardTemp\":81,"
-      "\"chipTemp\":85},"
-      "{\"hashrate\":569,\"status\":\"Active\",\"accepted\":41,\"rejected\":0,"
-      "\"boardTemp\":"
-      "83,\"chipTemp\":87}],"
-      "\"systemInfo\":["
-      "{\"name\":\"Free Memory\",\"value\":\"123 MB\"},{\"name\":\"Total "
-      "Memory\",\"value\":\"999 MB\"},"
-      "{\"name\":\"Uptime\",\"value\":\"19:47:21\"},{\"name\":\"Fan 1 "
-      "Speed\",\"value\":\"2400 RPM\"},"
-      "{\"name\":\"Fan 2 Speed\",\"value\":\"2469 RPM\"},{\"name\":\"Board 1 "
-      "Temp\",\"value\":\"80 C\"},"
-      "{\"name\":\"Board 2 Temp\",\"value\":\"82 C\"},{\"name\":\"Board 3 "
-      "Temp\",\"value\":\"85 C\"}]}";
 
-  sendJson(json, resp);
+  sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
+    // CROW_LOG_DEBUG << "RESP=========================================";
+    // CROW_LOG_DEBUG << cgMinerResp.json;
+
+    json::rvalue cgJsonResp = json::load(cgMinerResp.json);
+    if (!cgJsonResp.has("dashpools") || !cgJsonResp.has("dashstats") || !cgJsonResp.has("dashdevs")) {
+      sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+      return;
+    }
+
+    json::rvalue poolsResp = cgJsonResp["dashpools"][0];
+    json::rvalue statsResp = cgJsonResp["dashstats"][0];
+    json::rvalue devsResp = cgJsonResp["dashdevs"][0];
+
+    // TODO: See why isCgMinerError() is failing
+    // Ensure that all requests succeeded
+    // if (isCgMinerError(poolsResp) || isCgMinerError(statsResp) || isCgMinerError(devsResp)) {
+    //   CROW_LOG_DEBUG << "Dashboard Error 1";
+    //   // sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+    //   return;
+    // }
+
+    // Prepare our JSON response outline
+    json::wvalue jsonResp = json::load("{}");
+    json::wvalue hashrateArr = json::load("[]");
+    json::wvalue hashboardArr = json::load("[]");
+    json::wvalue systemArr = json::load("[]");
+
+    // Handle the pools array - direct copy since it's a custom method in cgminer with just
+    // the info we want in the format we want.
+    jsonResp["poolStatus"] = poolsResp["POOLS"];
+
+    for (int i = 0; i < num_hashrate_entries; i++) {
+      json::wvalue entry = json::load("{}");
+      entry["time"] = hashrate_history_secs[i].time;
+      uint32_t total = 0;
+      for (int hb = 0; hb < MAX_HASHBOARDS; hb++) {
+
+        uint32_t value = hashrate_history_secs[i].hashrates[hb];
+        if (value != 0) {
+          entry["board" + hb] = value;
+          total += value;
+        }
+      }
+      entry["total"] = total;
+      hashrateArr[i] = to_rvalue(entry);
+    }
+    jsonResp["hashrateData"] = to_rvalue(hashrateArr);
+
+    // TODO: Implement hashrate polling and then send the data from here
+
+    // Fan speeds
+    int fanSpeed0 = 0;
+    int fanSpeed1 = 0;
+
+    // Handle the hashboardStatus array
+    json::rvalue stats = statsResp["STATS"];
+    json::rvalue devs = devsResp["DEVS"];
+    json::wvalue hashStatus = json::load("[]");
+    int hashboardIndex = 0;
+    for (int i = 0; i < stats.size(); i++) {
+      json::rvalue statsEntry = stats[i];
+      if (statsEntry.has("boardId")) {
+        int boardId = statsEntry["boardId"].i();
+        json::wvalue entry = json::load("{}");
+
+        entry["numChips"] = statsEntry["numChips"].i();
+        entry["numCores"] = statsEntry["numCores"].i();
+        entry["boardTemp"] = statsEntry["boardTemp"].d();
+        entry["chipTemp"] = statsEntry["chipTemp"].d();
+        entry["powerSupplyTemp"] = statsEntry["powerSupplyTemp"].d();
+        entry["fanSpeed0"] = statsEntry["fanSpeed0"].i();
+        entry["fanSpeed1"] = statsEntry["fanSpeed1"].i();
+
+        // Extract fan speed entry for system info
+        if (statsEntry.has("fanSpeed0")) {
+          fanSpeed0 = statsEntry["fanSpeed0"].i();
+        }
+        if (statsEntry.has("fanSpeed1")) {
+          fanSpeed1 = statsEntry["fanSpeed1"].i();
+        }
+
+        // Try to get corresponding entries from the 
+        int devIndex = findIndexByFieldValue(devs, "ASC", i);
+        if (devIndex >= 0) {
+          json::rvalue devEntry = devs[devIndex];
+          entry["status"] = devEntry["status"].s();
+          entry["mhsAvg"] = devEntry["mhsAvg"].d();
+          entry["mhs1m"] = devEntry["mhs1m"].d();
+          entry["mhs5m"] = devEntry["mhs5m"].d();
+          entry["mhs15m"] = devEntry["mhs15m"].d();
+          entry["accepted"] = devEntry["accepted"].i();
+          entry["rejected"] = devEntry["rejected"].i();
+        }
+
+        hashboardArr[i] = to_rvalue(entry);
+      }
+    }
+
+    jsonResp["hashboardStatus"] = to_rvalue(hashboardArr);
+
+    // Handle the systemInfo array
+    int i = 0;
+
+    CROW_LOG_DEBUG << "Dashboard 28";
+    systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
+    systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
+    systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
+    // TODO: Add fan speeds back in when they are implemented
+    // systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
+    // systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+
+    jsonResp["systemInfo"] = to_rvalue(systemArr);
+    string str = json::dump(jsonResp);
+    // CROW_LOG_DEBUG << "jsonStr=" << str;
+    sendJson(str, resp);
+  });
 }
 
-void getStatusDeviceDetails(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusDeviceDetails(string path, query_string &urlParams, const crow::request &req,
                             crow::response &resp) {
   sendCgMinerCmd("devdetails", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getStatusSummary(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusSummary(string path, query_string &urlParams, const crow::request &req,
                       crow::response &resp) {
   sendCgMinerCmd("summary", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getStatusAsic(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusAsic(string path, query_string &urlParams, const crow::request &req,
                    crow::response &resp) {
   sendCgMinerCmd("asc", urlParams.get("n"),
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getStatusStats(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusStats(string path, query_string &urlParams, const crow::request &req,
                     crow::response &resp) {
   sendCgMinerCmd("stats", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getStatusCoinMining(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusCoinMining(string path, query_string &urlParams, const crow::request &req,
                          crow::response &resp) {
   sendCgMinerCmd("coin", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
 }
 
-void getStatusLockStats(std::string path, query_string &urlParams, const crow::request &req,
+void getStatusLockStats(string path, query_string &urlParams, const crow::request &req,
                         crow::response &resp) {
   sendCgMinerCmd("lockstats", "",
                  [&](CgMiner::Response cgMinerResp) { sendJson(cgMinerResp.json, resp); });
@@ -404,7 +560,7 @@ void getStatusLockStats(std::string path, query_string &urlParams, const crow::r
 // STATUS HANDLERS (API SERVER)
 //--------------------------------------------------------------------------------------------------
 
-void getStatusMemory(std::string, query_string &urlParams, const crow::request &req,
+void getStatusMemory(string, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
   int freeMemory = getFreeMemory();
   int totalMemory = getTotalMemory();
@@ -419,7 +575,7 @@ void getStatusMemory(std::string, query_string &urlParams, const crow::request &
 // ACTION HANDLERS
 //--------------------------------------------------------------------------------------------------
 
-void actionChangePassword(std::string path, json::rvalue &args, const crow::request &req,
+void actionChangePassword(string path, json::rvalue &args, const crow::request &req,
                           crow::response &resp) {
   string username = args["username"].s();
   string oldPassword = args["oldPassword"].s();
@@ -434,7 +590,7 @@ void actionChangePassword(std::string path, json::rvalue &args, const crow::requ
   resp.end();
 }
 
-void actionRestartApiServer(std::string path, json::rvalue &args, const crow::request &req,
+void actionRestartApiServer(string path, json::rvalue &args, const crow::request &req,
                             crow::response &resp) {
   resp.end();
 
@@ -446,13 +602,12 @@ void actionRestartApiServer(std::string path, json::rvalue &args, const crow::re
   exit(EXIT_SUCCESS);
 }
 
-void actionRestartMiningApp(std::string path, json::rvalue &args, const crow::request &req,
+void actionRestartMiningApp(string path, json::rvalue &args, const crow::request &req,
                             crow::response &resp) {
   sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
-void actionReboot(std::string path, json::rvalue &args, const crow::request &req,
-                  crow::response &resp) {
+void actionReboot(string path, json::rvalue &args, const crow::request &req, crow::response &resp) {
   CROW_LOG_DEBUG << "actionReboot() called";
   resp.end();
 
@@ -470,12 +625,12 @@ void actionReboot(std::string path, json::rvalue &args, const crow::request &req
   // CROW_LOG_DEBUG << "ret=" << ret << " errno=" << errno;
 }
 
-void actionClearStats(std::string path, json::rvalue &args, const crow::request &req,
+void actionClearStats(string path, json::rvalue &args, const crow::request &req,
                       crow::response &resp) {
   sendCgMinerCmd("zero", "all,false", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
-void actionEnableAsic(std::string path, json::rvalue &args, const crow::request &req,
+void actionEnableAsic(string path, json::rvalue &args, const crow::request &req,
                       crow::response &resp) {
   string asicNum = args["n"].s();
   if (args["enabled"].s() == "true") {
@@ -501,8 +656,8 @@ void actionEnableAsic(std::string path, json::rvalue &args, const crow::request 
  * If the offset is non-zero, open the file, seek to the offset and write/append.
  * If end of file is reached, ensure that the file stat size matches the totalSize
  */
-void actionUploadFirmwareFileFragment(std::string path, json::rvalue &args,
-                                      const crow::request &req, crow::response &resp) {
+void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const crow::request &req,
+                                      crow::response &resp) {
   CROW_LOG_DEBUG << "********** actionUploadFirmwareFileFragment()";
   int64_t offset = args["offset"].i(); // Used only to detect first fragment
   string data = args["data"].s();
