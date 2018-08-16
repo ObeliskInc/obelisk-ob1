@@ -320,7 +320,7 @@ static void* ob_control_thread(void* arg)
 
     while (true) {
         control_loop(ob);
-        cgsleep_ms(100);
+        cgsleep_ms(250);
     }
 
     return NULL;
@@ -811,7 +811,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 10
+#define StatusOutputFrequency 60 
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
@@ -1009,7 +1009,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// If we haven't found enough nonces and also not too much time has passed,
 	// no changges are made to voltage or bias.
-	if (ob->control_loop_state.goodNoncesUponLastVoltageChange < requiredNonces && !slowString) {
+	if (ob->control_loop_state.goodNoncesSinceVoltageChange < requiredNonces && !slowString) {
 		return;
 	}
 
@@ -1135,7 +1135,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				if (nonceResult > 0) {
 					ob->goodNoncesFound++;
 					ob->chipGoodNonces[chip_num]++;
-					hashesConfirmed += ob->staticHashesPerSuccessfulNonce;
+					hashesConfirmed += ob->staticBoardModel.chipDifficulty;
 				}
 				if (nonceResult == 2) {
                     cgtimer_t start_submit_nonce, end_submit_nonce, duration_submit_nonce;

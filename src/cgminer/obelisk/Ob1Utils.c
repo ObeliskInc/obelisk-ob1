@@ -534,6 +534,8 @@ static GenChild breedChild(ControlLoopState *state)
     fclose(urandom);
     uint8_t *randByte = buf;
 
+	applog(LOG_ERR, "Randomness: %u, %u, %u, %u", (*randByte++), (*randByte++), (*randByte++), (*randByte++));
+
     // pick two random parents
     GenChild *parent1 = &state->population[(*randByte++) % state->populationSize];
     GenChild *parent2 = &state->population[(*randByte++) % state->populationSize];
