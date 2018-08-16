@@ -456,7 +456,7 @@ ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineN
 
 ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 {
-    uint64_t data = E_SC1_ECR_READ_COMPLETE;
+    uint64_t data = DCR1_ECR_READ_COMPLETE;
     ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
     if (error != SUCCESS) {
         return error;
