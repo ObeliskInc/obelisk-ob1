@@ -42,6 +42,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     table: {
       $debugName: 'table',
       fontFamily: 'Karbon Regular',
+      tableLayout: 'fixed'
     },
   }
 
@@ -205,7 +206,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     const renderPools =
       dashboardStatus.poolStatus.length > 0 &&
       dashboardStatus.poolStatus.map((_, i) => (
-        <Table striped={true} unstackable={true} className={classNames.table}>
+        <Table striped={true} unstackable={false} className={classNames.table}>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell />
