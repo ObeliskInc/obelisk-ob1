@@ -26,15 +26,13 @@ exit 0
 EOF
 `
 
-finish_cmd=`cat <<EOF
-/tmp/upgrades/detect -T --default-config /tmp/upgrades/cgminer.conf
-echo -e "error code: $?"
-if [ "$?" != "3" ]
+finish_cmd='/tmp/upgrades/detect; if [ "$?" != "3" ]' # prevent bash from expanding $? prematurely
+finish_cmd+=`cat <<EOF
+
 then
 	nohup /usr/sbin/led_flash_red &>/dev/null &
 	exit 77
 fi
-
 mv /tmp/upgrades/led_flash_green /usr/sbin/led_flash_green
 mv /tmp/upgrades/led_flash_red /usr/sbin/led_flash_red
 mv /tmp/upgrades/led_alternate /usr/sbin/led_alternate
