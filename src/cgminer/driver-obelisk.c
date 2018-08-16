@@ -1327,22 +1327,12 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     struct api_data* stats = NULL;
     char buffer[32];
 
-    applog(LOG_ERR, "***** obelisk_api_stats()");
-    stats = api_add_uint32(stats, "chainId", &ob->chain_id, false);
+    stats = api_add_uint32(stats, "boardId", &ob->chain_id, false);
     stats = api_add_uint16(stats, "numChips", &ob->num_chips, false);
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
-    stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
-    stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
-    stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
-
-    // BUG: Adding more stats below causes the response to never be returned.  Seems like a buffer size issue,
-    //      but so far I cannot seem to find it.
-    stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
-    stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
-    stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
-    stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
-    stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
-    stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
+    stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
+    stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has
     // no support for global stats, so just repeat the fan speeds here
@@ -1353,7 +1343,6 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
         sprintf(buffer, "fanSpeed%d", i);
         stats = api_add_int(stats, buffer, &ob->fan_speed[i], false);
     }
-    applog(LOG_ERR, "***** obelisk_api_stats() DONE");
 
     return stats;
 }
