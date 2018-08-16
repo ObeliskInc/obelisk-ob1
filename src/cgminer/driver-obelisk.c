@@ -587,6 +587,33 @@ Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
     return job;
 }
 
+static void obelisk_detect_exit(bool hotplug)
+{
+    applog(LOG_ERR, "Detecting boards\n");
+	ob1Initialize();
+	int numSC1 = 0;
+	int numDCR1 = 0;
+	int numUnknown = 0;
+	int numHashboards = ob1GetNumPresentHashboards();
+	for (int i = 0; i < numHashboards; i++) {
+		switch (eGetBoardType(i)) {
+		case MODEL_SC1:  numSC1++;     break;
+		case MODEL_DCR1: numDCR1++;    break;
+		default:         numUnknown++; break;
+		}
+	}
+	if (numUnknown > 0) {
+		exit(1);
+	} else if (numSC1 > 0 && numDCR1 > 0) {
+		exit(2);
+	} else if (numSC1 > 0) {
+		exit(3);
+	} else if (numDCR1 > 0) {
+		exit(4);
+	}
+	exit(255);
+}
+
 static void obelisk_detect(bool hotplug)
 {
 	// Basic initialization.
@@ -1351,7 +1378,7 @@ struct device_drv obelisk_drv = {
     .drv_id = DRIVER_obelisk,
     .dname = "Obelisk SC1/DCR1",
     .name = "Obelisk",
-    .drv_detect = obelisk_detect,
+    .drv_detect = obelisk_detect_exit,
     .get_api_stats = obelisk_api_stats,
     //.get_statline_before = obelisk_get_statline_before,
     .identify_device = obelisk_identify,
