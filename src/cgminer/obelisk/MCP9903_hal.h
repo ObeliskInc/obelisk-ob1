@@ -48,8 +48,11 @@ extern int iUpdateTempSensors(uint8_t uiBoard);
 extern int iGetTemperaturesDataPtr(uint8_t uiBoard, S_MCP9903_DATA_T** ppTempDataStruct);
 
 extern double getIntTemp(uint8_t uiBoard);
+extern int16_t getBoardTempInt(uint8_t uiBoard);
 extern double getAsicTemp(uint8_t uiBoard);
 extern int16_t getAsicTempInt(uint8_t uiBoard);
 extern double getPSTemp(uint8_t uiBoard);
+extern int16_t getPSTempInt(uint8_t uiBoard);
+
 
 #endif /* ifndef _MCP9903_HAL_H_INCLUDED */

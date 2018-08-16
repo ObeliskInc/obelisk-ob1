@@ -122,6 +122,12 @@ double getIntTemp(uint8_t uiBoard)
     return fracsToDouble(saTempData[uiBoard].iaDataRawFrac[TEMP_INT]);
 }
 
+// Slight renaming to avoid calling this getIntTempInt()
+int16_t getBoardTempInt(uint8_t uiBoard)
+{
+    return saTempData[uiBoard].iaDataRawInt[TEMP_INT];
+}
+
 double getAsicTemp(uint8_t uiBoard)
 {
     return fracsToDouble(saTempData[uiBoard].iaDataRawFrac[TEMP_ASIC]);
@@ -135,6 +141,11 @@ int16_t getAsicTempInt(uint8_t uiBoard)
 double getPSTemp(uint8_t uiBoard)
 {
     return fracsToDouble(saTempData[uiBoard].iaDataRawFrac[TEMP_PS]);
+}
+
+int16_t getPSTempInt(uint8_t uiBoard)
+{
+    return saTempData[uiBoard].iaDataRawInt[TEMP_PS];
 }
 
 /** *************************************************************

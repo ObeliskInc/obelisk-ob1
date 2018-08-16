@@ -22,7 +22,7 @@ extern void sendCgMinerCmd(string command, string param, CgMiner::RequestCallbac
 
 static unordered_map<string, SessionInfo> activeSessions;
 
-extern void poll_for_hashrate();
+extern void pollForHashrate();
 
 struct AuthMW {
   struct context {
@@ -76,7 +76,9 @@ void runCrow(int port) {
 
   CROW_LOG_DEBUG << "runCrow()";
   App<CookieParser, AuthMW> app;
-  app.tick(60s, poll_for_hashrate);
+  app.tick(60s, pollForHashrate);
+  // Call once now to kick things off
+  pollForHashrate();
 
   int counter = 0;
   CROW_ROUTE(app, "/api/counter")

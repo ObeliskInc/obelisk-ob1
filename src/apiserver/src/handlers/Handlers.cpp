@@ -90,12 +90,19 @@ hashrate_t hashrate_history_secs[MAX_HASHRATE_HISTORY_ENTRIES];
 int num_hashrate_entries = 0;
 
 // Timer callback to poll for updated hashrates
-void poll_for_hashrate() {
+bool isPollInProgress = false;
+void pollForHashrate() {
   CROW_LOG_DEBUG << "Polling for hashrates";
+  if (isPollInProgress) {
+    // Don't poll again if the last request has not completed
+    return;
+  }
+  isPollInProgress = true;
 
   sendCgMinerCmd("dashdevs", "", [&](CgMiner::Response cgMinerResp) {
     if (cgMinerResp.error) {
       // No data to append - oh well
+      isPollInProgress = false;
       return;
     }
 
@@ -127,12 +134,12 @@ void poll_for_hashrate() {
       // Record the new data
       hashrate_history_secs[entry_index].time = now;
       for (int i = 0; i < devsArr.size(); i++) {
-        hashrate_history_secs[entry_index].hashrates[i] = values[i];
+        hashrate_history_secs[entry_index].hashrates[i] = values[i]/1000.0;
       }
 
     } catch (...) {
-      return;
     }
+    isPollInProgress = false;
   });
 }
 
@@ -441,7 +448,7 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
 
         uint32_t value = hashrate_history_secs[i].hashrates[hb];
         if (value != 0) {
-          entry["board" + hb] = value;
+          entry["board" + to_string(hb)] = value;
           total += value;
         }
       }
@@ -505,7 +512,6 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     // Handle the systemInfo array
     int i = 0;
 
-    CROW_LOG_DEBUG << "Dashboard 28";
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
