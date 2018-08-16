@@ -510,6 +510,22 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
     }
 }
 
+static void normalizeString(int8_t biases[], uint8_t dividers[], size_t n)
+{
+    for (;;) {
+        // the string is normalized if at least one chip has minimum bias
+        for (int i = 0; i < n; i++) {
+            if (biases[i] == MIN_BIAS && dividers[i] == 8) {
+                return;
+            }
+        }
+        // otherwise, decrease the bias of every chip by 1
+        for (int i = 0; i < n; i++) {
+            decreaseBias(&biases[i], &dividers[i]);
+        }
+    }
+}
+
 static uint8_t findWorstChild(ControlLoopState *state)
 {
     uint8_t worst = 0;
@@ -572,6 +588,8 @@ static GenChild breedChild(ControlLoopState *state)
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         }
     }
+
+    normalizeString(child.chipBiases, child.chipDividers, sizeof(child.chipBiases));
 
     return child;
 }
