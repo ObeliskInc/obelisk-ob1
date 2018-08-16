@@ -670,31 +670,6 @@ ApiError ob1Initialize()
     return SUCCESS;
 }
 
-ApiError ob1SetChipDifficulty(uint8_t boardNum, uint8_t chipNum, uint8_t numLeadingZeroBits) {
-    switch (gBoardModel) {
-    case MODEL_SC1: {
-        // Requested value must be 0 to 64 leading zero bits
-        uint64_t value;
-        if (numLeadingZeroBits > 64) {
-            return GENERIC_ERROR;
-        }
-
-        if (numLeadingZeroBits == 64) {
-            value = 0;
-        } else {
-            value = (1ULL << (64ULL - numLeadingZeroBits)) - 1ULL;
-        }
-
-        applog(LOG_ERR, "ob1SetChipDifficulty: value = 0x%016llX", value);
-        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_V8MATCH, &value);
-    }
-    case MODEL_DCR1: {
-        // DCR1 is fixed difficulty of 32 leading zero bits
-        return GENERIC_ERROR;
-    }
-    }
-}
-
 // If there is an error reading any of the values, the returned object's error
 // field will contain an error code.
 HashboardStatus ob1GetHashboardStatus(uint8_t boardNum)
