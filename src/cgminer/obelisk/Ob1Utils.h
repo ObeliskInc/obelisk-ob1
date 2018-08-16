@@ -38,7 +38,7 @@ ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engine
 
 void logNonceSet(NonceSet* pNonceSet, char* prefix);
 
-#define GENERATION_SIZE 10
+#define POPULATION_SIZE 10
 
 typedef struct GenChild {
 	uint64_t fitness; // actually GH/s
@@ -87,7 +87,7 @@ typedef struct ControlLoopState {
 	uint64_t chipAdjustments;
 
 	// Voltage management variables - genetic algo.
-	GenChild population[GENERATION_SIZE];
+	GenChild population[POPULATION_SIZE];
 	uint8_t populationSize;
 	GenChild curChild; // same values as currentVoltageLevel, chipBiases, and chipDividers
 

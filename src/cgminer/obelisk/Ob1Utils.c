@@ -547,7 +547,7 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 static uint8_t findWorstChild(ControlLoopState *state)
 {
     uint8_t worst = 0;
-    for (uint8_t i = 0; i < GENERATION_SIZE; i++) {
+    for (uint8_t i = 0; i < POPULATION_SIZE; i++) {
         if (state->population[i].fitness < state->population[worst].fitness) {
             worst = i;
         }
@@ -608,7 +608,7 @@ static GenChild breedChild(ControlLoopState *state)
 void geneticAlgoIter(ControlLoopState *state)
 {
     // evalulate performance of current child
-    if (state->populationSize < GENERATION_SIZE) {
+    if (state->populationSize < POPULATION_SIZE) {
         state->population[state->populationSize++] = state->curChild;
     } else {
         uint8_t worst = findWorstChild(state);
