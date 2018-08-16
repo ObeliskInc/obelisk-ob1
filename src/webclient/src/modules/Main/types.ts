@@ -138,6 +138,11 @@ export interface UploadStatus {
   percent: number
 }
 
+export interface FormState {
+  poolForm: string
+  systemForm: string
+  passwordForm: string
+}
 // Module State
 export interface State {
   showSidebar: boolean
@@ -166,4 +171,7 @@ export interface State {
   // Change routes when a request succeeds/fails
   nextRouteOnSuccess?: string
   nextRouteOnFail?: string
+
+  // UI forms
+  forms: FormState
 }
