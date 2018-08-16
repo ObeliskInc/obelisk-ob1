@@ -242,3 +242,7 @@ h1.ui.header {
 .ui.form .disabled.fields .field, .ui.form .disabled.field, .ui.form .field :disabled {
     opacity: 1;
 }
+
+tr {
+  word-wrap: break-word;
+}
