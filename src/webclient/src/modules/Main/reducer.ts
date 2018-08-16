@@ -28,6 +28,10 @@ import {
   setUploadProgressAC,
   showSidebarAC,
   toggleSidebarAC,
+  setPoolsConfig,
+  clearFormStatusAC,
+  setSystemConfig,
+  changePassword,
 } from './actions'
 
 const initialState: State = {
@@ -68,7 +72,11 @@ const initialState: State = {
       password: '',
     },
   ],
-
+  forms: {
+    poolForm: '',
+    passwordForm: '',
+    systemForm: '',
+  },
   miningConfig: {
     optimizationMode: 'efficiency',
   },
@@ -273,6 +281,33 @@ export const reducer = (state: State = initialState, action: Action<any>): State
   } else if (isType(action, setUploadProgressAC)) {
     const { percent } = action.payload
     newState = updeep({ uploadStatus: { percent } }, newState)
+
+    // -------------------------------------------------------------------------------------------
+    // Pool form
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, setPoolsConfig.started)) {
+    newState = updeep({ forms: { poolForm: 'started' } }, newState)
+  } else if (isType(action, setPoolsConfig.failed)) {
+    newState = updeep({ forms: { poolForm: 'failed' } }, newState)
+  } else if (isType(action, setPoolsConfig.done)) {
+    newState = updeep({ forms: { poolForm: 'done' } }, newState)
+  } else if (isType(action, clearFormStatusAC)) {
+    newState = updeep({ forms: initialState.forms }, newState)
+    // -------------------------------------------------------------------------------------------
+    // System form
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, setSystemConfig.started)) {
+    newState = updeep({ forms: { systemForm: 'started' } }, newState)
+  } else if (isType(action, setSystemConfig.failed)) {
+    newState = updeep({ forms: { systemForm: 'failed' } }, newState)
+  } else if (isType(action, setSystemConfig.done)) {
+    newState = updeep({ forms: { systemForm: 'done' } }, newState)
+  } else if (isType(action, changePassword.started)) {
+    newState = updeep({ forms: { passwordForm: 'started' } }, newState)
+  } else if (isType(action, changePassword.failed)) {
+    newState = updeep({ forms: { passwordForm: 'failed' } }, newState)
+  } else if (isType(action, changePassword.done)) {
+    newState = updeep({ forms: { passwordForm: 'done' } }, newState)
   }
 
   return newState

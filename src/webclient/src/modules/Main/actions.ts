@@ -91,6 +91,9 @@ export const setLastError = (error: string) => setLastErrorAC({ error })
 export const clearLastErrorAC = actionCreator<{}>('CLEAR_LAST_ERROR')
 export const clearLastError = () => clearLastErrorAC({})
 
+export const clearFormStatusAC = actionCreator<{}>('CLEAR_FORM_STATUS')
+export const clearFormStatus = () => clearFormStatusAC({})
+
 // TODO: Get better type for error from redux logic
 interface ErrorResult {
   error: string
