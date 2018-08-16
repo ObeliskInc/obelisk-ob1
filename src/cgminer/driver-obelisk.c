@@ -1123,14 +1123,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		applog(LOG_ERR, "Failed to read board done flags.");
 		return 0;
 	}
-	/*
 	uint16_t nonceFoundFlags = 0;
 	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
 	if (error != SUCCESS) {
 		applog(LOG_ERR, "Failed to read nonce done flags.");
 		return 0;
 	}
-	*/
 
     // Look for done engines, and read their nonces
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
@@ -1176,12 +1174,10 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Check if this chip found a nonce. If not, move on.
-		/*
 		bool chipHasNonce = (nonceFoundFlags >> chip_num) & 1;
 		if (!chipHasNonce) {
-			// continue;
+			continue;
 		}
-		*/
 
 		// Check all the engines on the chip.
 		for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
