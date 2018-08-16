@@ -1220,11 +1220,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     update_temp(&ob->chip_temp, status.chipTemp);
     update_temp(&ob->psu_temp, status.powerSupplyTemp);
 
-    // TODO: Implement these fields for realz: TEMP HACK
-    ob->fan_speed[0] = 2400;
-    ob->fan_speed[1] = 2500;
-    ob->num_chips = 15;
-    ob->num_cores = 15 * 64;
+    ob->num_chips = ob->staticBoardModel.chipsPerBoard;
+    ob->num_cores = ob->num_chips * ob->staticBoardModel.enginesPerChip;
+
+    // TODO: Implement these fields
+    ob->fan_speed[0] = 0;
+    ob->fan_speed[1] = 0;
 
     // applog(LOG_ERR, "CH%u: obelisk_scanwork() - end", ob->chain_id);
 scanwork_exit:
@@ -1244,21 +1245,15 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     char buffer[32];
 
     applog(LOG_ERR, "***** obelisk_api_stats()");
-    stats = api_add_uint32(stats, "chainId", &ob->chain_id, false);
+    stats = api_add_uint32(stats, "boardId", &ob->chain_id, false);
     stats = api_add_uint16(stats, "numChips", &ob->num_chips, false);
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
-    stats = api_add_double(stats, "boardTempLow", &ob->board_temp.low, false);
-    stats = api_add_double(stats, "boardTempCurr", &ob->board_temp.curr, false);
-    stats = api_add_double(stats, "boardTempHigh", &ob->board_temp.high, false);
+    stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
 
     // BUG: Adding more stats below causes the response to never be returned.  Seems like a buffer size issue,
     //      but so far I cannot seem to find it.
-    stats = api_add_double(stats, "chipTempLow", &ob->chip_temp.low, false);
-    stats = api_add_double(stats, "chipTempCurr", &ob->chip_temp.curr, false);
-    stats = api_add_double(stats, "chipTempHigh", &ob->chip_temp.high, false);
-    stats = api_add_double(stats, "powerSupplyTempLow", &ob->psu_temp.low, false);
-    stats = api_add_double(stats, "powerSupplyTempCurr", &ob->psu_temp.curr, false);
-    stats = api_add_double(stats, "powerSupplyTempHigh", &ob->psu_temp.high, false);
+    stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has
     // no support for global stats, so just repeat the fan speeds here

@@ -76,7 +76,7 @@ void runCrow(int port) {
 
   CROW_LOG_DEBUG << "runCrow()";
   App<CookieParser, AuthMW> app;
-  app.tick(1s, poll_for_hashrate);
+  app.tick(60s, poll_for_hashrate);
 
   int counter = 0;
   CROW_ROUTE(app, "/api/counter")
@@ -128,7 +128,7 @@ void runCrow(int port) {
     struct tm expTime = makeExpirationTime(SESSION_DURATION_SECS);
     string expTimeStr = formatExpirationTime(expTime);
     sessionId = genSessionId();
-    sessionCookie << "sessionid=" << sessionId << "; Expires=" << expTimeStr;
+    sessionCookie << "sessionid=" << sessionId; // << "; Expires=" << expTimeStr;
 
     // Remember the sessionId for later
     SessionInfo newSessionInfo = {mktime(&expTime)};
@@ -204,8 +204,9 @@ void runCrow(int port) {
           return;
         }
 
-        CROW_LOG_DEBUG << "path='" << path << "'";
+        CROW_LOG_DEBUG << "handleAction() path='" << path << "'";
         handleAction(path, req, resp);
+        CROW_LOG_DEBUG << "handleAction() DONE";
       });
 
   CROW_ROUTE(app, "/api/<path>")
@@ -217,8 +218,9 @@ void runCrow(int port) {
           return;
         }
 
-        CROW_LOG_DEBUG << "path='" << path << "'";
+        CROW_LOG_DEBUG << "handleSet() path='" << path << "'";
         handleSet(path, req, resp);
+        CROW_LOG_DEBUG << "handleSet() DONE";
       });
 
   app.port(port).multithreaded().run();

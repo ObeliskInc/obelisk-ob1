@@ -18,7 +18,7 @@ using namespace crow;
 
 typedef struct hashrate_t {
   time_t time;
-  uint32_t hashrates[MAX_HASHBOARDS];
+  double hashrates[MAX_HASHBOARDS];
 } hashrate_t;
 
 typedef std::function<void(std::string, query_string &, const crow::request &, crow::response &)>

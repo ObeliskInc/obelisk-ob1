@@ -35,9 +35,7 @@ void sendJson(string json, crow::response &resp) {
 
 void sendCgMinerCmds(CgMiner::Commands commands, CgMiner::RequestCallback callback) {
   CgMiner::Request cgMinerReq{commands, callback};
-  CROW_LOG_DEBUG << "enqueue request";
   gRequestQueue.enqueue(cgMinerReq);
-  CROW_LOG_DEBUG << "enqueue request done";
 }
 
 void sendCgMinerCmd(string command, string param, CgMiner::RequestCallback callback) {
@@ -66,6 +64,18 @@ int indexOfEntryWithId(json::rvalue jsonArr, string id) {
   return -1;
 }
 
+int findIndexByFieldValue(json::rvalue jsonArr, string fieldName, int value) {
+  if (jsonArr.t() == json::type::List) {
+    for (int i = 0; i < jsonArr.size(); i++) {
+      json::rvalue entry = jsonArr[i];
+      if (entry.has(fieldName) && entry[fieldName].i() == value) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
 json::rvalue makeSystemInfoEntry(string name, string value) {
   json::wvalue obj = json::load("{}");
   obj["name"] = name;
@@ -75,7 +85,7 @@ json::rvalue makeSystemInfoEntry(string name, string value) {
 
 // Structure to store data from cgminer
 
-#define MAX_HASHRATE_HISTORY_ENTRIES (60 * 60) // 1 hour
+#define MAX_HASHRATE_HISTORY_ENTRIES (60) // We keep one hour of history for now
 hashrate_t hashrate_history_secs[MAX_HASHRATE_HISTORY_ENTRIES];
 int num_hashrate_entries = 0;
 
@@ -91,20 +101,21 @@ void poll_for_hashrate() {
 
     // No error, so build up the response that the user is expecting
     try {
-      CROW_LOG_DEBUG << "json = " << cgMinerResp.json;
+      // CROW_LOG_DEBUG << "json = " << cgMinerResp.json;
 
       json::rvalue cgMinerJson = json::load(cgMinerResp.json);
       time_t now = time(0);
-      int values[MAX_HASHBOARDS];
-      json::rvalue devsArr = cgMinerJson["devs"]["DEVS"];
+      double values[MAX_HASHBOARDS];
+      json::rvalue devsArr = cgMinerJson["DEVS"];
       for (int i = 0; i < devsArr.size(); i++) {
         json::rvalue entry = devsArr[i];
-        values[i] = entry["mhsRolling"].i();
+        values[i] = entry["mhsRolling"].d();
       }
+
 
       // See if we need to move the old data
       int entry_index = num_hashrate_entries;
-      if (num_hashrate_entries > MAX_HASHRATE_HISTORY_ENTRIES) {
+      if (num_hashrate_entries >= MAX_HASHRATE_HISTORY_ENTRIES) {
         // Need to slide the other entries down first, then set new data into the last entry
         memmove(hashrate_history_secs, &hashrate_history_secs[1],
                 sizeof(hashrate_t) * (MAX_HASHRATE_HISTORY_ENTRIES - 1));
@@ -389,109 +400,45 @@ void setConfigAsic(string path, json::rvalue &args, const crow::request &req,
 
 void getStatusDashboard(string path, query_string &urlParams, const crow::request &req,
                         crow::response &resp) {
-  /*
-string json =
-"{\"hashrateData\":[{\"time\":1530657000000,\"board1\":1660,\"board2\":1420,\"board3\":"
-"900,\"total\":3980},"
-"{\"time\":1530657300000,\"board1\":1469,\"board2\":1574,\"board3\":800,\"total\":"
-"3843},"
-"{\"time\":1530657600000,\"board1\":1602,\"board2\":900,\"board3\":700,\"total\":"
-"3202},"
-"{\"time\":1530657900000,\"board1\":1610,\"board2\":1200,\"board3\":1000,"
-"\"total\":3810},"
-"{\"time\":1530658200000,\"board1\":907,\"board2\":1700,\"board3\":1100,\"total\":"
-"3707},"
-"{\"time\":1530658500000,\"board1\":1860,\"board2\":1654,\"board3\":1050,"
-"\"total\":4564}],"
-"\"poolStatus\":[{\"url\":\"http://"
-"us-east.luxor.tech:3333\",\"worker\":\"abc\",\"status\":\"Active\",\"rejected\":"
-"0,"
-"\"accepted\":79},"
-"{\"url\":\"http://"
-"us-west.luxor.tech:3333\",\"worker\":\"abc\",\"status\":\"Offline\",\"rejected\":"
-"0,"
-"\"accepted\":78},"
-"{\"url\":\"http://"
-"us-east.siamining.com:3333\",\"worker\":\"abc\",\"status\":\"Active\","
-"\"rejected\":0,"
-"\"accepted\":123}],"
-"\"hashboardStatus\":["
-"{\"hashrate\":407,\"status\":\"Active\",\"accepted\":45,\"rejected\":0,"
-"\"boardTemp\":82,"
-"\"chipTemp\":86},"
-"{\"hashrate\":486,\"status\":\"Error\",\"accepted\":54,\"rejected\":0,"
-"\"boardTemp\":81,"
-"\"chipTemp\":85},"
-"{\"hashrate\":569,\"status\":\"Active\",\"accepted\":41,\"rejected\":0,"
-"\"boardTemp\":"
-"83,\"chipTemp\":87}],"
-"\"systemInfo\":["
-"{\"name\":\"Free Memory\",\"value\":\"123 MB\"},{\"name\":\"Total "
-"Memory\",\"value\":\"999 MB\"},"
-"{\"name\":\"Uptime\",\"value\":\"19:47:21\"},{\"name\":\"Fan 1 "
-"Speed\",\"value\":\"2400 RPM\"},"
-"{\"name\":\"Fan 2 Speed\",\"value\":\"2469 RPM\"},{\"name\":\"Board 1 "
-"Temp\",\"value\":\"80 C\"},"
-"{\"name\":\"Board 2 Temp\",\"value\":\"82 C\"},{\"name\":\"Board 3 "
-"Temp\",\"value\":\"85 C\"}]}";
-
-sendJson(json, resp);
-
-*/
 
   sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
-    CROW_LOG_DEBUG << "RESP=========================================";
-    CROW_LOG_DEBUG << cgMinerResp.json;
+    // CROW_LOG_DEBUG << "RESP=========================================";
+    // CROW_LOG_DEBUG << cgMinerResp.json;
+
     json::rvalue cgJsonResp = json::load(cgMinerResp.json);
-    if (!cgJsonResp.has("pools") || !cgJsonResp.has("stats") || !cgJsonResp.has("devs")) {
+    if (!cgJsonResp.has("dashpools") || !cgJsonResp.has("dashstats") || !cgJsonResp.has("dashdevs")) {
       sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+      return;
     }
 
-    CROW_LOG_DEBUG << "Dashboard 1";
-    json::rvalue poolsResp = cgJsonResp["pools"];
-    json::rvalue statsResp = cgJsonResp["stats"];
-    json::rvalue devsResp = cgJsonResp["devs"];
-    CROW_LOG_DEBUG << "Dashboard 2";
+    json::rvalue poolsResp = cgJsonResp["dashpools"][0];
+    json::rvalue statsResp = cgJsonResp["dashstats"][0];
+    json::rvalue devsResp = cgJsonResp["dashdevs"][0];
 
+    // TODO: See why isCgMinerError() is failing
     // Ensure that all requests succeeded
-    if (isCgMinerError(poolsResp) || isCgMinerError(statsResp) || isCgMinerError(devsResp)) {
-      CROW_LOG_DEBUG << "Dashboard Error 1";
-      sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
-    }
+    // if (isCgMinerError(poolsResp) || isCgMinerError(statsResp) || isCgMinerError(devsResp)) {
+    //   CROW_LOG_DEBUG << "Dashboard Error 1";
+    //   // sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+    //   return;
+    // }
 
     // Prepare our JSON response outline
     json::wvalue jsonResp = json::load("{}");
     json::wvalue hashrateArr = json::load("[]");
     json::wvalue hashboardArr = json::load("[]");
     json::wvalue systemArr = json::load("[]");
-    CROW_LOG_DEBUG << "Dashboard 3";
 
     // Handle the pools array - direct copy since it's a custom method in cgminer with just
     // the info we want in the format we want.
     jsonResp["poolStatus"] = poolsResp["POOLS"];
-    CROW_LOG_DEBUG << "Dashboard 7";
-
-    // Handle the hashrateData array - local data
-    // string hashrateData =
-    //     "[{\"time\":1530657000000,\"board1\":1660,\"board2\":1420,\"board3\":"
-    //     "900,\"total\":3980},"
-    //     "{\"time\":1530657300000,\"board1\":1469,\"board2\":1574,\"board3\":800,\"total\":"
-    //     "3843},"
-    //     "{\"time\":1530657600000,\"board1\":1602,\"board2\":900,\"board3\":700,\"total\":"
-    //     "3202},"
-    //     "{\"time\":1530657900000,\"board1\":1610,\"board2\":1200,\"board3\":1000,"
-    //     "\"total\":3810},"
-    //     "{\"time\":1530658200000,\"board1\":907,\"board2\":1700,\"board3\":1100,\"total\":"
-    //     "3707},"
-    //     "{\"time\":1530658500000,\"board1\":1860,\"board2\":1654,\"board3\":1050,"
-    //     "\"total\":4564}]";
-    CROW_LOG_DEBUG << "Dashboard 8";
 
     for (int i = 0; i < num_hashrate_entries; i++) {
       json::wvalue entry = json::load("{}");
       entry["time"] = hashrate_history_secs[i].time;
       uint32_t total = 0;
       for (int hb = 0; hb < MAX_HASHBOARDS; hb++) {
+
         uint32_t value = hashrate_history_secs[i].hashrates[hb];
         if (value != 0) {
           entry["board" + hb] = value;
@@ -503,7 +450,6 @@ sendJson(json, resp);
     }
     jsonResp["hashrateData"] = to_rvalue(hashrateArr);
 
-    CROW_LOG_DEBUG << "Dashboard 9";
     // TODO: Implement hashrate polling and then send the data from here
 
     // Fan speeds
@@ -512,30 +458,49 @@ sendJson(json, resp);
 
     // Handle the hashboardStatus array
     json::rvalue stats = statsResp["STATS"];
-    json::wvalue hashStats = json::load("[]");
+    json::rvalue devs = devsResp["DEVS"];
+    json::wvalue hashStatus = json::load("[]");
     int hashboardIndex = 0;
     for (int i = 0; i < stats.size(); i++) {
-      // Copy over just the Obelisk entries, not the POOL entries
-      json::rvalue entry = stats[i];
-      string name = entry["id"].s();
-      if (name.find("Obelisk") == 0) {
-        // This is a hashboard stats entry
-        hashStats[hashboardIndex++] = entry;
+      json::rvalue statsEntry = stats[i];
+      if (statsEntry.has("boardId")) {
+        int boardId = statsEntry["boardId"].i();
+        json::wvalue entry = json::load("{}");
+
+        entry["numChips"] = statsEntry["numChips"].i();
+        entry["numCores"] = statsEntry["numCores"].i();
+        entry["boardTemp"] = statsEntry["boardTemp"].d();
+        entry["chipTemp"] = statsEntry["chipTemp"].d();
+        entry["powerSupplyTemp"] = statsEntry["powerSupplyTemp"].d();
+        entry["fanSpeed0"] = statsEntry["fanSpeed0"].i();
+        entry["fanSpeed1"] = statsEntry["fanSpeed1"].i();
 
         // Extract fan speed entry for system info
-        if (entry.has("fanSpeed0")) {
-          fanSpeed0 = entry["fanSpeed0"].i();
+        if (statsEntry.has("fanSpeed0")) {
+          fanSpeed0 = statsEntry["fanSpeed0"].i();
         }
-        if (entry.has("fanSpeed1")) {
-          fanSpeed1 = entry["fanSpeed1"].i();
+        if (statsEntry.has("fanSpeed1")) {
+          fanSpeed1 = statsEntry["fanSpeed1"].i();
         }
 
-        // TODO: Remove fan speeds from 'entry' - MINOR
+        // Try to get corresponding entries from the 
+        int devIndex = findIndexByFieldValue(devs, "ASC", i);
+        if (devIndex >= 0) {
+          json::rvalue devEntry = devs[devIndex];
+          entry["status"] = devEntry["status"].s();
+          entry["mhsAvg"] = devEntry["mhsAvg"].d();
+          entry["mhs1m"] = devEntry["mhs1m"].d();
+          entry["mhs5m"] = devEntry["mhs5m"].d();
+          entry["mhs15m"] = devEntry["mhs15m"].d();
+          entry["accepted"] = devEntry["accepted"].i();
+          entry["rejected"] = devEntry["rejected"].i();
+        }
+
+        hashboardArr[i] = to_rvalue(entry);
       }
     }
-    jsonResp["hashboardStatus"] = to_rvalue(hashStats);
 
-    CROW_LOG_DEBUG << "Dashboard 27";
+    jsonResp["hashboardStatus"] = to_rvalue(hashboardArr);
 
     // Handle the systemInfo array
     int i = 0;
@@ -544,11 +509,14 @@ sendJson(json, resp);
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
-    systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
-    systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+    // TODO: Add fan speeds back in when they are implemented
+    // systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
+    // systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+
     jsonResp["systemInfo"] = to_rvalue(systemArr);
-    CROW_LOG_DEBUG << "Dashboard 29";
-    sendJson(json::dump(jsonResp), resp);
+    string str = json::dump(jsonResp);
+    // CROW_LOG_DEBUG << "jsonStr=" << str;
+    sendJson(str, resp);
   });
 }
 
