@@ -1028,6 +1028,56 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     }
 }
 
+// handleFanChange will adjust the fans based on the current temperatures of all
+// the boards.
+static void handleFanChange(ob_chain* ob, double targetTemp) {
+	// Update the current hotChipTemp for this board, under lock.
+	double hotChipTemp = targetTemp + ChipTempVariance + hottestDelta;
+	mutex_lock(&ob->lock);
+	ob->hotChipTemp = hotChipTemp;
+	mutex_unlock(&ob->lock);
+
+	// Only board 0 manipulates the fans.
+	//
+	// NOTE: This means that fan control is not in place if there is no board in
+	// slot zero.
+	if (ob->staticBoardNumber != 0) {
+		return;
+	}
+
+	// Check that enough time has elapsed since the last fan speed adjustment,
+	// only happens once every 20 seconds.
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastFanAdjustment < 20) {
+		return;
+	}
+
+	// Check for conditions where we change the fan speed.
+	bool allOver98 = true;
+	bool allUnder95 = true;
+	bool anyUnder90 = false;
+	for (int i = 0; i < ob->staticTotalBoards; i++) {
+		mutex_lock(&chains[i].lock);
+		double chainTemp = chains[i].hotChipTemp;
+		mutex_unlock(&chains[i].lock);
+		if (chainTemp <= 98) {
+			allOver98 = false;
+		}
+		if (chainTemp >= 95) {
+			allUnder95 = false;
+		}
+		if (chainTemp < 90) {
+			anyUnder90 = true;
+		}
+	}
+
+	if (allOver98) {
+		// TODO: Increase fan speed.
+	}
+	if (allUnder95 || anyUnder90) {
+		// TODO: Decrease fan speed.
+	}
+}
+
 // handleVoltageAndBiasTuning will adjust the voltage of the string and the
 // biases of the chips as deemed beneficial to the overall hashrate.
 static void handleVoltageAndBiasTuning(ob_chain* ob) {
@@ -1098,6 +1148,7 @@ static void control_loop(ob_chain* ob)
     double targetTemp = getTargetTemp(ob);
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
+	handleFanChange(ob, targetTemp);
 
 	// Perform any adjustments to the voltage and bias that may be required.
 	handleVoltageAndBiasTuning(ob);

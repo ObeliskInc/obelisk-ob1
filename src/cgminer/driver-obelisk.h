@@ -190,6 +190,9 @@ struct ob_chain {
     pthread_cond_t work_cond;
     pthread_cond_t nonce_cond;
 
+	// Hot temp and fan speed.
+	double hotChipTemp;
+
     struct work_queue active_wq;
 
     // Sia has a huge nonce space, so we just keep reusing the same work
