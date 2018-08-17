@@ -44,7 +44,7 @@ class App extends React.PureComponent<CombinedProps> {
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
-      width: '100%',
+      width: 'calc(100% - 200px)',
       padding: '20px !important',
     },
     header: {

@@ -42,6 +42,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     table: {
       $debugName: 'table',
       fontFamily: 'Karbon Regular',
+      tableLayout: 'fixed'
     },
   }
 
@@ -108,79 +109,70 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             {h.boardTemp} C
           </Table.Cell>
         )),
-        ['CHIP TEMP.']: (s: HashboardStatus[]) =>
+      ['CHIP TEMP.']: (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
           <Table.Cell key={i} textAlign="center">
             {h.chipTemp} C
           </Table.Cell>
         )),
-        ['POWER SUPPLY TEMP.']: (s: HashboardStatus[]) =>
+      ['POWER SUPPLY TEMP.']: (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
           <Table.Cell key={i} textAlign="center">
             {h.powerSupplyTemp} C
           </Table.Cell>
         )),
-        ['HASHRATE: AVG.']: (s: HashboardStatus[]) =>
+      ['HASHRATE: AVG.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhsAvg} MH/s
+            {Number(h.mhsAvg/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
-        ['HASHRATE: 1 MIN.']: (s: HashboardStatus[]) =>
+      ['HASHRATE: 1 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs1m} MH/s
+            {Number(h.mhs1m/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
-        ['HASHRATE: 5 MIN.']: (s: HashboardStatus[]) =>
+      ['HASHRATE: 5 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs5m} MH/s
+            {Number(h.mhs5m/1000).toFixed(1)} MH/s
           </Table.Cell>
         )),
-        ['HASHRATE: 15 MIN.']: (s: HashboardStatus[]) =>
+      ['HASHRATE: 15 MIN.']: (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {h.mhs15m} MH/s
+            {Number(h.mhs15m/1000).toFixed(1)} MH/s
           </Table.Cell>
-        )),  
+        )),
     }
 
     const poolTableMap = {
-      URL: (s: PoolStatus[]) =>
-        _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell key={i} textAlign="center">
-            {p.url}
-          </Table.Cell>
-        )),
-      WORKER: (s: PoolStatus[]) =>
-        _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell key={i} textAlign="center">
-            {p.worker}
-          </Table.Cell>
-        )),
-      STATUS: (s: PoolStatus[]) =>
-        _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell key={i} textAlign="center">
-            <Label color={p.status === 'Alive' ? 'green' : 'red'} horizontal={true}>
-              {p.status}
-            </Label>
-          </Table.Cell>
-        )),
-      ['ACCEPTS/REJECTS']: (s: PoolStatus[]) =>
-        _.map(s, (p: PoolStatus, i) => (
-          <Table.Cell key={i} textAlign="center">
-            {p.accepted}/{p.rejected}
-          </Table.Cell>
-        )),
+      URL: (s: PoolStatus[], i: number) => <Table.Cell textAlign="center">{s[i].url}</Table.Cell>,
+      WORKER: (s: PoolStatus[], i: number) => (
+        <Table.Cell textAlign="center">{s[i].worker}</Table.Cell>
+      ),
+      STATUS: (s: PoolStatus[], i: number) => (
+        <Table.Cell textAlign="center">
+          <Label color={s[i].status === 'Alive' ? 'green' : 'red'} horizontal={true}>
+            {s[i].status}
+          </Label>
+        </Table.Cell>
+      ),
+      ['ACCEPTS/REJECTS']: (s: PoolStatus[], i: number) => (
+        <Table.Cell textAlign="center">
+          {s[i].accepted}/{s[i].rejected}
+        </Table.Cell>
+      ),
     }
-    const mapPoolCols =
+
+    const mapPoolField = (i: number) =>
       dashboardStatus.poolStatus.length > 0 &&
       _.map(Object.keys(poolTableMap), (name: string, index: number) => {
         return (
           <Table.Row key={index}>
             <Table.Cell>{name}</Table.Cell>
-            {poolTableMap[name](dashboardStatus.poolStatus)}
+            {poolTableMap[name](dashboardStatus.poolStatus, i)}
           </Table.Row>
         )
       })
@@ -210,6 +202,20 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         key={index}
       />
     ))
+
+    const renderPools =
+      dashboardStatus.poolStatus.length > 0 &&
+      dashboardStatus.poolStatus.map((_, i) => (
+        <Table striped={true} unstackable={false} className={classNames.table}>
+          <Table.Header>
+            <Table.Row>
+              <Table.HeaderCell />
+              {mapPoolHeaders[i]}
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>{mapPoolField(i)}</Table.Body>
+        </Table>
+      ))
 
     return (
       <Content>
@@ -241,15 +247,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         </ResponsiveContainer>
 
         <Header as="h2">Pool Info</Header>
-        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell />
-              {mapPoolHeaders}
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>{mapPoolCols}</Table.Body>
-        </Table>
+        {renderPools}
 
         <Header as="h2">Hashboard Info</Header>
         <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
