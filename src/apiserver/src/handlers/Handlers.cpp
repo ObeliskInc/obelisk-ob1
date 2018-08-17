@@ -116,7 +116,7 @@ void pollForHashrate() {
       json::rvalue devsArr = cgMinerJson["DEVS"];
       for (int i = 0; i < devsArr.size(); i++) {
         json::rvalue entry = devsArr[i];
-        values[i] = entry["mhsRolling"].d();
+        values[i] = entry["mhs1m"].d();
       }
 
 
