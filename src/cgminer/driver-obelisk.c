@@ -861,6 +861,11 @@ static void updateControlState(ob_chain* ob)
     mutex_unlock(&ob->lock);
     ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
     ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
+
+	// Sanity check - exit with error if the voltage is at unsafe levels.
+	if (ob->control_loop_state.currentStringVoltage < 6) {
+		exit(-1);
+	}
 }
 
 // displayControlState will check if enough time has passed, and then display
