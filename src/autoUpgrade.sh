@@ -44,6 +44,7 @@ mv /tmp/upgrades/cgminer.conf /root/.cgminer/default_cgminer.conf
 mv /tmp/upgrades/apiserver /usr/sbin/apiserver
 rm -rf /var/www/*
 mv /tmp/upgrades/webclient/* /var/www/
+chown -R www-data:www-data /var/www/*
 mv /tmp/upgrades/S25watchdogd /etc/init.d/S25watchdogd
 mv /tmp/upgrades/watchdog.sh /usr/sbin/watchdog.sh
 mv /tmp/upgrades/burn-in /tmp/burn-in
