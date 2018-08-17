@@ -90,12 +90,19 @@ hashrate_t hashrate_history_secs[MAX_HASHRATE_HISTORY_ENTRIES];
 int num_hashrate_entries = 0;
 
 // Timer callback to poll for updated hashrates
-void poll_for_hashrate() {
+bool isPollInProgress = false;
+void pollForHashrate() {
   CROW_LOG_DEBUG << "Polling for hashrates";
+  if (isPollInProgress) {
+    // Don't poll again if the last request has not completed
+    return;
+  }
+  isPollInProgress = true;
 
   sendCgMinerCmd("dashdevs", "", [&](CgMiner::Response cgMinerResp) {
     if (cgMinerResp.error) {
       // No data to append - oh well
+      isPollInProgress = false;
       return;
     }
 
@@ -109,7 +116,7 @@ void poll_for_hashrate() {
       json::rvalue devsArr = cgMinerJson["DEVS"];
       for (int i = 0; i < devsArr.size(); i++) {
         json::rvalue entry = devsArr[i];
-        values[i] = entry["mhsRolling"].d();
+        values[i] = entry["mhs5m"].d();
       }
 
 
@@ -127,12 +134,12 @@ void poll_for_hashrate() {
       // Record the new data
       hashrate_history_secs[entry_index].time = now;
       for (int i = 0; i < devsArr.size(); i++) {
-        hashrate_history_secs[entry_index].hashrates[i] = values[i];
+        hashrate_history_secs[entry_index].hashrates[i] = values[i]/1000.0;
       }
 
     } catch (...) {
-      return;
     }
+    isPollInProgress = false;
   });
 }
 
@@ -281,7 +288,6 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
 
   // Read .cgminer/cgminer.conf
   json::rvalue conf = readCgMinerConfig();
-
   // Create a wvalue from the rvalue
   json::wvalue newConf;
   json::wvalue newPools = json::load("[]");
@@ -292,17 +298,22 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
   }
 
   // Build up new pools entries as an array
+  int numEntries = 0;
   for (int i = 0; i < args.size(); i++) {
     json::rvalue poolEntry = args[i];
     string url = poolEntry["url"].s();
     string user = poolEntry["worker"].s();
     string pass = poolEntry["password"].s();
 
-    json::wvalue entry = json::load("{}");
-    entry["url"] = url;
-    entry["user"] = user;
-    entry["pass"] = pass;
-    newPools[i] = to_rvalue(entry);
+    // Don't include entries that have empty URLs, because CGminer will crash, of course
+    if (url.length() != 0) {
+      json::wvalue entry = json::load("{}");
+      entry["url"] = url;
+      entry["user"] = user;
+      entry["pass"] = pass;
+      newPools[numEntries] = to_rvalue(entry);
+      numEntries++;
+    }
   }
 
   // Set new pools entry into the wvalue
@@ -311,6 +322,7 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
   // Write out config file
   writeCgMinerConfig(newConf);
 
+  CROW_LOG_ERROR << "setConfigPools() - Resetting cgminer!";
   sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
@@ -402,6 +414,11 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
                         crow::response &resp) {
 
   sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
+    if (cgMinerResp.error) {
+      sendError("Unable to connect to cgminer", HttpStatus_InternalServerError, resp);
+      return;
+    }
+
     // CROW_LOG_DEBUG << "RESP=========================================";
     // CROW_LOG_DEBUG << cgMinerResp.json;
 
@@ -441,7 +458,7 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
 
         uint32_t value = hashrate_history_secs[i].hashrates[hb];
         if (value != 0) {
-          entry["board" + hb] = value;
+          entry["board" + to_string(hb)] = value;
           total += value;
         }
       }
@@ -505,7 +522,6 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     // Handle the systemInfo array
     int i = 0;
 
-    CROW_LOG_DEBUG << "Dashboard 28";
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
@@ -692,6 +708,16 @@ void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const cro
   resp.end();
 }
 
+void actionResetMinerConfig(string path, json::rvalue &args, const crow::request &req,
+                            crow::response &resp) {
+  CROW_LOG_DEBUG << "********** actionResetMinerConfig()";
+
+  copyFile("/root/.cgminer/default_cgminer.conf", "/root/.cgminer/cgminer.conf");
+
+  // Restart cgminer so the settings take effect
+  sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
+}
+
 // inventory/ - things about the miner that "just are" and cannot be modified by set requests
 //              (e.g., number of boards, number of ASICs per board, serial numbers, etc.)
 // config/    - things about the miner that can be modified and read back (e.g., pool
@@ -739,6 +765,7 @@ map<string, PathHandlerForAction> pathHandlerMapForAction = {
     {"clearStats", actionClearStats},
     {"enableAsic", actionEnableAsic},
     {"uploadFirmwareFile", actionUploadFirmwareFileFragment},
+    {"resetMinerConfig", actionResetMinerConfig},
 };
 
 void handleGet(string &path, const crow::request &req, crow::response &resp) {

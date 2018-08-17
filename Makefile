@@ -1,6 +1,10 @@
 IMAGEROOT = controlCardImage/board/microchip/sama5d2_som/rootfs-overlay
 
-all: initial-build build-patches sd-utils control-utils apiserver webclient cgminer create-image
+all: common cgminer-dcr create-image-dcr cgminer-sia create-image-sia
+
+common: initial-build build-patches sd-utils control-utils apiserver webclient
+dcr: common cgminer-dcr create-image-dcr
+sia: common cgminer-sia create-image-sia
 
 full: clean dependencies configs all
 
@@ -12,6 +16,9 @@ clean:
 	@rm -rf $(IMAGEROOT)/usr/sbin/led_flash_green
 	@rm -rf $(IMAGEROOT)/usr/sbin/led_flash_red
 	@rm -rf controlCardImage/images
+	@rm -rf controlCardImage/target/usr/sbin/cgminer
+	@rm -rf controlCardImage/target/usr/share/zoneinfo
+	@rm -rf controlCardImage/target/var/www
 	@rm -rf images
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part1.img
 	@rm -rf sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
@@ -32,6 +39,7 @@ clean:
 	@rm -rf src/cgminer/conftest.err
 	@rm -rf src/cgminer/Makefile
 	@rm -rf src/cgminer/Makefile.in
+	@rm -rf src/cgminer/obelisk-model.h
 	@rm -rf src/cgminer/*.o
 	@rm -rf src/cgminer/.deps
 	@rm -rf src/cgminer/autom4te.cache/
@@ -122,6 +130,7 @@ configs:
 # hours to complete.
 initial-build:
 	# Remove target files.
+	@rm -rf controlCardImage/target/usr/sbin/cgminer
 	@rm -rf controlCardImage/target/usr/share/zoneinfo
 	@rm -rf controlCardImage/target/var/www
 	# Build the control card image.
@@ -165,6 +174,8 @@ apiserver:
 
 webclient:
 	# Create the webclient
+	rm -rf src/webclient/build
+	rm -rf $(IMAGEROOT)/var/www
 	cd src/webclient && yarn
 	rm -rf src/webclient/node_modules/@types/*/node_modules
 	cd src/webclient && yarn build
@@ -174,11 +185,19 @@ webclient:
 	mkdir -p $(IMAGEROOT)/var/www
 	cp -R src/webclient/build/* $(IMAGEROOT)/var/www
 
-cgminer:
+cgminer-dcr:
+	echo "#define MODEL DCR1" > ./src/cgminer/obelisk-model.h
+	echo "#define ALGO BLAKE256" >> ./src/cgminer/obelisk-model.h
 	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && autoreconf -i && automake && ./build_cgminer_arm.sh && make'
 	cp src/cgminer/cgminer controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
 
-create-image:
+cgminer-sia:
+	echo "#define MODEL SC1" > ./src/cgminer/obelisk-model.h
+	echo "#define ALGO BLAKE2B" >> ./src/cgminer/obelisk-model.h
+	TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host bash -c 'cd src/cgminer && autoreconf -i && automake && ./build_cgminer_arm.sh && make'
+	cp src/cgminer/cgminer controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/cgminer
+
+create-image-common:
 	# Remove the .stamp_built so the images are rebuilt properly to include all
 	# changes.
 	rm controlCardImage/build/at91bootstrap3-v3.8.10/.stamp_built
@@ -195,13 +214,32 @@ create-image:
 	cp controlCardImage/images/part2.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part2.img
 	cp controlCardImage/images/part3.img sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/part3.img
 	cp controlCardImage/images/files.md5 sdCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/files.md5
+
+create-image-dcr: create-image-common
+	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
+	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/cgminer.conf
+	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
 	mkdir -p images/
-	cp sdCardImage/images/sdcard.img images/sdCard.img
-	cp controlCardImage/images/part2.img images/controlCardZImage.img
-	cp controlCardImage/images/part3.img images/controlCardRootFS.img
+	cp sdCardImage/images/sdcard.img images/dcrSDCard.img
+	cp controlCardImage/images/part2.img images/dcrControlCardZImage.img
+	cp controlCardImage/images/part3.img images/dcrControlCardRootFS.img
+
+create-image-sia: create-image-common
+	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
+	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/cgminer.conf
+	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
+	# Build the sd card image.
+	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
+	# Copy the sd card image to the images/ folder.
+	mkdir -p images/
+	cp sdCardImage/images/sdcard.img images/siaSDCard.img
+	cp controlCardImage/images/part2.img images/siaControlCardZImage.img
+	cp controlCardImage/images/part3.img images/siaControlCardRootFS.img
 
 # Modify the config files for the control card by running 'make menuconfig'.
 # After making modifications, the resulting .config file needs to be copied to

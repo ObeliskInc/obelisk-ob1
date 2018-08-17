@@ -33,6 +33,7 @@ import {
   setUploadFilename,
   setUploadProgress,
   uploadFirmwareFile,
+  resetConfig,
 } from './actions'
 import { State } from './types'
 
@@ -260,6 +261,21 @@ export const setSystemConfigLogic = createLogic({
   },
 })
 
+export const resetSystemConfigLogic = createLogic({
+  type: resetConfig.started.type,
+
+  processOptions: {
+    dispatchReturn: true,
+    successType: resetConfig.done,
+    failType: resetConfig.failed,
+  },
+
+  async process(deps: LogicDeps, dispatch: any, done: () => void) {
+    const { axios } = deps
+    return axios.post(`/api/action/resetMinerConfig`)
+  },
+})
+
 export const setMiningConfigLogic = createLogic({
   type: setMiningConfig.started.type,
 
@@ -480,7 +496,7 @@ export default [
   fetchPoolsConfigLogic,
 
   fetchDashboardStatusLogic,
-
+  resetSystemConfigLogic,
   setNetworkConfigLogic,
   setPoolsConfigLogic,
   setSystemConfigLogic,

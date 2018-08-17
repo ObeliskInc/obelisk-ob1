@@ -43,8 +43,8 @@ export function formatDate(date: string | number) {
     .format('YYYY-MM-DD')
 }
 
-export function formatTime(time: string | number) {
-  return moment(time)
+export function formatTime(time: number) {
+  return moment(time * 1000)
     .utc()
     .format('HH:mm')
 }
