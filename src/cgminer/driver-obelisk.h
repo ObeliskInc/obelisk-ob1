@@ -7,7 +7,6 @@
 #include "obelisk/Ob1API.h"
 #include "obelisk/Ob1Models.h"
 #include "obelisk/Ob1Utils.h"
-#include "obelisk/persist/persist.h"
 #include "obelisk/err_codes.h"
 
 #define MAX_CHAIN_NUM 3
