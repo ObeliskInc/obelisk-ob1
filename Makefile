@@ -215,6 +215,7 @@ create-image-common:
 
 create-image-dcr: create-image-common
 	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
 	# Build the sd card image.
@@ -227,6 +228,7 @@ create-image-dcr: create-image-common
 
 create-image-sia: create-image-common
 	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
 	# Build the sd card image.
