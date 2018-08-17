@@ -116,7 +116,7 @@ void pollForHashrate() {
       json::rvalue devsArr = cgMinerJson["DEVS"];
       for (int i = 0; i < devsArr.size(); i++) {
         json::rvalue entry = devsArr[i];
-        values[i] = entry["mhsRolling"].d();
+        values[i] = entry["mhs5m"].d();
       }
 
 
@@ -288,7 +288,6 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
 
   // Read .cgminer/cgminer.conf
   json::rvalue conf = readCgMinerConfig();
-
   // Create a wvalue from the rvalue
   json::wvalue newConf;
   json::wvalue newPools = json::load("[]");
@@ -299,6 +298,7 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
   }
 
   // Build up new pools entries as an array
+  int numEntries = 0;
   for (int i = 0; i < args.size(); i++) {
     json::rvalue poolEntry = args[i];
     string url = poolEntry["url"].s();
@@ -306,12 +306,13 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
     string pass = poolEntry["password"].s();
 
     // Don't include entries that have empty URLs, because CGminer will crash, of course
-    if (url != "") {
+    if (url.length() != 0) {
       json::wvalue entry = json::load("{}");
       entry["url"] = url;
       entry["user"] = user;
       entry["pass"] = pass;
-      newPools[i] = to_rvalue(entry);
+      newPools[numEntries] = to_rvalue(entry);
+      numEntries++;
     }
   }
 
@@ -321,6 +322,7 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
   // Write out config file
   writeCgMinerConfig(newConf);
 
+  CROW_LOG_ERROR << "setConfigPools() - Resetting cgminer!";
   sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
@@ -412,6 +414,11 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
                         crow::response &resp) {
 
   sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
+    if (cgMinerResp.error) {
+      sendError("Unable to connect to cgminer", HttpStatus_InternalServerError, resp);
+      return;
+    }
+
     // CROW_LOG_DEBUG << "RESP=========================================";
     // CROW_LOG_DEBUG << cgMinerResp.json;
 
