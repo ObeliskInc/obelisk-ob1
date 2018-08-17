@@ -573,16 +573,16 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 8 == 0) {
+    if (r % 16 == 0) {
         child.voltageLevel++;
-    } else if (r % 8 == 1) {
+    } else if (r % 16 == 1) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 8 == 0) {
+        if (r % 16 == 0) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 8 == 0) {
+        } else if (r % 16 == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         }
     }
