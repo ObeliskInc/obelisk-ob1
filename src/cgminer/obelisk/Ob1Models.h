@@ -19,45 +19,48 @@ typedef struct hashBoardModel {
 
 	// Suggested parameters to use when operating the chips.
 	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
+	uint8_t  defaultMaxBiasLevel;
 	uint64_t nonceRange;
 } hashBoardModel;
 
 // HASHBOARD_MODEL_SC1A defines the parameters for our SC1A hashing card.
 const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
-	.name = "SC1A",
-	.chipsPerBoard = 15,
-	.enginesPerChip = 64,
-	.minStringVoltageLevel = 20,
+	.name                  = "SC1A",
+	.chipsPerBoard         = 15,
+	.enginesPerChip        = 64,
+	.minStringVoltageLevel = 18,
 	.maxStringVoltageLevel = 127,
 
-	.chipDifficulty = 1099511627776ULL,
-	.headerSize = 80,
-	.headerTailSize = 0,    // no tail
-	.midstateSize = 0,      // no midstate
-	.nonceOffset = 32,
-	.nonceOffsetInTail = 0, // no tail
+	.chipDifficulty    = 1099511627776ULL,
+	.headerSize        = 80,
+	.headerTailSize    = 0,  // no tail
+	.midstateSize      = 0,  // no midstate
+	.nonceOffset       = 32,
+	.nonceOffsetInTail = 0,  // no tail
 
-	.chipSpeed =  100000000ULL, // 100 MHz
-	.nonceRange = 4294967296ULL // 2^32
+	.chipSpeed           = 100000000ULL, // 100 MHz
+	.defaultMaxBiasLevel = 22,           // Corresponds to a /2.=5
+	.nonceRange          = 4294967296ULL // 2^32
 };
 
 // HASHBOARD_MODEL_DCR1A defines the parameters for our DCR1A hashing card.
 const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
-	.name = "DCR1A",
-	.chipsPerBoard = 15,
-	.enginesPerChip = 128,
-	.minStringVoltageLevel = 20,
+	.name                  = "DCR1A",
+	.chipsPerBoard         = 15,
+	.enginesPerChip        = 128,
+	.minStringVoltageLevel = 18,
 	.maxStringVoltageLevel = 127,
 
-	.chipDifficulty = 4294976296ULL,
-	.headerSize = 180,
-	.headerTailSize = 52,
-	.midstateSize = 32,
-	.nonceOffset = 140,
+	.chipDifficulty    = 4294976296ULL,
+	.headerSize        = 180,
+	.headerTailSize    = 52,
+	.midstateSize      = 32,
+	.nonceOffset       = 140,
 	.nonceOffsetInTail = 12,
 
-	.chipSpeed =  2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
-	.nonceRange = 33554432ULL // 2^25
+	.chipSpeed           = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
+	.defaultMaxBiasLevel = 22,         // Corresponds to a /2.=5
+	.nonceRange          = 33554432ULL // 2^25
 };
 
 // Temperature models according to thermal sims of our boards.
