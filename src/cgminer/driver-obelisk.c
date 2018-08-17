@@ -635,6 +635,10 @@ static void obelisk_detect(bool hotplug)
 			// Functions.
 			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->validNonce = siaValidNonce;
+
+			// Set the difficulty to 36 for every chip. Decred chips don't
+			// support this feature.
+			ob1SetChipDifficulty(ob->staticBoardNumber, ALL_CHIPS, ob->staticBoardModel.leadingZeroes);
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
 

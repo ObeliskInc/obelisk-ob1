@@ -13,6 +13,7 @@ typedef struct hashBoardModel {
 	uint64_t chipDifficulty;
 	uint64_t headerSize;
 	uint64_t headerTailSize;
+	uint8_t  leadingZeroes;
 	uint64_t midstateSize;
 	uint64_t nonceOffset;
 	uint64_t nonceOffsetInTail;
@@ -30,9 +31,10 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.minStringVoltageLevel = 20,
 	.maxStringVoltageLevel = 127,
 
-	.chipDifficulty = 1099511627776ULL,
+	.chipDifficulty = 68719476736ULL,
 	.headerSize = 80,
 	.headerTailSize = 0,    // no tail
+	.leadingZeroes = 36,
 	.midstateSize = 0,      // no midstate
 	.nonceOffset = 32,
 	.nonceOffsetInTail = 0, // no tail
@@ -52,6 +54,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.chipDifficulty = 4294976296ULL,
 	.headerSize = 180,
 	.headerTailSize = 52,
+	.leadingZeroes = 32,
 	.midstateSize = 32,
 	.nonceOffset = 140,
 	.nonceOffsetInTail = 12,

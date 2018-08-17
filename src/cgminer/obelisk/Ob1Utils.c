@@ -600,7 +600,7 @@ void geneticAlgoIter(ControlLoopState *state)
     // helps it adapt to changing environmental factors (e.g. ambient
     // temperature)
     for (int i = 0; i < state->populationSize; i++) {
-        state->population[i].fitness *= 0.997;
+        state->population[i].fitness *= 0.998;
     }
 
     applog(LOG_ERR, "Current generation (%u):", state->populationSize);
