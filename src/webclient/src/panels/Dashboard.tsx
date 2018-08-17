@@ -42,7 +42,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     table: {
       $debugName: 'table',
       fontFamily: 'Karbon Regular',
-      tableLayout: 'fixed'
+      tableLayout: 'fixed',
     },
   }
 
@@ -124,25 +124,25 @@ class Dashboard extends React.PureComponent<CombinedProps> {
       'HASHRATE: AVG.': (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {Number(h.mhsAvg/1000).toFixed(1)} MH/s
+            {Number(h.mhsAvg / 1000).toFixed(1)} GH/s
           </Table.Cell>
         )),
       'HASHRATE: 1 MIN.': (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {Number(h.mhs1m/1000).toFixed(1)} MH/s
+            {Number(h.mhs1m / 1000).toFixed(1)} GH/s
           </Table.Cell>
         )),
       'HASHRATE: 5 MIN.': (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {Number(h.mhs5m/1000).toFixed(1)} MH/s
+            {Number(h.mhs5m / 1000).toFixed(1)} GH/s
           </Table.Cell>
         )),
       'HASHRATE: 15 MIN.': (s: HashboardStatus[]) =>
         _.map(s, (h, i) => (
           <Table.Cell key={i} textAlign="center">
-            {Number(h.mhs15m/1000).toFixed(1)} MH/s
+            {Number(h.mhs15m / 1000).toFixed(1)} GH/s
           </Table.Cell>
         )),
     }
@@ -191,9 +191,9 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     // Add lines based on how many board entries are in the data in the first entry
     const firstEntry = _.get(dashboardStatus.hashrateData, 0, {})
     let keys = _.keys(firstEntry)
-    console.log("keys before remove =" + keys);
+    console.log('keys before remove =' + keys)
     keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'total')
-    console.log("keys after remove  =" + keys);
+    console.log('keys after remove  =' + keys)
     const areas = _.map(keys, (key: string, index: number) => (
       <Area
         type="monotone"
@@ -211,7 +211,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Header>
             <Table.Row>
-              <Table.HeaderCell width={4}/>
+              <Table.HeaderCell width={4} />
               {mapPoolHeaders[i]}
             </Table.Row>
           </Table.Header>
@@ -242,7 +242,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             <YAxis tick={{ fill: 'white', stroke: 'white' }} />
             <Tooltip
               isAnimationActive={false}
-              wrapperStyle={{ background: '#202020'}}
+              wrapperStyle={{ background: '#202020' }}
               labelFormatter={formatTime}
             />
           </ComposedChart>
@@ -263,7 +263,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         </Table>
 
         <Header as="h2">System Info</Header>
-        <Table  definition={true} striped={true} unstackable={true} className={classNames.table}>
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Body>{systemStats}</Table.Body>
         </Table>
       </Content>
