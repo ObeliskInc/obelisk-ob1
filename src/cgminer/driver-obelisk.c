@@ -638,7 +638,11 @@ static void obelisk_detect(bool hotplug)
 
 			// Set the difficulty to 36 for every chip. Decred chips don't
 			// support this feature.
-			ob1SetChipDifficulty(ob->staticBoardNumber, ALL_CHIPS, ob->staticBoardModel.leadingZeroes);
+			ApiError error = ob1SetChipDifficulty(ob->staticBoardNumber, ALL_CHIPS, ob->staticBoardModel.leadingZeroes);
+			if (error != SUCCESS ) {
+				applog(LOG_ERR, "Unable to set chip difficulty");
+				exit(-1);
+			}
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
 
@@ -1021,7 +1025,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Determine whether the string is running slowly. The string is considered
 	// to be running slowly if the chips are not producing nonces as fast as
 	// expected.
-	uint64_t requiredNonces = 45;
+	uint64_t requiredNonces = 50;
 	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
 	// The max time allowed is twice the expected amount of time for the whole

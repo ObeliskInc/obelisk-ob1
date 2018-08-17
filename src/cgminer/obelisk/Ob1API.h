@@ -30,6 +30,10 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);
 // Get the bits corresponding to each engine's BUSY status
 ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);
 
+// Set the number of leading zeros the chips will look for before finding a
+// nonce.
+ApiError ob1SetChipDifficulty(uint8_t boardNum, uint8_t chipNum, uint8_t numLeadingZeroBits);
+
 // Start the job and wait for the engine(s) to indicate busy.
 ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
 
