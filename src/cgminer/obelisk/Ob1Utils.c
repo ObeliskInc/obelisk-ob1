@@ -478,3 +478,234 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix)
         applog(LOG_ERR, "    nonces[%u] = 0x%016llX", i, pNonceSet->nonces[i]);
     }
 }
+
+// TODO: avoid redefining these functions
+
+#define MIN_BIAS -5
+#define MAX_BIAS 5
+
+static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MAX_BIAS) {
+        switch (*currentDivider) {
+        case 2: case 4: case 8:
+            *currentDivider /= 2;
+            *currentBias = MIN_BIAS;
+        }
+    } else {
+        *currentBias += 1;
+    }
+}
+
+static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
+{
+    if (*currentBias == MIN_BIAS) {
+        switch (*currentDivider) {
+        case 1: case 2: case 4:
+            *currentDivider *= 2;
+            *currentBias = MAX_BIAS;
+        }
+    } else {
+        *currentBias -= 1;
+    }
+}
+
+static void normalizeString(int8_t biases[], uint8_t dividers[], size_t n)
+{
+    for (;;) {
+        // the string is normalized if at least one chip has minimum bias
+        for (int i = 0; i < n; i++) {
+            if (biases[i] == MIN_BIAS && dividers[i] == 8) {
+                return;
+            }
+        }
+        // otherwise, decrease the bias of every chip by 1
+        for (int i = 0; i < n; i++) {
+            decreaseBias(&biases[i], &dividers[i]);
+        }
+    }
+}
+
+static uint8_t findWorstChild(ControlLoopState *state)
+{
+    uint8_t worst = 0;
+    for (uint8_t i = 0; i < POPULATION_SIZE; i++) {
+        if (state->population[i].fitness < state->population[worst].fitness) {
+            worst = i;
+        }
+    }
+    return worst;
+}
+
+static GenChild breedChild(ControlLoopState *state)
+{
+    // read all of the randomness we need up-front
+    FILE *urandom = fopen("/dev/urandom", "rb");
+    if (!urandom) {
+        applog(LOG_ERR, "No /dev/urandom! Returning first child");
+        return state->population[0];
+    }
+    uint8_t buf[64];
+    fread(buf, 1, sizeof(buf), urandom);
+    fclose(urandom);
+    uint8_t *randByte = buf;
+
+    // pick two random parents
+    GenChild *parent1 = &state->population[(*randByte++) % state->populationSize];
+    GenChild *parent2 = &state->population[(*randByte++) % state->populationSize];
+
+    // for each trait in the child, choosing randomly whether to take the trait
+    // from parent1 or parent2
+    GenChild child;
+    child.maxBiasLevel = ((*randByte++) & 1) ? parent1->maxBiasLevel : parent2->maxBiasLevel;
+    child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
+    for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
+        uint8_t r = *randByte++;
+        child.chipBiases[i]   = (r & 1) ? parent1->chipBiases[i]   : parent2->chipBiases[i];
+        child.chipDividers[i] = (r & 1) ? parent1->chipDividers[i] : parent2->chipDividers[i];
+    }
+
+    // mutate each trait by choosing randomly whether to increment it,
+    // decrement it, or leave it unchanged
+    //
+    // TODO: this code doesn't take into account the minimum/maximum levels
+    // for the model. When setVoltageLevel is called, it may overwrite
+    // state->currentVoltageLevel with the minimum or maximum, so we have to
+    // update child.voltageLevel to reflect that.
+    uint8_t r = *randByte++;
+    if (r % 16 == 0) {
+        if (child.maxBiasLevel < 43) {
+            child.maxBiasLevel++;
+        }
+    } else if (r % 16 == 1) {
+        if (child.maxBiasLevel > 0) {
+            child.maxBiasLevel--;
+        }
+    }
+    r = *randByte++;
+    if (r % 16 == 0) {
+        child.voltageLevel++;
+    } else if (r % 16 == 1) {
+        child.voltageLevel--;
+    }
+    for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
+        r = *randByte++;
+        if (r % 16 == 0) {
+            increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        } else if (r % 16 == 1) {
+            decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        }
+    }
+
+    return child;
+}
+
+void geneticAlgoIter(ControlLoopState *state)
+{
+    // depreciate the fitness of current population
+    //
+    // NOTE: this prevents the algo from falling into local maxima, and also
+    // helps it adapt to changing environmental factors (e.g. ambient
+    // temperature)
+    for (int i = 0; i < state->populationSize; i++) {
+        state->population[i].fitness *= 0.998;
+    }
+
+    applog(LOG_ERR, "Current generation (%u):", state->populationSize);
+    for (int i = 0; i < state->populationSize; i++) {
+        GenChild c = state->population[i];
+        int8_t *b = c.chipBiases;
+        uint8_t *d = c.chipDividers;
+        applog(LOG_ERR, "  %u: fitness %.2f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            i, c.fitness/1000000000, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+    }
+    GenChild c = state->curChild;
+    int8_t *b = c.chipBiases;
+    uint8_t *d = c.chipDividers;
+    applog(LOG_ERR, "Current child: fitness %.2f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            c.fitness/1000000000, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+
+	// Normailze the current child before saving, so that the population is
+	// always normalized.
+    normalizeString(state->curChild.chipBiases, state->curChild.chipDividers, sizeof(state->curChild.chipBiases));
+    // evalulate performance of current child
+    if (state->populationSize < POPULATION_SIZE) {
+        state->population[state->populationSize++] = state->curChild;
+    } else {
+        uint8_t worst = findWorstChild(state);
+        if (state->curChild.fitness > state->population[worst].fitness) {
+            state->population[worst] = state->curChild;
+        }
+    }
+
+    // breed two random parents and mutate the offspring to produce a new child
+    state->curChild = breedChild(state);
+
+    c = state->curChild;
+    b = c.chipBiases;
+    d = c.chipDividers;
+    applog(LOG_ERR, "New child: voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+
+
+    // set voltage and chip biases according to new child
+    // TODO: replace these fields entirely?
+    state->currentVoltageLevel = state->curChild.voltageLevel;
+    memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
+    memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
+}
+
+ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
+{
+    char path[64];
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        return GENERIC_ERROR;
+    }
+    fread(&state->populationSize, sizeof(uint8_t), 1, file);
+    if (state->populationSize >= POPULATION_SIZE) {
+        return GENERIC_ERROR;
+    }
+    if (fread(state->population, sizeof(GenChild), state->populationSize, file) != state->populationSize) {
+        return GENERIC_ERROR;
+    }
+    if (fread(&state->curChild, sizeof(GenChild), 1, file) != 1) {
+        return GENERIC_ERROR;
+    }
+    fclose(file);
+    if (ferror(file) != 0) {
+        return GENERIC_ERROR;
+    }
+
+    // set voltage and chip biases according to curChild
+    state->currentVoltageLevel = state->curChild.voltageLevel;
+    memcpy(state->chipBiases, state->curChild.chipBiases, sizeof(state->chipBiases));
+    memcpy(state->chipDividers, state->curChild.chipDividers, sizeof(state->chipDividers));
+
+    return SUCCESS;
+}
+
+ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
+{
+    char path[64];
+    char tmppath[64];
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.4_%s_%d.bin_tmp", name, boardID);
+    FILE *file = fopen(tmppath, "wb");
+    if (file == NULL) {
+        return GENERIC_ERROR;
+    }
+    fwrite(&state->populationSize, sizeof(uint8_t), 1, file);
+    fwrite(state->population, sizeof(GenChild), state->populationSize, file);
+    fwrite(&state->curChild, sizeof(GenChild), 1, file);
+    fflush(file);
+    fclose(file);
+    if (ferror(file) != 0) {
+        return GENERIC_ERROR;
+    }
+    if (rename(tmppath, path) != 0) {
+        return GENERIC_ERROR;
+    }
+    return SUCCESS;
+}
