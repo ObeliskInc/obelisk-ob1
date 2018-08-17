@@ -38,7 +38,7 @@ ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engine
 
 void logNonceSet(NonceSet* pNonceSet, char* prefix);
 
-#define POPULATION_SIZE 10
+#define POPULATION_SIZE 2
 
 typedef struct GenChild {
 	double fitness; // hashes / second
