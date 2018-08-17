@@ -587,8 +587,6 @@ static GenChild breedChild(ControlLoopState *state)
         }
     }
 
-    normalizeString(child.chipBiases, child.chipDividers, sizeof(child.chipBiases));
-
     return child;
 }
 
@@ -617,6 +615,9 @@ void geneticAlgoIter(ControlLoopState *state)
     applog(LOG_ERR, "Current child: fitness %f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
             c.fitness, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
 
+	// Normailze the current child before saving, so that the population is
+	// always normalized.
+    normalizeString(state->curChild.chipBiases, state->curChild.chipDividers, sizeof(child.chipBiases));
     // evalulate performance of current child
     if (state->populationSize < POPULATION_SIZE) {
         state->population[state->populationSize++] = state->curChild;
@@ -647,7 +648,7 @@ void geneticAlgoIter(ControlLoopState *state)
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.3_%s_%d.bin", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
         return GENERIC_ERROR;
@@ -679,8 +680,8 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     char tmppath[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.3_%s_%d.bin", name, boardID);
-    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.3_%s_%d.bin_tmp", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.4_%s_%d.bin_tmp", name, boardID);
     FILE *file = fopen(tmppath, "wb");
     if (file == NULL) {
         return GENERIC_ERROR;
