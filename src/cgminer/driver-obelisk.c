@@ -870,7 +870,7 @@ static void updateControlState(ob_chain* ob)
 static uint64_t computeHashRate(ob_chain *ob)
 {
     uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
-    time_t secondsElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime + 1;
+    time_t secondsElapsed = (ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime) + 1;
     return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
 }
 
@@ -880,7 +880,7 @@ static void displayControlState(ob_chain* ob)
 {
     time_t lastStatus = ob->control_loop_state.lastStatusOutput;
     time_t currentTime = ob->control_loop_state.currentTime;
-	time_t totalTime = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
+	time_t totalTime = (ob->control_loop_state.currentTime - ob->control_loop_state.initTime) + 1;
     uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
     if (currentTime - lastStatus > StatusOutputFrequency) {
         // Currently only displays the bias of the first chip.
