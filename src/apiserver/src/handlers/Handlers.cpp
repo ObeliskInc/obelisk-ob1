@@ -414,6 +414,11 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
                         crow::response &resp) {
 
   sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
+    if (cgMinerResp.error) {
+      sendError("Unable to connect to cgminer", HttpStatus_InternalServerError, resp);
+      return;
+    }
+
     // CROW_LOG_DEBUG << "RESP=========================================";
     // CROW_LOG_DEBUG << cgMinerResp.json;
 
