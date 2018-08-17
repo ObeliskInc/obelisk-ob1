@@ -861,6 +861,11 @@ static void updateControlState(ob_chain* ob)
     mutex_unlock(&ob->lock);
     ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
     ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
+
+	// Sanity check - exit with error if the voltage is at unsafe levels.
+	if (ob->control_loop_state.currentStringVoltage < 6) {
+		exit(-1);
+	}
 }
 
 // displayControlState will check if enough time has passed, and then display
@@ -1111,6 +1116,21 @@ static void control_loop(ob_chain* ob)
 		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
 	}
 	*/
+
+	// Check if burn-in is complete.
+	timeAlive = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
+	if (timeAlive < 1500) {
+		// Burn-in not complete.
+		return;
+	}
+	uint64_t hashrate = ob->staticBoardModel.chipDifficulty / timeAlive * ob->control_loop_state.currentGoodNonces / 1000000000;
+	if (hashrate > 400) {
+		applog(LOG_ERR, "Burn in test passed - more than 1500 seconds of mining achieved averageing > 400 GH/s: %lld", hashrate);
+		exit(0);
+	} else {
+		applog(LOG_ERR, "Burn in test failed - more than 1500 seconds of mining achieved averaging < 400 GH/s: %lld", hashrate);
+		exit(-1);
+	}
 }
 
 /*

@@ -43,11 +43,12 @@ typedef struct ControlLoopState {
 	bool initialized;
 
 	// General status variables.
-	uint8_t boardNumber;
-	time_t currentTime;
-	double currentStringVoltage;
-	uint8_t currentVoltageLevel;
-	time_t lastStatusOutput;
+	uint8_t  boardNumber;
+	time_t   currentTime;
+	double   currentStringVoltage;
+	uint8_t  currentVoltageLevel;
+	time_t   initTime;
+	time_t   lastStatusOutput;
 	uint64_t stringTimeouts;
 
 	// Chip settings.
