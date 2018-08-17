@@ -63,6 +63,8 @@ export const setMiningConfig = actionCreator.async<MiningConfig, ApiOK, ApiError
   'SET_MINING_CONFIG',
 )
 
+export const resetConfig = actionCreator.async<{}, ApiOK, ApiError>('RESET_CONFIG')
+
 export const setRouteOnRequestSuccessAC = actionCreator<{ route: string }>(
   'SET_ROUTE_ON_REQUEST_SUCCESS_STATUS',
 )
@@ -90,6 +92,9 @@ export const setLastError = (error: string) => setLastErrorAC({ error })
 
 export const clearLastErrorAC = actionCreator<{}>('CLEAR_LAST_ERROR')
 export const clearLastError = () => clearLastErrorAC({})
+
+export const clearFormStatusAC = actionCreator<{}>('CLEAR_FORM_STATUS')
+export const clearFormStatus = () => clearFormStatusAC({})
 
 // TODO: Get better type for error from redux logic
 interface ErrorResult {

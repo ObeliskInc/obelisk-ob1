@@ -305,11 +305,14 @@ void setConfigPools(string path, json::rvalue &args, const crow::request &req,
     string user = poolEntry["worker"].s();
     string pass = poolEntry["password"].s();
 
-    json::wvalue entry = json::load("{}");
-    entry["url"] = url;
-    entry["user"] = user;
-    entry["pass"] = pass;
-    newPools[i] = to_rvalue(entry);
+    // Don't include entries that have empty URLs, because CGminer will crash, of course
+    if (url != "") {
+      json::wvalue entry = json::load("{}");
+      entry["url"] = url;
+      entry["user"] = user;
+      entry["pass"] = pass;
+      newPools[i] = to_rvalue(entry);
+    }
   }
 
   // Set new pools entry into the wvalue
@@ -698,6 +701,16 @@ void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const cro
   resp.end();
 }
 
+void actionResetMinerConfig(string path, json::rvalue &args, const crow::request &req,
+                            crow::response &resp) {
+  CROW_LOG_DEBUG << "********** actionResetMinerConfig()";
+
+  copyFile("/root/.cgminer/default_cgminer.conf", "/root/.cgminer/cgminer.conf");
+
+  // Restart cgminer so the settings take effect
+  sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
+}
+
 // inventory/ - things about the miner that "just are" and cannot be modified by set requests
 //              (e.g., number of boards, number of ASICs per board, serial numbers, etc.)
 // config/    - things about the miner that can be modified and read back (e.g., pool
@@ -745,6 +758,7 @@ map<string, PathHandlerForAction> pathHandlerMapForAction = {
     {"clearStats", actionClearStats},
     {"enableAsic", actionEnableAsic},
     {"uploadFirmwareFile", actionUploadFirmwareFileFragment},
+    {"resetMinerConfig", actionResetMinerConfig},
 };
 
 void handleGet(string &path, const crow::request &req, crow::response &resp) {

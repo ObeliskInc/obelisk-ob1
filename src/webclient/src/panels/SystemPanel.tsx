@@ -11,6 +11,8 @@ import {
   rebootMiner,
   setSystemConfig,
   uploadFirmwareFile,
+  clearFormStatus,
+  resetConfig,
 } from 'modules/Main/actions'
 import { getLastError, getSystemConfig, getUploadStatus } from 'modules/Main/selectors'
 import { SystemConfig, UploadStatus } from 'modules/Main/types'
@@ -29,6 +31,8 @@ interface ConnectProps {
   systemConfig: SystemConfig
   uploadStatus: UploadStatus
   lastError?: string
+  systemForm: string
+  passwordForm: string
 }
 
 type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
@@ -76,12 +80,30 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchSystemConfig.started({}))
+      this.props.dispatch(clearFormStatus())
     }
   }
 
   render() {
-    const { classNames, lastError } = this.props
-
+    const { classNames, lastError, systemForm, passwordForm } = this.props
+    const renderTimeSave = () => {
+      if (systemForm != '') {
+        return <span>{systemForm}</span>
+      } else {
+        return <Button type="submit">SAVE</Button>
+      }
+    }
+    const renderPasswordSave = (formikProps: any) => {
+      if (passwordForm != '') {
+        return <span>{passwordForm}</span>
+      } else {
+        return (
+          <Button type="button" onClick={formikProps.handleChangePassword}>
+            CHANGE PASSWORD
+          </Button>
+        )
+      }
+    }
     return (
       <Content>
         <Header as="h1">System Config</Header>
@@ -136,6 +158,21 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     )
                   ) {
                     dispatch(rebootMiner.started({}))
+                    history.push('/login')
+                  }
+                }
+              },
+
+              handleConfigReset: () => {
+                const { dispatch } = this.props
+                if (dispatch) {
+                  if (
+                    confirm(
+                      'This will remove your current configuration settings and reset it to system default.\n\n' +
+                        'Do you want to continue?',
+                    )
+                  ) {
+                    dispatch(resetConfig.started({}))
                     history.push('/login')
                   }
                 }
@@ -215,7 +252,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     error={!!_.get(formikProps.errors, ['ntpServer'], '')}
                     disabled={true}
                   />
-                  {formikProps.dirty && <Button type="submit">SAVE</Button>}
+                  {renderTimeSave()}
                 </Form>
 
                 <Form onSubmit={formikProps.handleSubmit}>
@@ -239,9 +276,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     value={formikProps.values.newPassword}
                     error={!!_.get(formikProps.errors, ['newPassword'], '')}
                   />
-                  <Button type="button" onClick={formikProps.handleChangePassword}>
-                    CHANGE PASSWORD
-                  </Button>
+                  {renderPasswordSave(formikProps)}
                 </Form>
 
                 <Form>
@@ -287,6 +322,12 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     }
                   />
                   <Button onClick={formikProps.handleReboot}>REBOOT</Button>
+                  <Message
+                    icon="warning sign"
+                    header="Reset the Config"
+                    content={'This will reset machine config files to default settings.'}
+                  />
+                  <Button onClick={formikProps.handleConfigReset}>RESET</Button>
                 </Form>
               </div>
             )
@@ -301,6 +342,8 @@ const mapStateToProps = (state: any, props: any): ConnectProps => ({
   systemConfig: getSystemConfig(state.Main),
   uploadStatus: getUploadStatus(state.Main),
   lastError: getLastError(state.Main),
+  systemForm: state.Main.forms.systemForm,
+  passwordForm: state.Main.forms.passwordForm,
 })
 
 const systemPanel = withStyles()<any>(SystemPanel)

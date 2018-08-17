@@ -5,20 +5,21 @@
 import Content from 'components/Content'
 import { Formik, FormikProps } from 'formik'
 import _ = require('lodash')
-import { fetchPoolsConfig, setPoolsConfig } from 'modules/Main/actions'
+import { fetchPoolsConfig, setPoolsConfig, clearFormStatus } from 'modules/Main/actions'
 import { getPoolsConfig } from 'modules/Main/selectors'
 import { MAX_POOLS, PoolConfig } from 'modules/Main/types'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
 import { withRouter, BrowserRouterProps } from 'react-router-dom'
 import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
-import { Button, Form, Header } from 'semantic-ui-react'
+import { Button, Form, Header, Dimmer, Loader } from 'semantic-ui-react'
 import { common } from 'styles/common'
 
 const validUrl = require('valid-url')
 
 interface ConnectProps {
   poolsConfig: PoolConfig[]
+  poolForm: string
 }
 
 type CombinedProps = BrowserRouterProps & ConnectProps & InjectedProps & DispatchProp<any>
@@ -31,12 +32,30 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchPoolsConfig.started({}))
+      this.props.dispatch(clearFormStatus())
     }
   }
 
   render() {
-    const { classNames } = this.props
-
+    const { classNames, poolForm } = this.props
+    const renderSubmit = (dirty: any) => {
+      switch (poolForm) {
+        case 'started':
+          return (
+            <Dimmer active>
+              <Loader />
+            </Dimmer>
+          )
+        case 'failed':
+          return <span>Failed</span>
+        case 'done':
+          return <span>Done</span>
+      }
+      if (dirty) {
+        return <Button type="submit">SAVE</Button>
+      }
+      return
+    }
     return (
       <Content>
         <Header as="h1">POOLS CONFIG</Header>
@@ -149,7 +168,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
               <Form onSubmit={formikProps.handleSubmit}>
                 {poolFields}
 
-                {formikProps.dirty && <Button type="submit">SAVE</Button>}
+                {renderSubmit(formikProps.dirty)}
               </Form>
             )
           }}
@@ -161,6 +180,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
 
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   poolsConfig: getPoolsConfig(state.Main) || [],
+  poolForm: state.Main.forms.poolForm,
 })
 
 const poolsPanel = withStyles()<any>(PoolsPanel)
