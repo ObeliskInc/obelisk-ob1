@@ -744,8 +744,7 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
 			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
-			ob->control_loop_state.population[0] = ob->control_loop_state.curChild;
-			ob->control_loop_state.populationSize = 1;
+			ob->control_loop_state.populationSize = 0;
 		}
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
 		commitBoardBias(ob);

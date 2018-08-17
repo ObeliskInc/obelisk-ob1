@@ -554,7 +554,6 @@ static GenChild breedChild(ControlLoopState *state)
     GenChild *parent1 = &state->population[(*randByte++) % state->populationSize];
     GenChild *parent2 = &state->population[(*randByte++) % state->populationSize];
 
-
     // for each trait in the child, choosing randomly whether to take the trait
     // from parent1 or parent2
     GenChild child;
