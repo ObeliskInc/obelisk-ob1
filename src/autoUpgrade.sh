@@ -39,7 +39,8 @@ mv /tmp/upgrades/led_alternate /usr/sbin/led_alternate
 mv /tmp/upgrades/led_off /usr/sbin/led_off
 mv /tmp/upgrades/cgminer /usr/sbin/cgminer
 mkdir -p /root/.cgminer
-mv /tmp/upgrades/cgminer.conf /root/.cgminer/cgminer.conf
+cp /tmp/upgrades/cgminer.conf /root/.cgminer/cgminer.conf
+mv /tmp/upgrades/cgminer.conf /root/.cgminer/default_cgminer.conf
 mv /tmp/upgrades/apiserver /usr/sbin/apiserver
 rm -rf /var/www/*
 mv /tmp/upgrades/webclient/* /var/www/
