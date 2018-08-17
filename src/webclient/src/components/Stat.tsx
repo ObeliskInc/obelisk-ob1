@@ -26,7 +26,7 @@ class Stat extends React.Component<CombinedProps> {
 
     return (
       <Table.Row>
-        <Table.Cell className={classNames.label}>{label}</Table.Cell>
+        <Table.Cell width={4} className={classNames.label}>{label}</Table.Cell>
         <Table.Cell>{value}</Table.Cell>
       </Table.Row>
     )
