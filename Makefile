@@ -1,11 +1,6 @@
 IMAGEROOT = controlCardImage/board/microchip/sama5d2_som/rootfs-overlay
 
-all:
-	@echo ""
-	@echo "#----------------------------------------------------------"
-	@echo "# Use 'make sia' or 'make dcr' to create the respective image"
-	@echo "#----------------------------------------------------------"
-	@echo ""
+all: common cgminer-dcr create-image-dcr cgminer-sia create-image-sia
 
 common: initial-build build-patches sd-utils control-utils apiserver webclient
 dcr: common cgminer-dcr create-image-dcr
@@ -222,27 +217,29 @@ create-image-common:
 
 create-image-dcr: create-image-common
 	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
 	mkdir -p images/
-	cp sdCardImage/images/sdcard.img images/sdCard.img
-	cp controlCardImage/images/part2.img images/controlCardZImage.img
-	cp controlCardImage/images/part3.img images/controlCardRootFS.img
+	cp sdCardImage/images/sdcard.img images/dcrSDCard.img
+	cp controlCardImage/images/part2.img images/dcrControlCardZImage.img
+	cp controlCardImage/images/part3.img images/dcrControlCardRootFS.img
 
 create-image-sia: create-image-common
 	# Copy dcr specific config
+	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
 	mkdir -p images/
-	cp sdCardImage/images/sdcard.img images/sdCard.img
-	cp controlCardImage/images/part2.img images/controlCardZImage.img
-	cp controlCardImage/images/part3.img images/controlCardRootFS.img
+	cp sdCardImage/images/sdcard.img images/siaSDCard.img
+	cp controlCardImage/images/part2.img images/siaControlCardZImage.img
+	cp controlCardImage/images/part3.img images/siaControlCardRootFS.img
 
 # Modify the config files for the control card by running 'make menuconfig'.
 # After making modifications, the resulting .config file needs to be copied to
