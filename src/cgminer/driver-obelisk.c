@@ -1045,6 +1045,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 			ob->chipGoodNonces[i] = 0;
 		}
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
 		return;
 	}
 
