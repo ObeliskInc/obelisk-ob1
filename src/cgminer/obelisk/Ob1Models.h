@@ -39,7 +39,7 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.nonceOffsetInTail = 0,  // no tail
 
 	.chipSpeed           = 100000000ULL, // 100 MHz
-	.defaultMaxBiasLevel = 22,           // Corresponds to a /2.=5
+	.defaultMaxBiasLevel = 21,           // Corresponds to a /2.=5
 	.nonceRange          = 4294967296ULL // 2^32
 };
 
@@ -59,7 +59,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.nonceOffsetInTail = 12,
 
 	.chipSpeed           = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
-	.defaultMaxBiasLevel = 22,         // Corresponds to a /2.=5
+	.defaultMaxBiasLevel = 23,         // Corresponds to a /2.=5
 	.nonceRange          = 33554432ULL // 2^25
 };
 
