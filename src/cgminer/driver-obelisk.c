@@ -1095,7 +1095,7 @@ static void control_loop(ob_chain* ob)
     displayControlState(ob);
 
 	// Determine if the time has come to switch to the next settings.
-	if (ob->control_loop_state.currentTime > ob->settings.Endtime) {
+	if (ob->control_loop_state.currentTime > ob->settings.endTime) {
 		ob->settings.endGoodNonces = ob->control_loop_state.currentGoodNonces;
 	}
 
@@ -1108,7 +1108,7 @@ static void control_loop(ob_chain* ob)
 	handleVoltageAndBiasTuning(ob);
 
 	// Check if burn-in is complete.
-	timeAlive = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
+	time_t timeAlive = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
 	if (timeAlive < 300) {
 		// Burn-in not complete.
 		return;
