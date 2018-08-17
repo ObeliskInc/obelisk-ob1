@@ -48,9 +48,12 @@ mv /tmp/upgrades/watchdog.sh /usr/sbin/watchdog.sh
 mv /tmp/upgrades/burn-in /tmp/burn-in
 rm -rf /tmp/upgrades
 
+killall -q led_alternate
+killall -q led_flash_red
+killall -q led_flash_green
 /usr/sbin/led_alternate &
 
-if /tmp/burn-in &>/dev/null; then
+if /tmp/burn-in -T &>/dev/null; then
 	touch /root/.upgrade1_complete
 	killall -q led_alternate
 	killall -q led_flash_red
@@ -95,7 +98,9 @@ for ip in $(echo $1.{0..255}); do
 			case "$?" in
 			  0) ;;
 			 93) echo -e "${GREEN}$ip: already upgraded${NC}"; continue ;;
+			  5) echo -e "${GRAY}$ip: not an obelisk${NC}"; continue ;;
 			  6) echo -e "${GRAY}$ip: not an obelisk${NC}"; continue ;;
+			127) echo -e "You forgot to install sshpass!"; exit 1 ;;
 			255) continue ;; # connection refused
 			  *) echo -e "$ip: unknown error $?"; continue ;;
 			esac
@@ -106,9 +111,10 @@ for ip in $(echo $1.{0..255}); do
 			  *) echo -e "$ip: unknown error $?"; continue ;;
 			esac
 
-			sshpass -p obelisk ssh root@$ip "$finish_cmd" #&>/dev/null
+			sshpass -p obelisk ssh root@$ip "$finish_cmd" &>/dev/null
 			case "$?" in
 			  0) echo -e "${LIGHTGREEN}$ip: upgrade complete!${NC}" ;;
+			 50) echo -e "$ip: burn-in test failed"; continue ;;
 			 77) echo -e "${GRAY}$ip: not an SC1"; continue ;;
 			  *) echo -e "$ip: unknown error $?"; continue ;;
 			esac
