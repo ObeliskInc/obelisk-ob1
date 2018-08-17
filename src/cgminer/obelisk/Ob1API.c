@@ -2,6 +2,7 @@
 #include "Ob1API.h"
 #include "Ob1Utils.h"
 #include "Ob1Hashboard.h"
+#include "Ob1FanCtrl.h"
 #include "CSS_SC1_hal.h"
 #include "CSS_DCR1_hal.h"
 #include "err_codes.h"
@@ -649,6 +650,10 @@ bool ob1IsMasterHashClockEnabled(uint8_t boardNum)
 // installed, or fatal error of some sort).
 ApiError ob1Initialize()
 {
+    // Start the fans at 100% - control will come momentarily
+    initializeFanCtrl();
+    ob1SetFanSpeeds(100);
+
 	// Set the lights to off while initializing the boards.
 	ob1SetRedLEDOff();
 	ob1SetGreenLEDOff();

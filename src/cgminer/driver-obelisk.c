@@ -44,6 +44,8 @@ extern void dump(unsigned char* p, int len, char* label);
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
+static uint32_t fan_rpms[NUM_FANS];
+pthread_mutex_t fan_lock;
 
 #if (MODEL == SC1)
 Nonce SiaNonceLowerBound = 0;
@@ -148,6 +150,18 @@ static void* ob_gen_work_thread(void* arg)
         mutex_lock(&ob->lock);
     }
 
+    return NULL;
+}
+
+// Simple thread to update the fan RPMS once a second
+static void* ob_fan_thread(void* arg)
+{
+    while(true) {
+        for (int i=0; i<NUM_FANS; i++) {
+            fan_rpms[i] = ob1GetFanRPMs(i);
+        }
+        cgsleep_ms(1000);
+    }
     return NULL;
 }
 
@@ -556,6 +570,22 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
+uint32_t get_fan_rpms(uint8_t fan_num)
+{
+    uint32_t rpm;
+    mutex_lock(&fan_lock);
+    rpm = fan_rpms[fan_num];
+    mutex_unlock(&fan_lock);
+    return rpm;
+}
+
+void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
+{
+    mutex_lock(&fan_lock);
+    fan_rpms[fan_num] = rpm;
+    mutex_unlock(&fan_lock);
+}
+
 ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->chipWork[chipNum] = nextWork;
@@ -614,6 +644,11 @@ static void obelisk_detect(bool hotplug)
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 	gBoardModel = eGetBoardType(0);
+
+    // Start the fan monitor thread
+    mutex_init(fan_lock);
+    pthread_create(&pth, NULL, ob_fan_thread, cgpu);
+
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();

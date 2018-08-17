@@ -1,6 +1,6 @@
 appname := apiserver
 
-CXX := $(OBELISK_OB1_DIR)/controlCardImage/host/bin/arm-linux-g++
+CXX := $(TOOLCHAIN_PATH)/bin/arm-linux-g++
 CXXFLAGS := -std=c++14 -Wno-psabi -s -Os
 LDLIBS := -lcrypt -lpthread -lboost_system
 
