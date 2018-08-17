@@ -617,14 +617,14 @@ void geneticAlgoIter(ControlLoopState *state)
         GenChild c = state->population[i];
         int8_t *b = c.chipBiases;
         uint8_t *d = c.chipDividers;
-        applog(LOG_ERR, "  %u: fitness %f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
-            i, c.fitness, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+        applog(LOG_ERR, "  %u: fitness %.2f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            i, c.fitness/1000000000, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
     }
     GenChild c = state->curChild;
     int8_t *b = c.chipBiases;
     uint8_t *d = c.chipDividers;
-    applog(LOG_ERR, "Current child: fitness %f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
-            c.fitness, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
+    applog(LOG_ERR, "Current child: fitness %.2f, voltage %u, chips = %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i %u.%i ",
+            c.fitness/1000000000, c.voltageLevel, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++, *d++, *b++);
 
 	// Normailze the current child before saving, so that the population is
 	// always normalized.
