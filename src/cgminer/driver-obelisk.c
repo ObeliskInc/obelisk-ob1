@@ -663,6 +663,7 @@ static void obelisk_detect(bool hotplug)
 		// Don't change the voltage at all for the first 5 mintues.
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
+		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.hasReset = false;
@@ -817,7 +818,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
-#define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
+#define HotChipTargetTemp 95.0 // Acceptable temp for hottest chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
@@ -879,17 +880,23 @@ static void displayControlState(ob_chain* ob)
 {
     time_t lastStatus = ob->control_loop_state.lastStatusOutput;
     time_t currentTime = ob->control_loop_state.currentTime;
+	time_t totalTime = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
+    uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
     if (currentTime - lastStatus > StatusOutputFrequency) {
         // Currently only displays the bias of the first chip.
 		applog(LOG_ERR, "");
-        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Hashrate: %lld GH/s  VLevel: %u",
+        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
             ob->control_loop_state.boardNumber,
             ob->control_loop_state.currentStringTemp,
             ob->control_loop_state.currentStringVoltage,
+			ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
+			totalTime,
             computeHashRate(ob) / 1000000000,
+			ob->staticBoardModel.chipDifficulty * goodNonces / totalTime / 1000000000,
             ob->control_loop_state.currentVoltageLevel);
 		applog(LOG_ERR, "");
         
+		/*
         cgtimer_t currTime, totalTime;
         cgtimer_time(&currTime);
         cgtimer_sub(&currTime, &ob->startTime, &totalTime);
@@ -903,6 +910,7 @@ static void displayControlState(ob_chain* ob)
             ob->submitNonceTime,
             ob->readNonceTime,
 			ob->statsTime);
+		*/
 		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
 			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
 			uint64_t badNonces = ob->chipBadNonces[chipNum];

@@ -617,7 +617,7 @@ void geneticAlgoIter(ControlLoopState *state)
 
 	// Normailze the current child before saving, so that the population is
 	// always normalized.
-    normalizeString(state->curChild.chipBiases, state->curChild.chipDividers, sizeof(child.chipBiases));
+    normalizeString(state->curChild.chipBiases, state->curChild.chipDividers, sizeof(state->curChild.chipBiases));
     // evalulate performance of current child
     if (state->populationSize < POPULATION_SIZE) {
         state->population[state->populationSize++] = state->curChild;
