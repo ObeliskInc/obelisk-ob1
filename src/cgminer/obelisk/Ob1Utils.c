@@ -558,6 +558,7 @@ static GenChild breedChild(ControlLoopState *state)
     // for each trait in the child, choosing randomly whether to take the trait
     // from parent1 or parent2
     GenChild child;
+    child.maxBiasLevel = ((*randByte++) & 1) ? parent1->maxBiasLevel : parent2->maxBiasLevel;
     child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         uint8_t r = *randByte++;
@@ -573,6 +574,16 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
+    if (r % 16 == 0) {
+        if (child.maxBiasLevel < 43) {
+            child.maxBiasLevel++;
+        }
+    } else if (r % 16 == 1) {
+        if (child.maxBiasLevel > 0) {
+            child.maxBiasLevel--;
+        }
+    }
+    r = *randByte++;
     if (r % 16 == 0) {
         child.voltageLevel++;
     } else if (r % 16 == 1) {

@@ -185,6 +185,23 @@ int dcrValidNonce(struct ob_chain* ob, struct work* engine_work, Nonce nonce) {
 	return dcrHeaderMeetsChipTargetAndPoolDifficulty(engine_work->midstate, headerTail, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
+// biasToLevel converts the bias and divider fields into a smooth level that
+// goes from 0 to 43, with each step represeting a step up in clock speed.
+int biasToLevel(int8_t bias, uint8_t divider) {
+	if (divider == 8) {
+		return 5 + bias;
+	}
+	if (divider == 4) {
+		return 16 + bias;
+	}
+	if (divider == 2) {
+		return 27 + bias;
+	}
+	if (divider == 1) {
+		return 38 + bias;
+	}
+}
+
 // increaseDivider will increase the clock divider, resulting in a slower chip.
 static void increaseDivider(uint8_t* divider)
 {
@@ -275,8 +292,12 @@ static void decreaseStringBias(ob_chain* ob)
 // increase the clock bias of every chip on the string.
 static void increaseStringBias(ob_chain* ob)
 {
-    int i = 0;
-    for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+    for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+        if (biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]) >= ob->control_loop_state.curChild.maxBiasLevel) {
+            return;
+        }
+    }
+    for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
     }
     commitBoardBias(ob);
@@ -717,6 +738,7 @@ static void obelisk_detect(bool hotplug)
 
 			// Set the string voltage to the highest voltage for starting up.
 			ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
+			ob->control_loop_state.curChild.maxBiasLevel = 20;
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
@@ -921,23 +943,6 @@ static void displayControlState(ob_chain* ob)
 
         ob->control_loop_state.lastStatusOutput = currentTime;
     }
-}
-
-// biasToLevel converts the bias and divider fields into a smooth level that
-// goes from 0 to 43, with each step represeting a step up in clock speed.
-int biasToLevel(int8_t bias, uint8_t divider) {
-	if (divider == 8) {
-		return 5 + bias;
-	}
-	if (divider == 4) {
-		return 16 + bias;
-	}
-	if (divider == 2) {
-		return 27 + bias;
-	}
-	if (divider == 1) {
-		return 38 + bias;
-	}
 }
 
 // targetTemp returns the target temperature for the chip we want.

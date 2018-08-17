@@ -42,6 +42,7 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix);
 
 typedef struct GenChild {
 	double fitness; // hashes / second
+	uint8_t maxBiasLevel;
 	uint8_t voltageLevel;
 	// TODO: these don't necessarily match model.chipsPerBoard
 	int8_t chipBiases[15];
