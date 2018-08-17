@@ -573,16 +573,16 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 8 == 0) {
+    if (r % 16 == 0) {
         child.voltageLevel++;
-    } else if (r % 8 == 1) {
+    } else if (r % 16 == 1) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 8 == 0) {
+        if (r % 16 == 0) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 8 == 0) {
+        } else if (r % 16 == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         }
     }
@@ -600,7 +600,7 @@ void geneticAlgoIter(ControlLoopState *state)
     // helps it adapt to changing environmental factors (e.g. ambient
     // temperature)
     for (int i = 0; i < state->populationSize; i++) {
-        state->population[i].fitness *= 0.997;
+        state->population[i].fitness *= 0.998;
     }
 
     applog(LOG_ERR, "Current generation (%u):", state->populationSize);
@@ -647,7 +647,7 @@ void geneticAlgoIter(ControlLoopState *state)
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1_%s_%d.bin", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.2_%s_%d.bin", name, boardID);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
         return GENERIC_ERROR;
@@ -679,8 +679,8 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     char tmppath[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1_%s_%d.bin", name, boardID);
-    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1_%s_%d.bin_tmp", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.2_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.2_%s_%d.bin_tmp", name, boardID);
     FILE *file = fopen(tmppath, "wb");
     if (file == NULL) {
         return GENERIC_ERROR;
