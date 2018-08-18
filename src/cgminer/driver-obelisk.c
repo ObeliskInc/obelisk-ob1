@@ -1028,6 +1028,16 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     }
 }
 
+// handleObertimeExit will exit if cgminer has been running for too long. The
+// watchdog should revive cgminer. If cgminer runs for a long time, for whatever
+// reason the hashrate just falls off of a cliff. So we restart cgminer after 30
+// minutes.
+static void handleOvertimeExit(ob_chain* ob) {
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.initTime > 1800) {
+		exit(0);
+	}
+}
+
 // handleVoltageAndBiasTuning will adjust the voltage of the string and the
 // biases of the chips as deemed beneficial to the overall hashrate.
 static void handleVoltageAndBiasTuning(ob_chain* ob) {
@@ -1084,6 +1094,9 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// changed to by any no-ops that occured after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 	ob->control_loop_state.hasReset = false;
+
+	// cgminer will exit if it has been running for too long.
+	handleOvertimeExit(ob);
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
