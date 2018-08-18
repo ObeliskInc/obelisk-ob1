@@ -20,6 +20,7 @@ typedef struct hashBoardModel {
 	// Suggested parameters to use when operating the chips.
 	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
 	uint8_t  defaultMaxBiasLevel;
+	uint8_t  defaultStringIncrements;
 	uint64_t nonceRange;
 } hashBoardModel;
 
@@ -38,9 +39,10 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.nonceOffset       = 32,
 	.nonceOffsetInTail = 0,  // no tail
 
-	.chipSpeed           = 100000000ULL, // 100 MHz
-	.defaultMaxBiasLevel = 23,           // Corresponds to a /2.-4
-	.nonceRange          = 4294967296ULL // 2^32
+	.chipSpeed               = 100000000ULL, // 100 MHz
+	.defaultMaxBiasLevel     = 23,           // Corresponds to a /2.-4
+	.defaultStringIncrements = 16,
+	.nonceRange              = 4294967296ULL // 2^32
 };
 
 // HASHBOARD_MODEL_DCR1A defines the parameters for our DCR1A hashing card.
@@ -58,9 +60,10 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.nonceOffset       = 140,
 	.nonceOffsetInTail = 12,
 
-	.chipSpeed           = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
-	.defaultMaxBiasLevel = 23,         // Corresponds to a /2.-4
-	.nonceRange          = 33554432ULL // 2^25
+	.chipSpeed               = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
+	.defaultMaxBiasLevel     = 23,         // Corresponds to a /2.-4
+	.defaultStringIncrements = 16,
+	.nonceRange              = 33554432ULL // 2^25
 };
 
 // Temperature models according to thermal sims of our boards.

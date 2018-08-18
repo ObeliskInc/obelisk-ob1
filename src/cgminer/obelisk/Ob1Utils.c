@@ -558,6 +558,7 @@ static GenChild breedChild(ControlLoopState *state)
     // from parent1 or parent2
     GenChild child;
     child.maxBiasLevel = ((*randByte++) & 1) ? parent1->maxBiasLevel : parent2->maxBiasLevel;
+    child.initStringIncrements = ((*randByte++) & 1) ? parent1->initStringIncrements : parent2->initStringIncrements;
     child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         uint8_t r = *randByte++;
@@ -584,6 +585,16 @@ static GenChild breedChild(ControlLoopState *state)
     }
     r = *randByte++;
     if (r % 8 == 0) {
+        if (child.initStringIncrements < 43) {
+            child.initStringIncrements++;
+        }
+    } else if (r % 16 == 1) {
+        if (child.initStringIncrements > 0) {
+            child.initStringIncrements--;
+        }
+    }
+    r = *randByte++;
+    if (r % 8 == 0) {
         child.voltageLevel++;
     } else if (r % 8 == 1) {
         child.voltageLevel--;
@@ -594,6 +605,13 @@ static GenChild breedChild(ControlLoopState *state)
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         } else if (r % 8 == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        }
+    }
+
+    // apply initStringIncrements, denormalizing the biases
+    for (uint8_t i = 0; i < child.initStringIncrements; i++) {
+        for (uint8_t j = 0; j < sizeof(child.chipBiases); j++) {
+            increaseBias(&child.chipBiases[j], &child.chipDividers[j]);
         }
     }
 

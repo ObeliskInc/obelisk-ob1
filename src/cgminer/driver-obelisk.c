@@ -739,6 +739,7 @@ static void obelisk_detect(bool hotplug)
 			// Set the string voltage to the highest voltage for starting up.
 			ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
 			ob->control_loop_state.curChild.maxBiasLevel = ob->staticBoardModel.defaultMaxBiasLevel;
+			ob->control_loop_state.curChild.initStringIncrements = ob->staticBoardMode.defaultStringIncrements;
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
