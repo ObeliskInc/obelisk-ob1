@@ -1109,7 +1109,7 @@ static void control_loop(ob_chain* ob)
 
 	// Check if burn-in is complete.
 	time_t timeAlive = ob->control_loop_state.currentTime - ob->control_loop_state.initTime;
-	if (timeAlive < 300) {
+	if (timeAlive < 1500) {
 		// Burn-in not complete.
 		return;
 	}
@@ -1119,7 +1119,9 @@ static void control_loop(ob_chain* ob)
 		exit(-1);
 	}
 
-	if (timeAlive < 330) {
+	// Wait an extra 50 seconds for the other boards to detect hashrate failues
+	// before giving up.
+	if (timeAlive < 1550) {
 		return;
 	}
 
