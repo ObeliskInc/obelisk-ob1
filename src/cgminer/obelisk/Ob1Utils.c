@@ -659,22 +659,28 @@ ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.5_%s_%d.bin", name, boardID);
+	applog(LOG_ERR, "Loading: %s", path);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
+		applog(LOG_ERR, "load file err");
         return GENERIC_ERROR;
     }
     fread(&state->populationSize, sizeof(uint8_t), 1, file);
     if (state->populationSize >= POPULATION_SIZE) {
+		applog(LOG_ERR, "read file error - read1");
         return GENERIC_ERROR;
     }
     if (fread(state->population, sizeof(GenChild), state->populationSize, file) != state->populationSize) {
+		applog(LOG_ERR, "read file error - read2");
         return GENERIC_ERROR;
     }
     if (fread(&state->curChild, sizeof(GenChild), 1, file) != 1) {
+		applog(LOG_ERR, "read file error - read3");
         return GENERIC_ERROR;
     }
     fclose(file);
     if (ferror(file) != 0) {
+		applog(LOG_ERR, "read file error - fclose");
         return GENERIC_ERROR;
     }
 
