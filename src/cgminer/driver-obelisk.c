@@ -1063,7 +1063,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// If we haven't found enough nonces and also not too much time has passed,
 	// no changges are made to voltage or bias.
-	if (timeElapsed > requiredTime) {
+	if (timeElapsed < requiredTime) {
 		return;
 	}
 
