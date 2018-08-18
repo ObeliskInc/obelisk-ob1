@@ -588,7 +588,7 @@ static GenChild breedChild(ControlLoopState *state)
         if (child.initStringIncrements < 43) {
             child.initStringIncrements++;
         }
-    } else if (r % 16 == 1) {
+    } else if (r % 8 == 1) {
         if (child.initStringIncrements > 0) {
             child.initStringIncrements--;
         }
