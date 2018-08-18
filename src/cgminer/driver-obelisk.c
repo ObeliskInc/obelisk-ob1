@@ -1046,7 +1046,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// to be running slowly if the chips are not producing nonces as fast as
 	// expected.
 	uint64_t requiredTime = 300;
-	time_t resetTime = 60;
+	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
 	// The max time allowed is twice the expected amount of time for the whole
 	// string to hit the required number of nonces.
