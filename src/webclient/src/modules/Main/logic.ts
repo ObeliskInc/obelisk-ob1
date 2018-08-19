@@ -103,12 +103,7 @@ export const fetchCurrUserLogic = createLogic({
     try {
       result = await axios.get('/api/currUser')
     } catch (err) {
-      // If the user is not logged in, switch to the login view
-      // TEMP HACK: DON'T COMMIT ME!
-      // TEMP HACK: DON'T COMMIT ME!
-      // getHistory().push('/login')
-      // TEMP HACK: DON'T COMMIT ME!
-      // TEMP HACK: DON'T COMMIT ME!
+      getHistory().push('/login')
     }
     done()
     return result
