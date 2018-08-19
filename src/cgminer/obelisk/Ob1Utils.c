@@ -684,7 +684,7 @@ ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
         return GENERIC_ERROR;
     }
     fread(&state->populationSize, sizeof(uint8_t), 1, file);
-    if (state->populationSize >= POPULATION_SIZE) {
+    if (state->populationSize > POPULATION_SIZE) {
 		applog(LOG_ERR, "read file error - read1");
         return GENERIC_ERROR;
     }
