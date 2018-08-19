@@ -650,10 +650,6 @@ bool ob1IsMasterHashClockEnabled(uint8_t boardNum)
 // installed, or fatal error of some sort).
 ApiError ob1Initialize()
 {
-    // Start the fans at 100% - control will come momentarily
-    initializeFanCtrl();
-    ob1SetFanSpeeds(100);
-
 	// Set the lights to off while initializing the boards.
 	ob1SetRedLEDOff();
 	ob1SetGreenLEDOff();
@@ -664,6 +660,9 @@ ApiError ob1Initialize()
 		ob1SetRedLEDOn();
 		return error;
     }
+
+    // Prepare fan controls, but don't start yet
+    ob1InitializeFanCtrl();
 
 	// Initialize hashing board.
 	error = ob1InitializeHashBoards();
@@ -800,18 +799,6 @@ uint8_t ob1GetNumEnginesPerChip()
     case MODEL_DCR1:
         return 128;
     }
-}
-
-// Returns the fan speed in rpm
-uint32_t ob1GetFanRPM(uint8_t fanNum)
-{
-    return GENERIC_ERROR;
-}
-
-// The percent can be 10-100
-ApiError ob1SetFanSpeed(uint8_t fanNum, uint8_t percent)
-{
-    return GENERIC_ERROR;
 }
 
 //==================================================================================================

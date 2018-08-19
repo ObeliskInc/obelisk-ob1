@@ -7,7 +7,9 @@
 #include <string.h>
 #include <time.h>
 #include "Ob1Defines.h"
+#include "Ob1FanCtrl.h"
 #include "gpio_bsp.h"
+#include "miner.h"
 
 // PWM rates measured using o-scope - not precise, uses 20 kHz PWM
 #define BASE_PERIOD "200000"
@@ -42,17 +44,20 @@ static void initFanTachPins()
     int exportfd;
 
     if ((exportfd = open("/sys/class/gpio/export", O_WRONLY)) < 0) {
+        applog(LOG_ERR, "Cannot open GPIO export file %d:%s\n", errno, strerror(errno));
         return;
     }
 
-    if (write(exportfd, TACH2, strlen(TACH1)) < 0) {
+    if (write(exportfd, TACH1, strlen(TACH1)) < 0) {
         if (errno != 16) {
+            applog(LOG_ERR, "Unable to export gpio pin 67. %d:%s\n", errno, strerror(errno));
             close(exportfd);
             return;
         }
     }
     if (write(exportfd, TACH2, strlen(TACH2)) < 0) {
         if (errno != 16) {
+            applog(LOG_ERR, "Unable to export gpio pin 54. %d:%s\n", errno, strerror(errno));
             close(exportfd);
             return;
         }
@@ -60,6 +65,7 @@ static void initFanTachPins()
     // TODO: What is SW2 for and do we want to report it?
     if (write(exportfd, SW2, strlen(SW2)) < 0) {
         if (errno != 16) {
+            applog(LOG_ERR, "Unable to export gpio pin 58. %d:%s\n", errno, strerror(errno));
             close(exportfd);
             return;
         }
@@ -133,10 +139,12 @@ static void initFanPeriod()
     int periodfd;
 
     if ((periodfd = open("/sys/class/pwm/pwmchip0/pwm0/period", O_WRONLY)) < 0) {
+        applog(LOG_ERR, "Unable to open PWM0 period file %d:%s\n", errno, strerror(errno));
         return;
     }
 
     if (write(periodfd, BASE_PERIOD, strlen(BASE_PERIOD)) < 0) {
+        applog(LOG_ERR, "Unable to set PWM0 period. %d:%s\n", errno, strerror(errno));
         close(periodfd);
         return;
     }
@@ -152,8 +160,8 @@ static void setFanDutyCycle(int percent)
     char* cycleVal;
 
     if ((dutycyclefd = open("/sys/class/pwm/pwmchip0/pwm0/duty_cycle", O_WRONLY)) < 0) {
-        printf("Unable to open PWM0 duty_cycle file %d:%s\n", errno, strerror(errno));
-        return -1;
+        applog(LOG_ERR, "Unable to open PWM0 duty_cycle file %d:%s\n", errno, strerror(errno));
+        return;
     }
     
     percent = (percent/5)* 5;
@@ -220,6 +228,7 @@ static void setFanDutyCycle(int percent)
     }
 
     if (write(dutycyclefd, cycleVal, strlen(cycleVal)) < 0) {
+        applog(LOG_ERR, "Unable to set PWM0 duty_cycle. %d:%s\n", errno, strerror(errno));
         close(dutycyclefd);
         return;
     }
@@ -234,10 +243,12 @@ static void enableFanPWM()
     char* t_str = "1";
 
     if ((enablefd = open("/sys/class/pwm/pwmchip0/pwm0/enable", O_WRONLY)) < 0) {
+        applog(LOG_ERR, "Unable to open PWM0 enable file %d:%s\n", errno, strerror(errno));
         return;
     }
 
     if (write(enablefd, t_str, 1) < 0) {
+        applog(LOG_ERR, "Unable to enable PWM0 resource. %d:%s\n", errno, strerror(errno));
         close(enablefd);
         return;
     }
@@ -276,10 +287,12 @@ static void initFanPWM(void)
     }
 
     if ((exportfd = open("/sys/class/pwm/pwmchip0/export", O_WRONLY)) < 0) {
+        applog(LOG_ERR, "Unable to open PWM export file %d:%s\n", errno, strerror(errno));
         return;
     }
 
     if (write(exportfd, t_str, 1) < 0) {
+        applog(LOG_ERR, "Unable to export PWM0 resource. %d:%s\n", errno, strerror(errno));
         close(exportfd);
         return;
     }
@@ -294,37 +307,36 @@ static void initFanPWM(void)
 ApiError ob1InitializeFanCtrl() {
   initFanTachPins();  
   initFanPWM();
-  disableFanPWM();
-  enableFanPWM();
+  disableFanCounters();
+  enableFanCounters();
   return SUCCESS;
 }
 
-void ob1SetFanSpeeds(uint8_t percent) {
-  if (percent >= 5) {
+ApiError ob1SetFanSpeeds(uint8_t percent) {
+  if (percent < 5) {
     disableFanPWM();
   } else {
     setFanDutyCycle(percent);
     enableFanPWM();
   }
+  return SUCCESS;
 }
 
 #define NUM_FANS 2  // TODO: Implement as a MinerModel or ControlBoardModel field
 
 // Pass in an array of NUM_FANS uint32_t's
-uint32_t ob1GetFanRPMs(uint8_t fanNum) {
+uint32_t ob1GetFanRPM(uint8_t fanNum) {
   // Static values to keep track of between reads
-  static struct timespec* lastReadTime[NUM_FANS];
+  static struct timespec lastReadTime[NUM_FANS] = { {0, 0}, {0, 0} };
   static int lastFanCounter[NUM_FANS] = {0, 0};  // Remember these between reads
   if (fanNum > NUM_FANS) {
     return 0;
   }
 
-  struct timespec currTime;
-  clock_get_time(CLOCK_MONOTONIC, &currTime);
 
   char fanValue[128];  // The string value we read from the fan fd
 
-  char* path = i == 0 ? "/proc/irq/117/spurious" : "/proc/irq/104/spurious";
+  char* path = fanNum == 0 ? "/proc/irq/117/spurious" : "/proc/irq/104/spurious";
   int fanfd = open(path, O_RDONLY);
   read(fanfd, fanValue, 128);
   close(fanfd);
@@ -334,13 +346,27 @@ uint32_t ob1GetFanRPMs(uint8_t fanNum) {
   char unused2[16];
   sscanf(fanValue, "%s %u %s", unused1, &fanCounter, unused2);
 
-  uint32_t countsSinceLastRead = fanCounter > 0 ? fanCounter - lastFanCounter[fanNum] : 0;
-  struct timespec durationSinceLastRead;
-  cgtimer_sub(&currTime, &lastReadTime[i], &duration);
-  uint32_t msSinceLastRead = (duration.tv_sec * 1000) + (duration.tv_nsecs / 1000000);
-  lastFanCounter[fanNum] = fanCounter;
+  // applog(LOG_ERR, "fanCounter %d =%d", fanNum, fanCounter);
 
-  uint32_t rpm = ((countsSinceLastRead * 1500) / msSinceLastRead);  // 4 counts per revolution
+  struct timespec duration;
+  struct timespec currTime;
+  uint32_t countsSinceLastRead = fanCounter > 0 ? fanCounter - lastFanCounter[fanNum] : 0;
+
+  clock_gettime(CLOCK_MONOTONIC, &currTime);
+  cgtimer_sub(&currTime, &lastReadTime[fanNum], &duration);
+
+  // applog(LOG_ERR, "Fan %d: duration.tv_sec=%ld  .tv_nsec=%ld", fanNum, duration.tv_sec, duration.tv_nsec);
+
+  uint32_t msSinceLastRead = (duration.tv_sec * 1000) + (duration.tv_nsec / 1000000);
+
+  // applog(LOG_ERR, "Fan %d: msSinceLastRead=%ld", fanNum, msSinceLastRead);
+
+  // Remember last values for next time
+  lastFanCounter[fanNum] = fanCounter;
+  lastReadTime[fanNum].tv_sec = currTime.tv_sec;
+  lastReadTime[fanNum].tv_nsec = currTime.tv_nsec;
+
+  uint32_t rpm = ((countsSinceLastRead * 15000) / msSinceLastRead);  // 4 counts per revolution
   applog(LOG_ERR, "Fan %u RPM is %u", fanNum, rpm);
 
   return rpm;

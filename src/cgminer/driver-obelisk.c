@@ -158,9 +158,10 @@ static void* ob_fan_thread(void* arg)
 {
     while(true) {
         for (int i=0; i<NUM_FANS; i++) {
-            fan_rpms[i] = ob1GetFanRPMs(i);
+            uint32_t rpm = ob1GetFanRPM(i);
+            set_fan_rpms(i, rpm);
         }
-        cgsleep_ms(1000);
+        cgsleep_ms(500);
     }
     return NULL;
 }
@@ -640,15 +641,19 @@ Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 
 static void obelisk_detect(bool hotplug)
 {
+    pthread_t pth;
+
 	// Basic initialization.
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 	gBoardModel = eGetBoardType(0);
 
     // Start the fan monitor thread
-    mutex_init(fan_lock);
-    pthread_create(&pth, NULL, ob_fan_thread, cgpu);
+    mutex_init(&fan_lock);
+    pthread_create(&pth, NULL, ob_fan_thread, NULL);
 
+    // Set the initial fan speed - control loop will take over shortly
+    ob1SetFanSpeeds(75);
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();
@@ -656,7 +661,6 @@ static void obelisk_detect(bool hotplug)
 		// Enable the persistence for this board.
         struct cgpu_info* cgpu;
         ob_chain* ob;
-        pthread_t pth;
 
         cgpu = cgcalloc(sizeof(*cgpu), 1);
         cgpu->drv = &obelisk_drv;

@@ -7,6 +7,7 @@
 #include "obelisk/Ob1API.h"
 #include "obelisk/Ob1Models.h"
 #include "obelisk/Ob1Utils.h"
+#include "obelisk/Ob1FanCtrl.h"
 #include "obelisk/err_codes.h"
 
 #define MAX_CHAIN_NUM 3
@@ -258,4 +259,6 @@ uint64_t get_good_nonces(ob_chain* ob);
 uint64_t get_bad_nonces(ob_chain* ob);
 
 uint32_t get_fan_rpms(uint8_t fanNum);
+
+void set_fan_rpms(uint8_t fan_num, uint32_t rpm);
 

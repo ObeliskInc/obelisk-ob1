@@ -1,9 +1,10 @@
 // Obelisk Fan Control and Speed utils
 #include "Ob1Defines.h"
 #include <stdint.h>
+#include "miner.h"
 
 ApiError ob1InitializeFanCtrl();
 
 ApiError ob1SetFanSpeeds(uint8_t percent);
 
-void void ob1GetFanRPMs(uint32_t* fanRPM);
+uint32_t ob1GetFanRPM(uint8_t fanNum);
