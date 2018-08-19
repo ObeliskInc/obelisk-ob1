@@ -281,10 +281,8 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 
                 <Form>
                   <Header as="h2">Firmware</Header>
-                  {false ? ( // Temporarily remove the firmware upload view
                     <Dropzone className={classNames.upload} onDrop={formikProps.handleDrop}>
                       <div className={classNames.uploadDesc}>{uploadTitle}</div>
-
                       {filename
                         ? [
                             <div key="filename" className={classNames.uploadFilename}>
@@ -302,9 +300,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                           ]
                         : undefined}
                     </Dropzone>
-                  ) : (
-                    undefined
-                  )}
                   <Button
                     icon="cloud download"
                     onClick={formikProps.handleOpenFirmwareLink}

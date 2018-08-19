@@ -657,9 +657,10 @@ void actionEnableAsic(string path, json::rvalue &args, const crow::request &req,
 }
 
 #ifdef __APPLE__
-#define FIRMWARE_FILE_PATH "./firmware_upgrade.bin"
+#define FIRMWARE_FILE_PATH "./firmware_upgrade.tar.gz"
 #else
-#define FIRMWARE_FILE_PATH "/root/firmware_upgrade.bin"
+#define FIRMWARE_ARCHIVE_FILE_PATH "/tmp/firmware_upgrade.tar.gz"
+#define FIRMWARE_SCRIPT_FILE_PATH "/tmp/firmware_upgrade.sh"
 #endif
 
 /* File Upload:
@@ -690,9 +691,9 @@ void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const cro
   std::ofstream outfile;
   try {
     if (offset == 0) {
-      outfile.open(FIRMWARE_FILE_PATH, std::ofstream::trunc | std::ofstream::binary);
+      outfile.open(FIRMWARE_ARCHIVE_FILE_PATH, std::ofstream::trunc | std::ofstream::binary);
     } else {
-      outfile.open(FIRMWARE_FILE_PATH, std::ofstream::app | std::ofstream::binary);
+      outfile.open(FIRMWARE_ARCHIVE_FILE_PATH, std::ofstream::app | std::ofstream::binary);
     }
   } catch (...) {
     // Catch exceptions and return an error
@@ -716,6 +717,13 @@ void actionResetMinerConfig(string path, json::rvalue &args, const crow::request
 
   // Restart cgminer so the settings take effect
   sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
+}
+
+void actionRunUpgrade(string path, json::rvalue &args, const crow::request &req,
+                            crow::response &resp) {
+  CROW_LOG_DEBUG << "********** actionRunUpgrade()";
+
+  uncompressUpgradeArchive(FIRMWARE_SCRIPT_FILE_PATH);
 }
 
 // inventory/ - things about the miner that "just are" and cannot be modified by set requests
@@ -766,6 +774,7 @@ map<string, PathHandlerForAction> pathHandlerMapForAction = {
     {"enableAsic", actionEnableAsic},
     {"uploadFirmwareFile", actionUploadFirmwareFileFragment},
     {"resetMinerConfig", actionResetMinerConfig},
+    {"runUpgrade", actionRunUpgrade},
 };
 
 void handleGet(string &path, const crow::request &req, crow::response &resp) {
