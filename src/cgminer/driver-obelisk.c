@@ -743,9 +743,17 @@ static void obelisk_detect(bool hotplug)
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
-			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
-			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, ob->staticBoardModel.chipsPerBoard);
+			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, ob->staticBoardModel.chipsPerBoard);
 			ob->control_loop_state.populationSize = 0;
+		}
+		// apply initStringIncrements, denormalizing the biases. This normally
+		// happens inside the genetic algo iteration, but it doesn't run during
+		// startup.
+		for (uint8_t i = 0; i < ob->control_loop_state.curChild.initStringIncrements; i++) {
+			for (uint8_t j = 0; j < ob->staticBoardModel.chipsPerBoard; j++) {
+				increaseBias(&ob->control_loop_state.chipBiases[j], &ob->control_loop_state.chipDividers[j]);
+			}
 		}
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
 		commitBoardBias(ob);

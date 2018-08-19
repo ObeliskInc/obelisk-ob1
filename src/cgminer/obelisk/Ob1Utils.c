@@ -574,36 +574,37 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 8 == 0) {
+	uint8_t mutationFrequency = 8; // Lower number means more frequent mutations, keep to power of 2.
+    if (mutationFrequency == 0) {
         if (child.maxBiasLevel < 43) {
             child.maxBiasLevel++;
         }
-    } else if (r % 8 == 1) {
+    } else if (mutationFrequency == 1) {
         if (child.maxBiasLevel > 0) {
             child.maxBiasLevel--;
         }
     }
     r = *randByte++;
-    if (r % 8 == 0) {
+    if (mutationFrequency == 0) {
         if (child.initStringIncrements < 43) {
             child.initStringIncrements++;
         }
-    } else if (r % 8 == 1) {
+    } else if (mutationFrequency == 1) {
         if (child.initStringIncrements > 0) {
             child.initStringIncrements--;
         }
     }
     r = *randByte++;
-    if (r % 8 == 0) {
+    if (mutationFrequency == 0) {
         child.voltageLevel++;
-    } else if (r % 8 == 1) {
+    } else if (mutationFrequency == 1) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 8 == 0) {
+        if (mutationFrequency == 0) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 8 == 1) {
+        } else if (mutationFrequency == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
         }
     }
