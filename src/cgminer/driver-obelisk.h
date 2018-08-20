@@ -109,9 +109,10 @@ typedef struct nonce_fifo {
 typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
 
-typedef Job      (*prepareNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
+typedef Job      (*prepareNextChipJobFn)(ob_chain* ob);
 typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
-typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
+typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum);
+typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce);
 
 // stringSettings contains a list of settings for the string.
 //
@@ -154,14 +155,16 @@ struct ob_chain {
 	// that's not so bad.
 	struct work*  bufferedWork;
 	bool          bufferWork;
-	uint64_t      goodNoncesFound; // Total number of good nonces found.
-	struct work** chipWork;        // The work structures for each chip.
-	struct work** nextChipWork;    // The next work structures for each chip.
-	uint64_t*     chipGoodNonces;  // The good nonce counts for each chip.
-	uint64_t*     chipBadNonces;   // The bad nonce counts for each chip.
+	uint64_t      goodNoncesFound;    // Total number of good nonces found.
+	struct work** chipWork;           // The work structures for each chip.
+	uint64_t*     chipGoodNonces;     // The good nonce counts for each chip.
+	uint64_t*     chipBadNonces;      // The bad nonce counts for each chip.
+	uint32_t      decredEN2[15][128]; // ExtraNonce2 for decred chips.
 
 	// Work spacing timers.
-	cgtimer_t iterationStartTime;
+	cgtimer_t  iterationStartTime;
+	cgtimer_t* chipStartTimes;
+	cgtimer_t* chipCheckTimes;
 
     // Performance timers.
     cgtimer_t startTime;
@@ -184,6 +187,7 @@ struct ob_chain {
 	// Chip specific function pointers.
 	prepareNextChipJobFn prepareNextChipJob;
 	setChipNonceRangeFn  setChipNonceRange;
+	startNextEngineJobFn startNextEngineJob;
 	validNonceFn         validNonce;
 
 	// Control loop information.
