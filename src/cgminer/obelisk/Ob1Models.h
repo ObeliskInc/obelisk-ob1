@@ -63,6 +63,7 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.chipSpeed               = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
 	.defaultMaxBiasLevel     = 22,         // Corresponds to a /2.-4
 	.defaultStringIncrements = 16,
+	// .nonceRange              = 4294967296ULL // 2^32
 	.nonceRange              = 33554432ULL // 2^25
 };
 

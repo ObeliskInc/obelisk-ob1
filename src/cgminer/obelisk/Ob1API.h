@@ -5,21 +5,14 @@
 // Chip-level API
 //==================================================================================================
 
+
+ApiError ob1LoadJobExtraNonce2(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint32_t extraNonce2);
+
 // Program a job the specified engine(s).
 ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob);
 
 // Set the upper and lower bounds for the specified engine(s).
 ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound);
-
-// Set the upper and lower bounds of each engine in each chip in the chain,
-// splitting up the provided nonce range based on the given step_size.  Each
-// engine will be given the next chunk of the range (e.g., if the lower bound is
-// 10 and the subrange_size is 5, the first engine would get 10-14, the second
-// would get 15-19, the third would get 20-24, etc.).
-//
-// This loops over the range using setEngineNonceRange().  Can specify one or
-// all boards, and one or all chips.
-ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce);
 
 // Read all the nonces for a given engine (up to 8)
 ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet);

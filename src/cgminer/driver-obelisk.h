@@ -152,6 +152,9 @@ struct ob_chain {
 	// that's not so bad.
 	uint64_t  goodNoncesFound; // Total number of good nonces found.
 	struct    work** chipWork; // The work structures for each chip.
+	struct    work** chipActiveWork; // The work structures for each chip.
+	uint32_t  engineWork[15][128];
+	uint32_t  engineWorkCounter;
 	struct    work** nextChipWork; // The next work structures for each chip.
 	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
 	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.

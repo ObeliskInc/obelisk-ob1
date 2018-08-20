@@ -3616,8 +3616,8 @@ share_result(json_t* val, json_t* res, json_t* err, const struct work* work,
                 }
             }
 
-            applog(LOG_NOTICE, "Rejected %s %s %d %s%s %s%s",
-                hashshow, cgpu->drv->name, cgpu->device_id, where, reason, resubmit ? "(resubmit)" : "", worktime);
+            // applog(LOG_NOTICE, "Rejected %s %s %d %s%s %s%s",
+            //    hashshow, cgpu->drv->name, cgpu->device_id, where, reason, resubmit ? "(resubmit)" : "", worktime);
             sharelog(disposition, work);
         }
 

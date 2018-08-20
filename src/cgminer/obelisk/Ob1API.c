@@ -66,6 +66,21 @@ void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
 //==================================================================================================
 
 // Program a job the specified engine(s).
+ApiError ob1LoadJobExtraNonce2(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint32_t extraNonce2)
+{
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+		return GENERIC_ERROR;
+    }
+    case MODEL_DCR1: {
+		return ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
+    }
+	}
+
+    return GENERIC_ERROR;
+}
+
+// Program a job the specified engine(s).
 ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
 {
     ApiError error = GENERIC_ERROR;
@@ -218,55 +233,6 @@ ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, 
     }
     }
 
-    return SUCCESS;
-}
-
-// Set the upper and lower bounds of each engine in each chip in the chain,
-// splitting up the provided nonce range based on the given step_size.  Each
-// engine will be given the next chunk of the range (e.g., if the lower bound is
-// 10 and the subrange_size is 5, the first engine would get 10-14, the second
-// would get 15-19, the third would get 20-24, etc.).
-ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce)
-{
-    int firstBoard;
-    int lastBoard;
-    if (boardNum == ALL_BOARDS) {
-        firstBoard = 0;
-        lastBoard = MAX_NUMBER_OF_HASH_BOARDS - 1;
-    } else {
-        firstBoard = boardNum;
-        lastBoard = boardNum;
-    }
-
-    int firstChip;
-    int lastChip;
-    if (chipNum == ALL_CHIPS) {
-        firstChip = 0;
-        lastChip = NUM_CHIPS_PER_STRING - 1;
-    } else {
-        firstChip = chipNum;
-        lastChip = chipNum;
-    }
-
-    Nonce currLowerBound = lowerBound;
-    Nonce currUpperBound = currLowerBound + subrangeSize - 1;
-    for (uint8_t board = firstBoard; board <= lastBoard; board++) {
-        for (uint8_t chip = firstChip; chip <= lastChip; chip++) {
-            for (uint8_t engine = 0; engine < ob1GetNumEnginesPerChip(); engine++) {
-
-                ApiError error = ob1SetNonceRange(board, chip, engine, currLowerBound, currUpperBound);
-                if (error != SUCCESS) {
-                    return error;
-                }
-                currLowerBound = currUpperBound + 1;
-                currUpperBound = currLowerBound + subrangeSize - 1;
-            }
-        }
-    }
-
-    if (pNextNonce) {
-        *pNextNonce = currUpperBound + 1;
-    }
     return SUCCESS;
 }
 
