@@ -12,6 +12,7 @@
 #include <resolv.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <thread>
 
 /*
 When creating a new user, create a new random salt, store it in a JSON file
@@ -246,16 +247,16 @@ void copyFile(string fromPath, string toPath) {
   runCmd(cmd.str());
 }
 
-string uncompressUpgradeArchive(string archivePath) {
+string uncompressUpgradeArchive(string gzArchivePath, string tarArchivePath) {
   ostringstream cmd;
-  cmd << "tar -x " << archivePath;;
-  return runCmd(cmd.str());
-}
-
-string executeUpgradeScript(string scriptPath) {
-  ostringstream cmd;
-  cmd << scriptPath;
-  return runCmd(cmd.str());
+  cmd << "cd /tmp";
+  cmd << " && gunzip " << gzArchivePath;  // This removes the .gz file
+  cmd << " && tar -xf " << tarArchivePath;
+  cmd << " && rm " << tarArchivePath;
+  CROW_LOG_DEBUG << "Command: " << cmd.str();
+  string result = runCmd(cmd.str());
+  CROW_LOG_DEBUG << "Result: " << result;
+  return result;
 }
 
 // TODO: Could optimize this:
@@ -562,4 +563,13 @@ void writeCgMinerConfig(json::wvalue &json) {
   string jsonStr = json::dump(json);
   out << jsonStr;
   out.close();
+}
+
+// Read the entire contents of the file to a string.
+// Use for small files only.
+string readFile(string path) {
+  std::ifstream stream(path);
+  std::stringstream buffer;
+  buffer << stream.rdbuf();
+  return buffer.str();
 }

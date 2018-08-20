@@ -21,6 +21,9 @@ depend: .depend
 
 clean:
 	rm -f bin/$(appname)
+	rm -f src/*.o
+	rm -f src/utils/*.o
+	rm -f src/handlers/*.o
 
 dist-clean: clean
 	rm -f *~ .depend
