@@ -246,6 +246,18 @@ void copyFile(string fromPath, string toPath) {
   runCmd(cmd.str());
 }
 
+string uncompressUpgradeArchive(string gzArchivePath, string tarArchivePath) {
+  ostringstream cmd;
+  cmd << "cd /tmp";
+  cmd << " && gunzip " << gzArchivePath;  // This removes the .gz file
+  cmd << " && tar -xf " << tarArchivePath;
+  cmd << " && rm " << tarArchivePath;
+  CROW_LOG_DEBUG << "Command: " << cmd.str();
+  string result = runCmd(cmd.str());
+  CROW_LOG_DEBUG << "Result: " << result;
+  return result;
+}
+
 // TODO: Could optimize this:
 //    free -m | awk '/^Mem/ {print $2 $3 $4}'
 // then split on space to get the three numbers all at once and return an array.
@@ -550,4 +562,13 @@ void writeCgMinerConfig(json::wvalue &json) {
   string jsonStr = json::dump(json);
   out << jsonStr;
   out.close();
+}
+
+// Read the entire contents of the file to a string.
+// Use for small files only.
+string readFile(string path) {
+  std::ifstream stream(path);
+  std::stringstream buffer;
+  buffer << stream.rdbuf();
+  return buffer.str();
 }

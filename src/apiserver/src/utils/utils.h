@@ -30,6 +30,7 @@ bool changePassword(string username, string oldPassword, string newPassword, str
 string runCmd(string cmd);
 
 void copyFile(string fromPath, string toPath);
+string uncompressUpgradeArchive(string gzArchivePath, string tarArchivePath);
 
 // System info
 int getFreeMemory();
@@ -67,5 +68,7 @@ string getUptime();
 
 json::rvalue readCgMinerConfig();
 void writeCgMinerConfig(json::wvalue &json);
+
+string readFile(string path);
 
 #endif

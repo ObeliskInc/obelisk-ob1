@@ -167,6 +167,7 @@ export interface State {
 
   // Upload status
   uploadStatus: UploadStatus
+  upgradeMessage?: string
 
   // Change routes when a request succeeds/fails
   nextRouteOnSuccess?: string
@@ -174,4 +175,8 @@ export interface State {
 
   // UI forms
   forms: FormState
+}
+
+export interface RunUpgradeResp {
+  message: string
 }

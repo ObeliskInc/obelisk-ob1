@@ -2,6 +2,7 @@
 #include "Ob1API.h"
 #include "Ob1Utils.h"
 #include "Ob1Hashboard.h"
+#include "Ob1FanCtrl.h"
 #include "CSS_SC1_hal.h"
 #include "CSS_DCR1_hal.h"
 #include "err_codes.h"
@@ -660,6 +661,9 @@ ApiError ob1Initialize()
 		return error;
     }
 
+    // Prepare fan controls, but don't start yet
+    ob1InitializeFanCtrl();
+
 	// Initialize hashing board.
 	error = ob1InitializeHashBoards();
 	if (error != SUCCESS) {
@@ -795,18 +799,6 @@ uint8_t ob1GetNumEnginesPerChip()
     case MODEL_DCR1:
         return 128;
     }
-}
-
-// Returns the fan speed in rpm
-uint32_t ob1GetFanRPM(uint8_t fanNum)
-{
-    return GENERIC_ERROR;
-}
-
-// The percent can be 10-100
-ApiError ob1SetFanSpeed(uint8_t fanNum, uint8_t percent)
-{
-    return GENERIC_ERROR;
 }
 
 //==================================================================================================
