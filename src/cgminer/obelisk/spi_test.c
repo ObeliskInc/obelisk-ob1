@@ -28,7 +28,7 @@ static const char *device = "/dev/spidev32766.0";
 static uint32_t mode = 0;
 static uint16_t delay = 0;
 static uint8_t bits = 8;
-static uint32_t speed = 1000000;
+static uint32_t speed = 5000000;
 
 void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
 {

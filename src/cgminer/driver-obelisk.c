@@ -1063,7 +1063,16 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
     if (timeElapsed > UndertempCheckFrequency) {
         if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
-            increaseStringBias(ob);
+			// Ramp up quicker when we are far away from the target
+			uint8_t ticks = (targetTemp - currentTemp) / 5;
+			if (ticks < 1) {
+				ticks = 1;
+			}
+
+			applog(LOG_ERR, "Increase biases of board %u by %u ticks", ob->chain_id, ticks);
+			for (int i; i< ticks; i++) {
+	            increaseStringBias(ob);
+			}
         }
         ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
         ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
@@ -1306,7 +1315,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// If the chip is not done, skip the next part.
 		if (!wholeChipDone) {
-			applog(LOG_ERR, "skipping chip because the chip is not done: %u", chipNum);
+			// applog(LOG_ERR, "skipping chip because the chip is not done: %u", chipNum);
 			cgsleep_ms(50);
 			continue;
 		}
@@ -1410,8 +1419,8 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_sub(&scanEnd, &scanStart, &scanDuration);
 	scanTotal += cgtimer_to_ms(&scanDuration);
 
-	applog(LOG_ERR, "Scan cycle counts: %lld.%lld.%lld", chipsDone, enginesChecked, noncesFound);
-	applog(LOG_ERR, "Scan cycle timers: %i.%i.%i.%i", scanTotal, checkChipTotal, readNonceTotal, loadJobTotal);
+	// applog(LOG_ERR, "Scan cycle counts: %lld.%lld.%lld", chipsDone, enginesChecked, noncesFound);
+	// applog(LOG_ERR, "Scan cycle timers: %i.%i.%i.%i", scanTotal, checkChipTotal, readNonceTotal, loadJobTotal);
 
 	/*
     // Look for done engines, and read their nonces
