@@ -840,12 +840,13 @@ static void obelisk_detect(bool hotplug)
 
 			// Set the string voltage to the highest voltage for starting up.
 			ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
-			ob->control_loop_state.curChild.maxBiasLevel = 20;
+			ob->control_loop_state.curChild.maxBiasLevel = ob->staticBoardModel.defaultMaxBiasLevel;
+			ob->control_loop_state.curChild.initStringIncrements = ob->staticBoardModel.defaultStringIncrements;
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
-			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
-			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, ob->staticBoardModel.chipsPerBoard);
+			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, ob->staticBoardModel.chipsPerBoard);
 			ob->control_loop_state.populationSize = 0;
 		}
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
@@ -1132,13 +1133,11 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Determine whether the string is running slowly. The string is considered
 	// to be running slowly if the chips are not producing nonces as fast as
 	// expected.
-	uint64_t requiredNonces = 100;
-	time_t resetTime = 60;
+	uint64_t requiredTime = 300;
+	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
 	// The max time allowed is twice the expected amount of time for the whole
 	// string to hit the required number of nonces.
-	time_t maxTime = ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed * requiredNonces * 2 / ob->staticBoardModel.chipsPerBoard / ob->staticBoardModel.enginesPerChip;
-	bool slowString = timeElapsed >= maxTime;
 
 	if (timeElapsed > resetTime && !ob->control_loop_state.hasReset) {
 		ob->control_loop_state.hasReset = true;
@@ -1153,7 +1152,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// If we haven't found enough nonces and also not too much time has passed,
 	// no changges are made to voltage or bias.
-	if (ob->control_loop_state.goodNoncesSinceVoltageChange < requiredNonces && !slowString) {
+	if (timeElapsed < requiredTime) {
 		return;
 	}
 
