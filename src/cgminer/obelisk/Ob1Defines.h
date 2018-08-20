@@ -20,6 +20,9 @@ typedef enum HashboardModel {
 
 extern HashboardModel gBoardModel;
 
+// TODO: Create a MinerModel and define things like numFans
+#define NUM_FANS 2
+
 typedef struct {
     uint64_t m[E_SC1_NUM_MREGS];
 } Blake2BJob;
