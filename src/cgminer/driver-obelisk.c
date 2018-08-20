@@ -653,7 +653,7 @@ static void obelisk_detect(bool hotplug)
     pthread_create(&pth, NULL, ob_fan_thread, NULL);
 
     // Set the initial fan speed - control loop will take over shortly
-    ob1SetFanSpeeds(75);
+    ob1SetFanSpeeds(100);
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();
