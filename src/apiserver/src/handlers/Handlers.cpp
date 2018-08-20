@@ -14,10 +14,10 @@
 using namespace std;
 using namespace crow;
 
-#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ "/tmp/firmware-upgrade.tar.gz"
-#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_TAR "/tmp/firmware-upgrade.tar"
-#define FIRMWARE_UPGRADE_SCRIPT_FILE_PATH "/tmp/upgrade.sh"
-#define FIRMWARE_UPGRADE_MESSAGE_FILE_PATH "/tmp/upgrade-message.txt"
+#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ "/tmp/upgrade/firmware-upgrade.tar.gz"
+#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_TAR "/tmp/upgrade/firmware-upgrade.tar"
+#define FIRMWARE_UPGRADE_SCRIPT_FILE_PATH "/tmp/upgrade/upgrade.sh"
+#define FIRMWARE_UPGRADE_MESSAGE_FILE_PATH "/tmp/upgrade/upgrade-message.txt"
 
 // This is the queue we use to send cgminer requests
 extern SafeQueue<CgMiner::Request> gRequestQueue;
@@ -684,6 +684,9 @@ void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const cro
     resp.end();
     return;
   }
+
+  // Ensure that the /tmp/upgrade dir exists
+  runCmd("mkdir -p /tmp/upgrade");
 
   // Open file for output
   std::ofstream outfile;
