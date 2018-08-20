@@ -109,7 +109,8 @@ typedef struct nonce_fifo {
 typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
 
-typedef Job (*prepareNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
+typedef Job      (*prepareNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
+typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum);
 typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
 
 // stringSettings contains a list of settings for the string.
@@ -177,7 +178,8 @@ struct ob_chain {
 
 	// Chip specific function pointers.
 	prepareNextChipJobFn prepareNextChipJob;
-	validNonceFn      validNonce;
+	setChipNonceRangeFn  setChipNonceRange;
+	validNonceFn         validNonce;
 
 	// Control loop information.
     int chain_id;

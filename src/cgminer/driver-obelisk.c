@@ -639,6 +639,70 @@ Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
     return job;
 }
 
+// siaSetChipNonceRange will set the nonce range of every engine on the chip to
+// a different value, offset by the nonce range of the board model.
+ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum) {
+	// Set the baseline nonces.
+	Nonce nonceStart = chipNum * ob->staticBoardModel.nonceRange;
+	Nonce nonceEnd = nonceStart + ob->staticBoardModel.nonceRange-1;
+
+	// Set every engine.
+	for (int engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+		// Try each engine several times. If the engine is not set correctly on
+		// the first try, try again.
+		for (int tries = 0; tries < 5; tries++) {
+			// Attempt setting the nonce range.
+			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd);
+			if (error != SUCCESS) {
+				continue;
+			}
+
+			// Check that the nonce range was set correctly.
+			uint64_t lowerBound, upperBound;
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound);
+			if (lowerBound == nonceStart && upperBound == nonceEnd) {
+				// Bounds set correctly, move on.
+				break;
+			}
+		}
+
+		// Increment the nonces so that there is no overlap between engines.
+		nonceStart += ob->staticBoardModel.nonceRange;
+		nonceEnd += ob->staticBoardModel.nonceRange;
+	}
+}
+
+// dcrSetChipNonceRange will set the nonce range of every engine on the chip to
+// span the full possible nonce range, which is only 2^32 for the DCR1.
+ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum) {
+	// Set the baseline nonces.
+	Nonce nonceStart = 0x00000000;
+	Nonce nonceEnd   = 0xffffffff;
+
+	// Set every engine.
+	for (int engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+		// Try each engine several times. If the engine is not set correctly on
+		// the first try, try again.
+		for (int tries = 0; tries < 5; tries++) {
+			// Attempt setting the nonce range.
+			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd);
+			if (error != SUCCESS) {
+				continue;
+			}
+
+			// Check that the nonce range was set correctly.
+			uint64_t lowerBound, upperBound;
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound);
+			if (lowerBound == nonceStart && upperBound == nonceEnd) {
+				// Bounds set correctly, move on.
+				break;
+			}
+		}
+	}
+}
+
 static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
@@ -653,7 +717,7 @@ static void obelisk_detect(bool hotplug)
     pthread_create(&pth, NULL, ob_fan_thread, NULL);
 
     // Set the initial fan speed - control loop will take over shortly
-    ob1SetFanSpeeds(75);
+    ob1SetFanSpeeds(100);
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();
@@ -694,6 +758,7 @@ static void obelisk_detect(bool hotplug)
 
 			// Functions.
 			ob->prepareNextChipJob = siaPrepareNextChipJob;
+			ob->setChipNonceRange = siaSetChipNonceRange;
 			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
@@ -704,6 +769,7 @@ static void obelisk_detect(bool hotplug)
 
 			// Functions.
 			ob->prepareNextChipJob = dcrPrepareNextChipJob;
+			ob->setChipNonceRange = dcrSetChipNonceRange;
 			ob->validNonce = dcrValidNonce;
 		}
 
@@ -718,9 +784,6 @@ static void obelisk_detect(bool hotplug)
             chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob->staticBoardModel.enginesPerChip);
         }
 
-		// Set the board number.
-		//
-		// Don't change the voltage at all for the first 5 mintues.
 		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
@@ -788,23 +851,9 @@ static void obelisk_detect(bool hotplug)
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
 		commitBoardBias(ob);
 
-		// Set the nonce range for every chip.
-		uint64_t nonceRangeFailures = 0;
-		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			Nonce nonceStart = 0;
-			for (int engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
-				ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceStart+ob->staticBoardModel.nonceRange-1);
-				if (error != SUCCESS) {
-					nonceRangeFailures++;
-				}
-				// TODO: This is pretty important, we probably need to crash/try
-				// again if this fails.
-				nonceStart += ob->staticBoardModel.nonceRange;
-			}
-		}
-		// Crash the program if there were too many nonce range failures.
-		if (nonceRangeFailures > 256) {
-			exit(-1);
+		// Set the nonce ranges for this chip.
+		for (uint16_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+			ob->setChipNonceRange(ob, chipNum);
 		}
 
 		// Allocate the chip work fields.
