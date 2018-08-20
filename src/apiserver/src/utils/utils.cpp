@@ -12,7 +12,6 @@
 #include <resolv.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <thread>
 
 /*
 When creating a new user, create a new random salt, store it in a JSON file
