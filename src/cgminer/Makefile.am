@@ -142,9 +142,10 @@ endif
 if HAS_OBELISK
 cgminer_SOURCES += driver-obelisk.c hexdump.c obelisk/multicast.c\
 			obelisk/Ob1API.c obelisk/Ob1Utils.c obelisk/Ob1API.h obelisk/Ob1Utils.h obelisk/Ob1Defines.h \
-			obelisk/Ob1Test.c obelisk/Ob1Utils.h obelisk/Ob1Models.h
+			obelisk/Ob1Test.c obelisk/Ob1Utils.h obelisk/Ob1Models.h \
+			obelisk/Ob1FanCtrl.c obelisk/Ob1FanCtrl.h 
 
-# Sia hashing/verification code
+# Sia & Decred hashing/verification code
 cgminer_SOURCES += obelisk/siahash/blake2-impl.h obelisk/siahash/blake2.h obelisk/siahash/blake2b-ref.c \
       obelisk/siahash/siaverify.c obelisk/siahash/siaverify.h \
 			obelisk/siahash/siastratum.c obelisk/siahash/siastratum.h \

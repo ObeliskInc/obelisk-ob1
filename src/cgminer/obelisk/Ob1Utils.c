@@ -566,6 +566,7 @@ static GenChild breedChild(ControlLoopState *state)
     // from parent1 or parent2
     GenChild child;
     child.maxBiasLevel = ((*randByte++) & 1) ? parent1->maxBiasLevel : parent2->maxBiasLevel;
+    child.initStringIncrements = ((*randByte++) & 1) ? parent1->initStringIncrements : parent2->initStringIncrements;
     child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         uint8_t r = *randByte++;
@@ -581,27 +582,45 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 16 == 0) {
+	uint8_t mutationFrequency = 8; // Lower number means more frequent mutations, keep to power of 2.
+    if (mutationFrequency == 0) {
         if (child.maxBiasLevel < 43) {
             child.maxBiasLevel++;
         }
-    } else if (r % 16 == 1) {
+    } else if (mutationFrequency == 1) {
         if (child.maxBiasLevel > 0) {
             child.maxBiasLevel--;
         }
     }
     r = *randByte++;
-    if (r % 16 == 0) {
+    if (mutationFrequency == 0) {
+        if (child.initStringIncrements < 43) {
+            child.initStringIncrements++;
+        }
+    } else if (mutationFrequency == 1) {
+        if (child.initStringIncrements > 0) {
+            child.initStringIncrements--;
+        }
+    }
+    r = *randByte++;
+    if (mutationFrequency == 0) {
         child.voltageLevel++;
-    } else if (r % 16 == 1) {
+    } else if (mutationFrequency == 1) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 16 == 0) {
+        if (mutationFrequency == 0) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 16 == 1) {
+        } else if (mutationFrequency == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        }
+    }
+
+    // apply initStringIncrements, denormalizing the biases
+    for (uint8_t i = 0; i < child.initStringIncrements; i++) {
+        for (uint8_t j = 0; j < sizeof(child.chipBiases); j++) {
+            increaseBias(&child.chipBiases[j], &child.chipDividers[j]);
         }
     }
 
@@ -666,23 +685,29 @@ void geneticAlgoIter(ControlLoopState *state)
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.6_%s_%d.bin", name, boardID);
+	applog(LOG_ERR, "Loading: %s", path);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
+		applog(LOG_ERR, "load file err");
         return GENERIC_ERROR;
     }
     fread(&state->populationSize, sizeof(uint8_t), 1, file);
-    if (state->populationSize >= POPULATION_SIZE) {
+    if (state->populationSize > POPULATION_SIZE) {
+		applog(LOG_ERR, "read file error - read1");
         return GENERIC_ERROR;
     }
     if (fread(state->population, sizeof(GenChild), state->populationSize, file) != state->populationSize) {
+		applog(LOG_ERR, "read file error - read2");
         return GENERIC_ERROR;
     }
     if (fread(&state->curChild, sizeof(GenChild), 1, file) != 1) {
+		applog(LOG_ERR, "read file error - read3");
         return GENERIC_ERROR;
     }
     fclose(file);
     if (ferror(file) != 0) {
+		applog(LOG_ERR, "read file error - fclose");
         return GENERIC_ERROR;
     }
 
@@ -698,8 +723,8 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     char tmppath[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
-    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.4_%s_%d.bin_tmp", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.6_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.6_%s_%d.bin_tmp", name, boardID);
     FILE *file = fopen(tmppath, "wb");
     if (file == NULL) {
         return GENERIC_ERROR;

@@ -393,10 +393,11 @@ gpio_ret_t gpio_init(void)
         retval = GPIO_RET_ERROR;
     }
 
-    if (gpio_init_pin(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
-        GPIO_LOG("Error Setting up FAN_PWM_CONTROL pin\n");
-        retval = GPIO_RET_ERROR;
-    }
+    // The Fan PWM control is no longer handled through a GPIO
+    // if (gpio_init_pin(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
+    //     GPIO_LOG("Error Setting up FAN_PWM_CONTROL pin\n");
+    //     retval = GPIO_RET_ERROR;
+    // }
 
     if (gpio_init_pin(HASH_BOARD_ONE_PRESENT) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error Setting up HASH_BOARD_ONE_PRESENT pin\n");
@@ -563,15 +564,17 @@ gpio_ret_t gpio_init(void)
         }
     }
 
-    if (gpio_set_pin_as_output(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
-        GPIO_LOG("Error initializing FAN_PWM_CONTROL pin\n");
-        retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting FAN_PWM_CONTROL pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
-    }
+    // The Fan PWM control is no longer handled through a GPIO
+    // if (gpio_set_pin_as_output(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
+    //     GPIO_LOG("Error initializing FAN_PWM_CONTROL pin\n");
+    //     retval = GPIO_RET_ERROR;
+    // }
+    //  else {
+    //     if (gpio_set_output_pin_low(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
+    //         GPIO_LOG("Error setting FAN_PWM_CONTROL pin low\n");
+    //         retval = GPIO_RET_ERROR;
+    //     }
+    // }
 
     if (gpio_set_pin_as_output(CONTROLLER_RED_LED) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing CONTROLLER_RED_LED pin\n");

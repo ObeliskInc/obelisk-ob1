@@ -246,6 +246,18 @@ void copyFile(string fromPath, string toPath) {
   runCmd(cmd.str());
 }
 
+string uncompressUpgradeArchive(string archivePath) {
+  ostringstream cmd;
+  cmd << "tar -x " << archivePath;;
+  return runCmd(cmd.str());
+}
+
+string executeUpgradeScript(string scriptPath) {
+  ostringstream cmd;
+  cmd << scriptPath;
+  return runCmd(cmd.str());
+}
+
 // TODO: Could optimize this:
 //    free -m | awk '/^Mem/ {print $2 $3 $4}'
 // then split on space to get the three numbers all at once and return an array.

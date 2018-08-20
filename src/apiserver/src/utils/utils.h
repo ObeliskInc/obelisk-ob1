@@ -30,6 +30,8 @@ bool changePassword(string username, string oldPassword, string newPassword, str
 string runCmd(string cmd);
 
 void copyFile(string fromPath, string toPath);
+string uncompressUpgradeArchive(string archivePath);
+string executeUpgradeScript(string scriptPath);
 
 // System info
 int getFreeMemory();
