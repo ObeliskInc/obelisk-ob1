@@ -1307,7 +1307,10 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		// If the chip is not done, skip the next part.
 		if (!wholeChipDone) {
 			applog(LOG_ERR, "skipping chip because the chip is not done: %u", chipNum);
-			cgsleep_ms(50);
+			cgsleep_ms(10);
+			cgtimer_time(&checkChipEnd);
+			cgtimer_sub(&checkChipEnd, &checkChipStart, &checkChipDuration);
+			checkChipTotal += cgtimer_to_ms(&checkChipDuration);
 			continue;
 		}
 		chipsDone++;
