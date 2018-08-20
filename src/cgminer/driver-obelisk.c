@@ -1216,76 +1216,41 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	int64_t hashesConfirmed = 0;
 
-    cgtimer_t start_scanwork, end_scanwork, duration_scanwork;
-    cgtimer_time(&start_scanwork);
+	// Check against the global timer to see if 100ms has passed since we
+	// started the previous iteration.
+	cgtimer_t currentTime, timeSinceLastIter;
+	cgtimer_time(&currentTime);
+	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
+	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
+	if (msSinceLastIter < 100) {
+		// TODO: Queue any work items that need to be queued.
+
+		cgsleep_ms(100 - msSinceLastIter);
+	}
+
+	// Set the start time of the current iteration.
+	cgtimer_time(&ob->iterationStartTime);
 
 	// Get flags indicating which chips are done, and which chips have nonce
 	// flags.
-    cgtimer_t start_bn, end_bn, duration_bn;
-    cgtimer_time(&start_bn);
 	uint16_t boardDoneFlags = 0;
 	ApiError error = ob1ReadBoardDoneFlags(ob->staticBoardNumber, &boardDoneFlags);
 	if (error != SUCCESS) {
 		applog(LOG_ERR, "Failed to read board done flags.");
-		cgtimer_time(&end_scanwork);
-		cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
-		ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
 		return 0;
 	}
 	uint16_t nonceFoundFlags = 0;
 	error = ob1ReadBoardNonceFlags(ob->staticBoardNumber, &nonceFoundFlags);
 	if (error != SUCCESS) {
 		applog(LOG_ERR, "Failed to read nonce done flags.");
-		cgtimer_time(&end_scanwork);
-		cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
-		ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
-		return 0;
-	}
-    cgtimer_time(&end_bn);
-    cgtimer_sub(&end_bn, &start_bn, &duration_bn);
-    ob->doneNonceTime += cgtimer_to_ms(&duration_bn);
-
-	// TODO: Once we remove the timers, you can move this call so that it
-	// triggers before we do the ReadBoardNonceFlags call.
-	//
-	// Set the 16th bit of the bitfield to zero, because it's not always zero
-	// otherwise.
-	uint16_t allDone = boardDoneFlags & (~(1UL << 15));
-	if (allDone == 0 && ob->staticBoardNumber == 0) {
-		// Load / buffer work for any chip that needs it.
-		for (uint8_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			if (ob->chipWork[chipNum] == NULL) {
-				cgtimer_t start_give_work, end_give_work, duration_give_work;
-				cgtimer_time(&start_give_work);
-				loadNextChipJob(ob, chipNum);
-				cgtimer_time(&end_give_work);
-				cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
-				ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
-			}
-
-			// TODO: Buffer work here.
-		}
-
-		cgsleep_ms(4);
-		cgtimer_time(&end_scanwork);
-		cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
-		ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
 		return 0;
 	}
 
     // Look for done engines, and read their nonces
-    cgtimer_t start_chipScan, end_chipScan, duration_chipScan;
-    cgtimer_time(&start_chipScan);
     for (uint8_t chip_num = 0; chip_num < ob->staticBoardModel.chipsPerBoard; chip_num++) {
 		// If the chip does not appear to have work, give it work.
-        cgtimer_t start_give_work, end_give_work, duration_give_work;
 		if(ob->chipWork[chip_num] == NULL) {
-            cgtimer_time(&start_give_work);
 			loadNextChipJob(ob, chip_num);
-            cgtimer_time(&end_give_work);
-            cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
-            ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
-            //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 			continue;
 		}
 
@@ -1321,8 +1286,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		// Check if this chip found a nonce. If not, move on.
 		bool chipHasNonce = (nonceFoundFlags >> chip_num) & 1;
 		if (chipHasNonce) {
-			cgtimer_t start_readNonces, end_readNonces, duration_readNonces;
-			cgtimer_time(&start_readNonces);
 			// Check all the engines on the chip.
 			for (uint8_t engine_num = 0; engine_num < ob->staticBoardModel.enginesPerChip; engine_num++) {
 				// Read any nonces that the engine found.
@@ -1359,54 +1322,27 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 						hashesConfirmed += ob->staticBoardModel.chipDifficulty;
 					}
 					if (nonceResult == 2) {
-						cgtimer_t start_submit_nonce, end_submit_nonce, duration_submit_nonce;
-						cgtimer_time(&start_submit_nonce);
 						submit_nonce(cgpu->thr[0], ob->chipWork[chip_num], nonce_set.nonces[i]);
-						cgtimer_time(&end_submit_nonce);
-						cgtimer_sub(&end_submit_nonce, &start_submit_nonce, &duration_submit_nonce);
-						ob->submitNonceTime += cgtimer_to_ms(&duration_submit_nonce);
-						//applog(LOG_NOTICE, "submit_nonce for chip %u/%u took %d ms", chip_num, engine_num, cgtimer_to_ms(&duration_submit_nonce));
 					}
 				}
 			}
-			cgtimer_time(&end_readNonces);
-			cgtimer_sub(&end_readNonces, &start_readNonces, &duration_readNonces);
-			ob->readNonceTime += cgtimer_to_ms(&duration_readNonces);
 		}
 
 		// Give a new job to the chip.
 		// Get the next job.
-        cgtimer_time(&start_give_work);
 		loadNextChipJob(ob, chip_num);
-        cgtimer_time(&end_give_work);
-        cgtimer_sub(&end_give_work, &start_give_work, &duration_give_work);
-        ob->loadJobTime += cgtimer_to_ms(&duration_give_work);
-        //applog(LOG_NOTICE, "loadNextChipJob for chip %u took %d ms", chip_num, cgtimer_to_ms(&duration_give_work));
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "Error loading chip job");
 			continue;
 		}
     }
-    cgtimer_time(&end_chipScan);
-    cgtimer_sub(&end_chipScan, &start_chipScan, &duration_chipScan);
-    ob->chipScanTime += cgtimer_to_ms(&duration_chipScan);
 
-    cgtimer_t start_stats, end_stats, duration_stats;
-    cgtimer_time(&start_stats);
     // See if the pool asked us to start clean on new work
     if (ob->curr_work && ob->curr_work->pool->swork.clean) {
         ob->curr_work->pool->swork.clean = false;
         ob->curr_work = NULL;
 		ob->curr_work = wq_dequeue(ob, true);
     }
-	cgsleep_ms(3);
-    cgtimer_time(&end_stats);
-    cgtimer_sub(&end_stats, &start_stats, &duration_stats);
-    ob->statsTime += cgtimer_to_ms(&duration_stats);
-
-    cgtimer_time(&end_scanwork);
-    cgtimer_sub(&end_scanwork, &start_scanwork, &duration_scanwork);
-    ob->totalScanWorkTime += cgtimer_to_ms(&duration_scanwork);
 
     return hashesConfirmed;
 }

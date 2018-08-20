@@ -158,7 +158,10 @@ struct ob_chain {
 	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
 	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
 
-    // Timers
+	// Work spacing timers.
+	cgtimer_t iterationStartTime;
+
+    // Performance timers.
     cgtimer_t startTime;
     int totalScanWorkTime;
     int loadJobTime;
