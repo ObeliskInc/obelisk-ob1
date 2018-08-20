@@ -110,7 +110,7 @@ typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
 
 typedef Job      (*prepareNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
-typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum);
+typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
 typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
 
 // stringSettings contains a list of settings for the string.
@@ -152,11 +152,13 @@ struct ob_chain {
 	// writing to it, the others are reading. And the ones that are reading are
 	// only displaying output to a user, so if it's occasionally corrupted,
 	// that's not so bad.
-	uint64_t  goodNoncesFound; // Total number of good nonces found.
-	struct    work** chipWork; // The work structures for each chip.
-	struct    work** nextChipWork; // The next work structures for each chip.
-	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
-	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+	struct work*  bufferedWork;
+	bool          bufferWork;
+	uint64_t      goodNoncesFound; // Total number of good nonces found.
+	struct work** chipWork;        // The work structures for each chip.
+	struct work** nextChipWork;    // The next work structures for each chip.
+	uint64_t*     chipGoodNonces;  // The good nonce counts for each chip.
+	uint64_t*     chipBadNonces;   // The bad nonce counts for each chip.
 
 	// Work spacing timers.
 	cgtimer_t iterationStartTime;
