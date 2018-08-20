@@ -55,6 +55,7 @@ killall -q led_flash_red
 killall -q led_flash_green
 /usr/sbin/led_alternate &
 
+echo v1.0.0 > /root/.version
 touch /root/.upgrade1_complete
 
 if /tmp/burn-in -T &>/dev/null; then
