@@ -17,6 +17,7 @@ import {
   PoolConfig,
   SystemConfig,
   UploadFirmwareFileParams,
+  RunUpgradeResp,
 } from './types'
 
 export const showSidebarAC = actionCreator<{ show: boolean }>('SHOW_SIDEBAR')
@@ -123,3 +124,6 @@ export const setUploadProgress = (percent: number) => setUploadProgressAC({ perc
 export const uploadFirmwareFile = actionCreator.async<UploadFirmwareFileParams, ApiOK, ApiError>(
   'UPLOAD_FILE',
 )
+
+// This action is used by the UI to trigger the file reading logic that then sends fragments.
+export const runUpgrade = actionCreator.async<{}, RunUpgradeResp, ApiError>('RUN_UPGRADE')

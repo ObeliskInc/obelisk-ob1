@@ -29,6 +29,8 @@ export const getIsLoginInProgress = (state: State): boolean =>
 
 export const getUploadStatus = (state: State): UploadStatus => state.uploadStatus
 
+export const getUpgradeMessage = (state: State): string | undefined => state.upgradeMessage
+
 export const getActiveRequestType = (state: State): string | undefined => state.activeRequestType
 
 export const getLastError = (state: State): string | undefined => state.lastError

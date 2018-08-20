@@ -32,6 +32,7 @@ import {
   clearFormStatusAC,
   setSystemConfig,
   changePassword,
+  runUpgrade,
 } from './actions'
 
 const initialState: State = {
@@ -281,6 +282,13 @@ export const reducer = (state: State = initialState, action: Action<any>): State
   } else if (isType(action, setUploadProgressAC)) {
     const { percent } = action.payload
     newState = updeep({ uploadStatus: { percent } }, newState)
+
+    // -------------------------------------------------------------------------------------------
+    // Upgrade Message
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, runUpgrade.done)) {
+    const payload = action.payload as any
+    newState = updeep({ upgradeMessage: payload.data.message }, newState)
 
     // -------------------------------------------------------------------------------------------
     // Pool form
