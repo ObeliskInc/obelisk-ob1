@@ -14,7 +14,7 @@ import {
   clearFormStatus,
   resetConfig,
 } from 'modules/Main/actions'
-import { getLastError, getSystemConfig, getUploadStatus } from 'modules/Main/selectors'
+import { getLastError, getSystemConfig, getUploadStatus, getUpgradeMessage } from 'modules/Main/selectors'
 import { SystemConfig, UploadStatus } from 'modules/Main/types'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
@@ -30,6 +30,7 @@ const Dropzone = require('react-dropzone').default
 interface ConnectProps {
   systemConfig: SystemConfig
   uploadStatus: UploadStatus
+  upgradeMessage?: string
   lastError?: string
   systemForm: string
   passwordForm: string
@@ -85,7 +86,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
   }
 
   render() {
-    const { classNames, lastError, systemForm, passwordForm } = this.props
+    const { classNames, lastError, systemForm, passwordForm, upgradeMessage } = this.props
     const renderTimeSave = () => {
       if (systemForm != '') {
         return <span>{systemForm}</span>
@@ -281,10 +282,8 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 
                 <Form>
                   <Header as="h2">Firmware</Header>
-                  {false ? ( // Temporarily remove the firmware upload view
                     <Dropzone className={classNames.upload} onDrop={formikProps.handleDrop}>
-                      <div className={classNames.uploadDesc}>{uploadTitle}</div>
-
+                      <div className={classNames.uploadDesc}>{upgradeMessage || uploadTitle}</div>
                       {filename
                         ? [
                             <div key="filename" className={classNames.uploadFilename}>
@@ -302,9 +301,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                           ]
                         : undefined}
                     </Dropzone>
-                  ) : (
-                    undefined
-                  )}
                   <Button
                     icon="cloud download"
                     onClick={formikProps.handleOpenFirmwareLink}
@@ -341,6 +337,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   systemConfig: getSystemConfig(state.Main),
   uploadStatus: getUploadStatus(state.Main),
+  upgradeMessage: getUpgradeMessage(state.Main),
   lastError: getLastError(state.Main),
   systemForm: state.Main.forms.systemForm,
   passwordForm: state.Main.forms.passwordForm,

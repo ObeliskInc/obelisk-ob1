@@ -44,6 +44,8 @@ extern void dump(unsigned char* p, int len, char* label);
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
+static uint32_t fan_rpms[NUM_FANS];
+pthread_mutex_t fan_lock;
 
 #if (MODEL == SC1)
 Nonce SiaNonceLowerBound = 0;
@@ -148,6 +150,19 @@ static void* ob_gen_work_thread(void* arg)
         mutex_lock(&ob->lock);
     }
 
+    return NULL;
+}
+
+// Simple thread to update the fan RPMS once a second
+static void* ob_fan_thread(void* arg)
+{
+    while(true) {
+        for (int i=0; i<NUM_FANS; i++) {
+            uint32_t rpm = ob1GetFanRPM(i);
+            set_fan_rpms(i, rpm);
+        }
+        cgsleep_ms(500);
+    }
     return NULL;
 }
 
@@ -556,6 +571,22 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
+uint32_t get_fan_rpms(uint8_t fan_num)
+{
+    uint32_t rpm;
+    mutex_lock(&fan_lock);
+    rpm = fan_rpms[fan_num];
+    mutex_unlock(&fan_lock);
+    return rpm;
+}
+
+void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
+{
+    mutex_lock(&fan_lock);
+    fan_rpms[fan_num] = rpm;
+    mutex_unlock(&fan_lock);
+}
+
 ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->chipWork[chipNum] = nextWork;
@@ -610,10 +641,19 @@ Job dcrPrepareNextChipJob(ob_chain* ob, uint8_t chipNum) {
 
 static void obelisk_detect(bool hotplug)
 {
+    pthread_t pth;
+
 	// Basic initialization.
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 	gBoardModel = eGetBoardType(0);
+
+    // Start the fan monitor thread
+    mutex_init(&fan_lock);
+    pthread_create(&pth, NULL, ob_fan_thread, NULL);
+
+    // Set the initial fan speed - control loop will take over shortly
+    ob1SetFanSpeeds(75);
 
 	// Initialize each hashboard.
     int numHashboards = ob1GetNumPresentHashboards();
@@ -621,7 +661,6 @@ static void obelisk_detect(bool hotplug)
 		// Enable the persistence for this board.
         struct cgpu_info* cgpu;
         ob_chain* ob;
-        pthread_t pth;
 
         cgpu = cgcalloc(sizeof(*cgpu), 1);
         cgpu->drv = &obelisk_drv;
@@ -738,12 +777,13 @@ static void obelisk_detect(bool hotplug)
 
 			// Set the string voltage to the highest voltage for starting up.
 			ob->control_loop_state.currentVoltageLevel = ob->staticBoardModel.minStringVoltageLevel;
-			ob->control_loop_state.curChild.maxBiasLevel = 20;
+			ob->control_loop_state.curChild.maxBiasLevel = ob->staticBoardModel.defaultMaxBiasLevel;
+			ob->control_loop_state.curChild.initStringIncrements = ob->staticBoardModel.defaultStringIncrements;
 
 			// Initialize the genetic algorithm.
 			ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
-			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, sizeof(ob->control_loop_state.curChild.chipBiases));
-			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, sizeof(ob->control_loop_state.curChild.chipDividers));
+			memcpy(ob->control_loop_state.curChild.chipBiases, ob->control_loop_state.chipBiases, ob->staticBoardModel.chipsPerBoard);
+			memcpy(ob->control_loop_state.curChild.chipDividers, ob->control_loop_state.chipDividers, ob->staticBoardModel.chipsPerBoard);
 			ob->control_loop_state.populationSize = 0;
 		}
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
@@ -1028,19 +1068,27 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
     }
 }
 
+// handleObertimeExit will exit if cgminer has been running for too long. The
+// watchdog should revive cgminer. If cgminer runs for a long time, for whatever
+// reason the hashrate just falls off of a cliff. So we restart cgminer after 30
+// minutes.
+static void handleOvertimeExit(ob_chain* ob) {
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.initTime > 1800) {
+		exit(0);
+	}
+}
+
 // handleVoltageAndBiasTuning will adjust the voltage of the string and the
 // biases of the chips as deemed beneficial to the overall hashrate.
 static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Determine whether the string is running slowly. The string is considered
 	// to be running slowly if the chips are not producing nonces as fast as
 	// expected.
-	uint64_t requiredNonces = 100;
-	time_t resetTime = 60;
+	uint64_t requiredTime = 300;
+	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
 	// The max time allowed is twice the expected amount of time for the whole
 	// string to hit the required number of nonces.
-	time_t maxTime = ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed * requiredNonces * 2 / ob->staticBoardModel.chipsPerBoard / ob->staticBoardModel.enginesPerChip;
-	bool slowString = timeElapsed >= maxTime;
 
 	if (timeElapsed > resetTime && !ob->control_loop_state.hasReset) {
 		ob->control_loop_state.hasReset = true;
@@ -1055,7 +1103,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// If we haven't found enough nonces and also not too much time has passed,
 	// no changges are made to voltage or bias.
-	if (ob->control_loop_state.goodNoncesSinceVoltageChange < requiredNonces && !slowString) {
+	if (timeElapsed < requiredTime) {
 		return;
 	}
 
@@ -1084,6 +1132,9 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// changed to by any no-ops that occured after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 	ob->control_loop_state.hasReset = false;
+
+	// cgminer will exit if it has been running for too long.
+	handleOvertimeExit(ob);
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
