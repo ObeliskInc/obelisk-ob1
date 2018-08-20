@@ -589,6 +589,9 @@ void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
 
 ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
 	struct work* nextWork = wq_dequeue(ob, true);
+	if (ob->chipWork[chipNum]) {
+		free_work(ob->chipWork[chipNum]);
+	}
 	ob->chipWork[chipNum] = nextWork;
 	if (ob->chipWork[chipNum] == NULL) {
 		applog(LOG_ERR, "chipWork is null");
@@ -1347,7 +1350,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
     // See if the pool asked us to start clean on new work
     if (ob->curr_work && ob->curr_work->pool->swork.clean) {
         ob->curr_work->pool->swork.clean = false;
-        ob->curr_work = NULL;
+		free_work(ob->curr_work);
 		ob->curr_work = wq_dequeue(ob, true);
     }
 	cgsleep_ms(3);
