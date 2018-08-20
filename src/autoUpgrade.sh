@@ -48,6 +48,8 @@ chown -R www-data:www-data /var/www/*
 mv /tmp/upgrades/S25watchdogd /etc/init.d/S25watchdogd
 mv /tmp/upgrades/watchdog.sh /usr/sbin/watchdog.sh
 mv /tmp/upgrades/burn-in /tmp/burn-in
+mv /tmp/upgrades/S99upgraderd /etc/init.d/S99upgraderd
+mv /tmp/upgrades/upgrader.sh /usr/sbin/upgrader.sh
 rm -rf /tmp/upgrades
 
 killall -q led_alternate
@@ -88,6 +90,8 @@ cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/root/.cgminer/
 cp apiserver/bin/apiserver upgrades/
 cp -R webclient/build upgrades/webclient
 cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/etc/init.d/S25watchdogd upgrades/
+cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/etc/init.d/S99upgraderd upgrades/
+cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/upgrader.sh upgrades/
 cp ../controlCardImage/board/microchip/sama5d2_som/rootfs-overlay/usr/sbin/watchdog.sh upgrades/
 cp detect upgrades/
 cp burn-in upgrades/
