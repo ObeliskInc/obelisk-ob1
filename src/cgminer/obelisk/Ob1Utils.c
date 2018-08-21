@@ -742,3 +742,39 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
     }
     return SUCCESS;
 }
+
+// Run a command line command.
+// Result: true if command was run, false if not
+//         Note that true does not mean the command succeeded.
+//         Check output for that.
+bool runCmd(char* cmd, char* output, int outputSize) {
+    FILE *fp = popen(cmd, "r");
+    if (fp == NULL) {
+        return false;
+    }
+    char buffer[100];
+
+    int outputSizeRemaining = outputSize;
+    int outputOffset = 0;
+
+    while (fgets(buffer, 100 - 1, fp) != NULL) {
+        int bufferLen = strlen(buffer);
+        if (bufferLen < outputSizeRemaining) {
+            strncpy(output + outputOffset, buffer, outputSizeRemaining);
+            outputOffset += bufferLen;
+            outputSize -= bufferLen;
+        } else {
+            break;
+        }
+    }
+
+    return true;
+}
+
+void getIpV4(char* intfName, char* ipBuffer, int bufferSize) {
+    #define CMD_BUF_LEN 100
+    char cmdBuf[CMD_BUF_LEN];
+    snprintf(cmdBuf, CMD_BUF_LEN, "ifconfig %s | awk '/inet addr:/{split($2,a,\":\"); print a[2]}' | head -1", intfName);
+
+    runCmd(cmdBuf, ipBuffer, bufferSize);
+}
