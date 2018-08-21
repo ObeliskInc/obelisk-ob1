@@ -248,7 +248,7 @@ void copyFile(string fromPath, string toPath) {
 
 string uncompressUpgradeArchive(string gzArchivePath, string tarArchivePath) {
   ostringstream cmd;
-  cmd << "cd /tmp";
+  cmd << "cd /tmp/upgrade";
   cmd << " && gunzip " << gzArchivePath;  // This removes the .gz file
   cmd << " && tar -xf " << tarArchivePath;
   cmd << " && rm " << tarArchivePath;

@@ -333,7 +333,6 @@ uint32_t ob1GetFanRPM(uint8_t fanNum) {
     return 0;
   }
 
-
   char fanValue[128];  // The string value we read from the fan fd
 
   char* path = fanNum == 0 ? "/proc/irq/117/spurious" : "/proc/irq/104/spurious";
@@ -367,7 +366,7 @@ uint32_t ob1GetFanRPM(uint8_t fanNum) {
   lastReadTime[fanNum].tv_nsec = currTime.tv_nsec;
 
   uint32_t rpm = ((countsSinceLastRead * 15000) / msSinceLastRead);  // 4 counts per revolution
-  applog(LOG_ERR, "Fan %u RPM is %u", fanNum, rpm);
+  // applog(LOG_ERR, "Fan %u RPM is %u", fanNum, rpm);
 
   return rpm;
   // return  ((countsSinceLastRead/4) / msSinceLastRead) * 1000 * 60;
