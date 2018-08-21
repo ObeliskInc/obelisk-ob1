@@ -3312,7 +3312,7 @@ http_parser_version(void) {
     default to INFO
 */
 #ifndef CROW_LOG_LEVEL
-#define CROW_LOG_LEVEL 0
+#define CROW_LOG_LEVEL 3
 #endif
 
 
