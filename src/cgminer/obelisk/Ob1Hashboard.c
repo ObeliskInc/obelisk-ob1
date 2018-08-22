@@ -449,10 +449,8 @@ static void AssertHashBoardReset(uint8_t uiBoard)
     for (ixI = iStart; ixI <= iEnd; ixI++) {
         if (ERR_NONE == iIsBoardValid(ixI, false)) { // board must be there
             saHashBoardInfo[ixI].iStatus = ERR_NOT_INITIALIZED; // status change from reset
-            HBSetSpiSelects((uint8_t)ixI, false);
+            HBSetSpiSelects((uint8_t)ixI);
             delay_us(50); // brief delay to allow reset to happen
-            //usleep(50);
-            HBSetSpiSelects((uint8_t)ixI, true);
         } // if (ERR_NONE == iIsBoardValid(ixI,false))
     } // for
 

@@ -1521,39 +1521,15 @@ int iDCR1SpiTransfer(S_DCR1_TRANSFER_T* psDCR1Transfer)
 
         // Set board SPI mux and SS for the hashBoard we are going to transfer with.
         HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
-        HBSetSpiSelects(psDCR1Transfer->uiBoard, false);
+        HBSetSpiSelects(psDCR1Transfer->uiBoard);
 
-        // On SAMG55 the callback will deassert the slave select signal(s) at end of transfer.
         // On SAMA5D27 SOM; it must be done in the code because callback is not used.
         if (E_DCR1_MODE_REG_READ == psDCR1Transfer->eMode) {
             // read transfer; this will wait for the data so it returns with the result
             (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaDCR1OutBuf, ucaDCR1InBuf, DCR1_TRANSFER_BYTE_COUNT);
-#if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-            HBSetSpiSelects(psDCR1Transfer->uiBoard, true); // SAMA5D27
             psDCR1Transfer->uiData = uiArrayToUint32(&ucaDCR1InBuf[3], true);
-#endif // #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-
-#if (HW_ATSAMG55_XP_BOARD == HARDWARE_PLATFORM)
-            if (0 != iIsHBSpiBusy(true)) { // wait for xfer to complete
-                iRetVal = ERR_BUSY; // got a timeout?
-                // Note: slave selects will probably be messed up if the transfer timed out. Error handler should
-                // deal with this.
-                SPITimeOutError();
-            } else {
-                // assemble input to 32 bit data; switch to small endian
-                psDCR1Transfer->uiData = uiArrayToUint32(&ucaDCR1InBuf[3], true);
-                // Note: Rev A asics may corrupt the data; on some registers this seems to be shifted left by 1 bit
-                // It should be unshifted by the caller after the endian swap above.
-                //                 DCR1SetSpiSelects(psDCR1Transfer->uiBoard,true);  // should not be needed; done by the callback
-            } // if (0 != iIsHBSpiBusy(true))
-#endif // #if (HW_ATSAMG55_XP_BOARD == HARDWARE_PLATFORM)
         } else { // write transfer; start the transfer but don't wait
             (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaDCR1OutBuf, ucaDCR1InBuf, DCR1_TRANSFER_BYTE_COUNT);
-
-#if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-            HBSetSpiSelects(psDCR1Transfer->uiBoard, true); // SAMA5D27
-#endif // #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-
         } // if (E_DCR1_MODE_REG_READ == psDCR1Transfer->eMode)
 
     } // if (ERR_NONE == iRetVal)

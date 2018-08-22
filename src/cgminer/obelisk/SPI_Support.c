@@ -38,6 +38,7 @@
 #include "gpio_bsp.h"
 #include "Console.h"
 #include "MiscSupport.h"
+#include "miner.h"
 
 /*
     // Initialization/declarations for ATSAMG55
@@ -114,31 +115,32 @@ bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, 
  */
 int iIsHBSpiBusy(bool bWait)
 {
-    #define SC1_WAIT_TIMEOUT  100000    // 100ms for 1us delay primitive below
+//     #define SC1_WAIT_TIMEOUT  100000    // 100ms for 1us delay primitive below
 
-    int  iRetval = 0;
-    uint32_t  uiTimeOut;
+//     int  iRetval = 0;
+//     uint32_t  uiTimeOut;
 
-    // Uses the SPI slave select as indication of active transfer. This works on the test SPI board
-    // since we only have one slave select.  On the real controller/hash boards we will need to check
-    // multiple slave selects or use a semaphore flag to do the same.
-    if (true == bWait) {
-        uiTimeOut = SC1_WAIT_TIMEOUT;   // wait until idle or timeout
-        while (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {
-            delay_us(1);
-            //usleep(1);
-            if (0 == --uiTimeOut) {
-                iRetval = -1;   // timeout
-                break;  // while
-            }
-        }  // while
-    } else {
-        if (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {  // not waiting; just return the status
-            iRetval = 1;    // busy
-        }
-    }  // if (true == bWait)
+//     // Uses the SPI slave select as indication of active transfer. This works on the test SPI board
+//     // since we only have one slave select.  On the real controller/hash boards we will need to check
+//     // multiple slave selects or use a semaphore flag to do the same.
+//     if (true == bWait) {
+//         uiTimeOut = SC1_WAIT_TIMEOUT;   // wait until idle or timeout
+//         while (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {
+//             delay_us(1);
+//             //usleep(1);
+//             if (0 == --uiTimeOut) {
+//                 iRetval = -1;   // timeout
+//                 break;  // while
+//             }
+//         }  // while
+//     } else {
+//         if (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {  // not waiting; just return the status
+//             iRetval = 1;    // busy
+//         }
+//     }  // if (true == bWait)
 
-    return(iRetval);
+//     return(iRetval);
+    return 0;
 }  // iIsHBSpiBusy
 
 /** *************************************************************
@@ -155,6 +157,11 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
     static E_SC1_SPISEL_T eSPIMUXMemory = E_SPI_INVALID;
 
     if (eSPIMUXMemory != eSPIMUX) { // change if needed
+        printf("Changing SPI Mux mode: %d\n", eSPIMUX);
+        gpio_set_pin_level(SPI_SS1, true);
+        gpio_set_pin_level(SPI_SS2, true);
+        gpio_set_pin_level(SPI_SS3, true);
+
         // prevent changes while there are is an active SPI slave selects
         if (0 == iIsHBSpiBusy(false)) {
             switch (eSPIMUX) {
@@ -202,45 +209,48 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
  *  Note: Due to limitations of Atmel START/ASF4, the SS line must be directly controlled instead of using auto-assert.
  *  This is likely to be like the intended hash board controller anyway since there will be multiple slave select lines
  *  to support simultaneous writing to multiple boards.
- *
- * For the ATSAMG55, using master asynchronous type transfers, the callback will deassert the slave select
- * at the completion of the transfer, presumably, by calling this function.
  */
-void HBSetSpiSelects(uint8_t uiBoard, bool bState)
-{
 
+gpio_pin_t spiSelectPins[MAX_NUMBER_OF_HASH_BOARDS] = { SPI_SS1, SPI_SS2, SPI_SS3 };
+
+void HBSetSpiSelects(uint8_t uiBoard)
+{
+    static uint8_t uiLastBoardSelected = 254;
     uint8_t uiUUT;
     int ixI;
-    int iStart, iEnd;
 
-    if ( (0 <= uiBoard) && (MAX_NUMBER_OF_HASH_BOARDS > uiBoard) ) {       // do one or all?
-        iStart = uiBoard; // individual board
-        iEnd   = uiBoard;
+    // If the same board is being selected, then do nothing
+    if (uiLastBoardSelected == uiBoard) {
+        printf("Leaving board %u selected\n", uiBoard);
+        return;
+    }
+
+    if ( (0 <= uiBoard) && (MAX_NUMBER_OF_HASH_BOARDS > uiBoard) ) {
+        if (uiLastBoardSelected == MAX_NUMBER_OF_HASH_BOARDS) {
+            printf("All boards were previously selected, but now just %u is selected\n", uiBoard);
+
+            // TODO: Could optimize this to avoid resetting the board that will remain selected
+            gpio_set_pin_level(SPI_SS1, true);
+            gpio_set_pin_level(SPI_SS2, true);
+            gpio_set_pin_level(SPI_SS3, true);
+        } else {
+            printf("Deselecting board %u\n", uiLastBoardSelected);
+            // Unselect the last board that was selected
+            gpio_set_pin_level(spiSelectPins[uiLastBoardSelected], true);
+        }
+
+        // Select the new board
+        printf("Selecting board %u\n", uiBoard);
+        gpio_set_pin_level(spiSelectPins[uiBoard], false);
     } else {
-        iStart = 0; // all boards
-        iEnd   = LAST_HASH_BOARD;
+        printf("Selecting all boards\n");
+
+        gpio_set_pin_level(SPI_SS1, false);
+        gpio_set_pin_level(SPI_SS2, false);
+        gpio_set_pin_level(SPI_SS3, false);
     }  // if ( (0 <= uiBoard) && (MAX_NUMBER_OF_HASH_BOARDS > uiBoard) )
 
-    for (ixI = iStart; ixI <= iEnd; ixI++) {
-        uiUUT = (uint8_t)ixI;
-        switch(uiUUT) {
-            case 0:
-                gpio_set_pin_level(SPI_SS1, bState);
-                break;
-            case 1: // board 1 cs
-                // < #TODO - SAMG55 doesn't have this >
-                gpio_set_pin_level(SPI_SS2, bState);
-                break;
-            case 2: // board 2 cs
-                // < #TODO - SAMG55 doesn't have this >
-                gpio_set_pin_level(SPI_SS3, bState);
-                break;
-            default:
-                break;
-        } // switch
-
-    }   // for
-
+    uiLastBoardSelected = uiBoard;
 } // HBSetSpiSelects()
 
 /** *************************************************************
@@ -269,35 +279,9 @@ bool bHBGetSpiSelects(uint8_t uiBoard)
 
     for (ixI = iStart; ixI <= iEnd; ixI++) {
         uiUUT = (uint8_t)ixI;
-        switch(uiUUT) {
-            case 0:
-                //if (false == gpio_get_pin_level(SPI5_SS1)) {
-                if (false == gpio_get_pin_level(SPI_SS1)) {
-                    bResult = false;
-                }
-                break;
-            case 1: // board 1 cs
-                // < #TODO - SOLVED - SAMG55 doesn't have this >
-                
-                if (false == gpio_get_pin_level(SPI_SS2)) {
-                    bResult = false;
-                }
-                
-                //bResult = false;
-                break;
-            case 2: // board 2 cs
-                // < #TODO - SOLVED - SAMG55 doesn't have this >
-                
-                if (false == gpio_get_pin_level(SPI_SS3)) {
-                    bResult = false;
-                }
-                
-                //bResult = false;
-                break;
-            default:
-                break;
+        if (false == gpio_get_pin_level(spiSelectPins[uiUUT])) {
+            bResult = false;
         }
-
     }   // for
 
     return(bResult);
@@ -310,6 +294,6 @@ bool bHBGetSpiSelects(uint8_t uiBoard)
 void SPITimeOutError(void)
 {
     // Note: slave selects will probably be messed up if the callback didn't occur.
-    HBSetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS,true);  // < implement a recovery function if this happens >
+    HBSetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS);  // < implement a recovery function if this happens >
 }
 

@@ -594,11 +594,10 @@ static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf)
         ucaSPIOutBuf[3] = (uint8_t)((psXferBuf->uiData >> 8) & 0xFF);
 
         HBSetSpiMux(E_SPI_GPIO);
-        HBSetSpiSelects(psXferBuf->uiBoard, false);
+        HBSetSpiSelects(psXferBuf->uiBoard);
 
         if (PEX_READ_BIT == uiRWnot) {
             (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSPIOutBuf, ucaSPIInBuf, uiCount); // reading 8 bits per word
-            HBSetSpiSelects(psXferBuf->uiBoard, true);
             // wait for the read transfer to complete; then the result should be in input buffer
             if (0 != iIsHBSpiBusy(true)) { // verify SPI is no longer busy
                 iRetval = ERR_BUSY; // got a timeout?
@@ -613,7 +612,6 @@ static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf)
         } else { // write transfer; start the transfer but don't wait
             // If we want to monitor then we can poll the callback flag or wait for SPI busy
             (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSPIOutBuf, ucaSPIInBuf, uiCount);
-            HBSetSpiSelects(psXferBuf->uiBoard, true);
         } // if (PEX_READ_BIT == uiRWnot)
 
     } // if (ERR_NONE == iRetVal)

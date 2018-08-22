@@ -1425,37 +1425,16 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
 
         // Set board SPI mux and SS for the hashBoard we are going to transfer with.
         HBSetSpiMux(E_SPI_ASIC);
-        HBSetSpiSelects(psSC1Transfer->uiBoard, false);
+        HBSetSpiSelects(psSC1Transfer->uiBoard);
 
         // On SAMG55 the callback will deassert the slave select signal(s) at end of transfer.
         // On SAMA5D27 SOM; it must be done in the code because callback is not used.
         if (E_SC1_MODE_REG_READ == psSC1Transfer->eMode) {
             // read transfer; this will wait for the data so it returns with the result
             (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT);
-#if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-            HBSetSpiSelects(psSC1Transfer->uiBoard, true); // SAMA5D27
             psSC1Transfer->uiData = uiArrayToUint64(&ucaSC1InBuf[3], true);
-#endif // #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-
-#if (HW_ATSAMG55_XP_BOARD == HARDWARE_PLATFORM)
-            if (0 != iIsHBSpiBusy(true)) { // wait for xfer to complete
-                iRetVal = ERR_BUSY; // got a timeout?
-                // Note: slave selects will probably be messed up if the callback didn't occur.
-                SPITimeOutError();
-            } else {
-                // assemble input to 64 bit data; switch to small endian
-                psSC1Transfer->uiData = uiArrayToUint64(&ucaSC1InBuf[3], true);
-                // Note: Rev A asics may corrupt the data; on some registers this seems to be shifted left by 1 bit
-                // I'm leaving this to be handled by the caller. It should be unshifted after the endian swap above.
-            } // if (0 != iIsHBSpiBusy(true))
-#endif // #if (HW_ATSAMG55_XP_BOARD == HARDWARE_PLATFORM)
         } else { // write transfer; start the transfer but don't wait
             (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT);
-
-#if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-            HBSetSpiSelects(psSC1Transfer->uiBoard, true); // SAMA5D27
-#endif // #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
-
             // for HW_ATSAMG55_XP_BOARD, if we want to monitor then we poll the callback flag here
         } // if (E_SC1_MODE_REG_READ == psSC1Transfer->eMode)
 

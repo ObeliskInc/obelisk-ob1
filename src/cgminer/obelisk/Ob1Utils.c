@@ -72,7 +72,7 @@ ApiError ob1InitializeControlBoard()
 
 ApiError ob1InitializeHashBoards()
 {
-    HBSetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS, true);
+    HBSetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS);
     int iResult = iHashBoardInit(MAX_NUMBER_OF_HASH_BOARDS);
     if (ERR_NONE != iResult) {
         return GENERIC_ERROR;
