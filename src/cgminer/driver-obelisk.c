@@ -1287,8 +1287,8 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
 
     for (int i = 0; i < ob1GetNumFans(); i++) {
         sprintf(buffer, "fanSpeed%d", i);
-        uint32_t fan_speed = ob1GetFanRPM(i);
-        stats = api_add_int(stats, buffer, &fan_speed, false);
+        ob->fan_speed[i] = ob1GetFanRPM(i);
+        stats = api_add_int(stats, buffer, &ob->fan_speed[i], false);
     }
 
     return stats;

@@ -442,7 +442,7 @@ static void* obFanAndButtonThread(void* arg)
             for (int i=0; i<NUM_FANS; i++) {
                 uint32_t rpm = readFanRPM(i);
                 setFanRPM(i, rpm);
-                // applog(LOG_ERR, "Fan %d RPM = %u", i, rpm);
+                // applog(LOG_ERR, "Fan %d RPM = %u", i, ob1GetFanRPM(i));                
             }
             fanCheckTicks = 0;
         }
