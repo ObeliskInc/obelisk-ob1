@@ -1291,10 +1291,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_t doneStart, doneEnd, doneDuration;
 	cgtimer_t readStart, readEnd, readDuration;
 	cgtimer_t loadStart, loadEnd, loadDuration;
+	cgtimer_t diveStart, diveEnd, diveDuration;
 	int lastTotal = 0;
 	int doneTotal = 0;
 	int readTotal = 0;
 	int loadTotal = 0;
+	int diveTotal = 0;
 
 	// Look for done engines, and read their nonces
 	for (uint8_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
@@ -1403,9 +1405,24 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 			// Start the next job for this engine.
 			error = ob->startNextEngineJob(ob, chipNum, engineNum);
+
+			uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
+			ob->decredEN2[chipNum][engineNum] = extraNonce2;
+			error = ob1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}
+
+		cgtimer_time(&diveStart);
+
+			error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+			if (error != SUCCESS) {
+				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
+			}
+
+		cgtimer_time(&diveEnd);
+		cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
+		diveTotal += cgtimer_to_ms(&diveDuration);
 
 		cgtimer_time(&loadEnd);
 		cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
@@ -1423,7 +1440,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ob->bufferWork = true;
 	}
 
-	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal, diveTotal);
 
 	// See if the pool asked us to start clean on new work
 	if (ob->curr_work && ob->curr_work->pool->swork.clean) {

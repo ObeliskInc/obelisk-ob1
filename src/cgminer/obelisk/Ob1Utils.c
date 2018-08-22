@@ -421,19 +421,6 @@ ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
         return error;
     }
 
-    // Wait for BUSY
-    // int timeout = 100;
-    // do {
-    //     data = 0;
-    //     error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_ESR, &data);
-    //     if (error != SUCCESS) {
-    //         return error;
-    //     }
-    //     if (data & (E_DCR1_ESR_DONE | E_DCR1_ESR_BUSY) != 0) {
-    //         break;
-    //     }
-    //     delay_ms(1);
-    // } while (--timeout > 0);
     return SUCCESS;
 }
 
