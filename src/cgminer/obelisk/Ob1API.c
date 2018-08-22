@@ -468,7 +468,7 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 	uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
 	uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
-	// Do the write
+	// Do the first write.
 	xfer.uiBoard = boardNum;
 	xfer.uiReg = E_DCR1_REG_ECR;
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
@@ -500,13 +500,8 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
-	UNLOCK(&spiLock);
-
-
-	// Do the write
-	xfer.uiData = 0;
-	LOCK(&spiLock);
-
+		// Do the second write.
+		xfer.uiData = 0;
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
 		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
