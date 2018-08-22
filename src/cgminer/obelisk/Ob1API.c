@@ -460,25 +460,22 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 	ApiError error = SUCCESS;
 
 	// Need to set these bits high, then clear them to signal the start
-	uint8_t registerId = E_DCR1_REG_ECR;
-	uint32_t data = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
 	S_DCR1_TRANSFER_T xfer;
+	int bufSize = 8;
+	int xferControlBytes = 3;
+	int xferDataBytes = 4;
+	int xferByteCount = xferControlBytes + xferDataBytes;
+	uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
+	uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
+
+	// Do the write
 	xfer.uiBoard = boardNum;
-	xfer.uiReg = registerId;
+	xfer.uiReg = E_DCR1_REG_ECR;
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
-
-	// Do the write
-	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
+	xfer.uiData = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
 	LOCK(&spiLock);
-
-		int bufSize = 8;
-		int xferControlBytes = 3;
-		int xferDataBytes = 4;
-		int xferByteCount = xferControlBytes + xferDataBytes;
-		uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
-		uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
@@ -505,24 +502,10 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 	UNLOCK(&spiLock);
 
-	data = 0;
-	S_DCR1_TRANSFER_T xfer;
-	xfer.uiBoard = boardNum;
-	xfer.uiReg = registerId;
-	xfer.eMode = E_DCR1_MODE_REG_WRITE;
-	xfer.uiChip = chipNum;
-	xfer.uiCore = engineNum;
 
 	// Do the write
-	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
+	xfer.uiData = 0;
 	LOCK(&spiLock);
-
-		int bufSize = 8;
-		int xferControlBytes = 3;
-		int xferDataBytes = 4;
-		int xferByteCount = xferControlBytes + xferDataBytes;
-		uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
-		uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
@@ -550,25 +533,12 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 	UNLOCK(&spiLock);
 
 	// Unmask bits that define the nonce fifo masks
-	data = 0;
-	registerId = E_DCR1_REG_FCR;
-	S_DCR1_TRANSFER_T xfer;
 	xfer.uiBoard = boardNum;
-	xfer.uiReg = registerId;
+	xfer.uiReg = E_DCR1_REG_FCR;
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
-
-	// Do the write
-	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
 	LOCK(&spiLock);
-
-		int bufSize = 8;
-		int xferControlBytes = 3;
-		int xferDataBytes = 4;
-		int xferByteCount = xferControlBytes + xferDataBytes;
-		uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
-		uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
@@ -595,25 +565,13 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 	UNLOCK(&spiLock);
 
-    data = DCR1_ECR_VALID_DATA;
-	registerId = E_DCR1_REG_ECR;
-	S_DCR1_TRANSFER_T xfer;
+    xfer.uiData = DCR1_ECR_VALID_DATA;
 	xfer.uiBoard = boardNum;
-	xfer.uiReg = registerId;
+	xfer.uiReg = E_DCR1_REG_ECR;
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
-
-	// Do the write
-	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
 	LOCK(&spiLock);
-
-		int bufSize = 8;
-		int xferControlBytes = 3;
-		int xferDataBytes = 4;
-		int xferByteCount = xferControlBytes + xferDataBytes;
-		uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
-		uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
@@ -640,24 +598,12 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 	UNLOCK(&spiLock);
 
-    data = 0;
-	S_DCR1_TRANSFER_T xfer;
+    xfer.uiData = 0;
 	xfer.uiBoard = boardNum;
-	xfer.uiReg = registerId;
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
-
-	// Do the write
-	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
 	LOCK(&spiLock);
-
-		int bufSize = 8;
-		int xferControlBytes = 3;
-		int xferDataBytes = 4;
-		int xferByteCount = xferControlBytes + xferDataBytes;
-		uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
-		uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
