@@ -13,6 +13,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Inlining stuff
+#include "MiscSupport.h" // endian and other stuff
+#include "SPI_Support.h"
+
 extern pthread_mutex_t spiLock;
 // Globals
 HashboardModel gBoardModel;
@@ -445,39 +449,101 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
     return error;
 }
 
+int inlineXfer(S_DCR1_TRANSFER_T* psDCR1Transfer)
+{
+	int bufSize = 8;
+	int xferControlBytes = 3;
+	int xferDataBytes = 4;
+	int xferByteCount = xferControlBytes + xferDataBytes;
+	uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
+	uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
+
+	// Set up the mode-address in bytes [2:0]; big-endian order
+	ucaDCR1OutBuf[0] = (uint8_t)((psDCR1Transfer->eMode << 6) & 0xC0); // 2-bit mode
+	ucaDCR1OutBuf[0] |= (uint8_t)((psDCR1Transfer->uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
+	ucaDCR1OutBuf[1] = (uint8_t)((psDCR1Transfer->uiChip << 7) & 0x80); // lsb of 7-bit chip addr
+	ucaDCR1OutBuf[1] |= (uint8_t)((psDCR1Transfer->uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
+	ucaDCR1OutBuf[2] = (uint8_t)(psDCR1Transfer->uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
+	ucaDCR1OutBuf[2] |= (uint8_t)((psDCR1Transfer->uiCore << 7) & 0x80); // lsb of 8-bit core addr
+
+	// Data is 32 bits written msb first; so we need to switch endianism
+	if (0 != psDCR1Transfer->uiData) {
+		Uint32ToArray(psDCR1Transfer->uiData, &ucaDCR1OutBuf[xferControlBytes], true); // convert to array with endian swap to network order
+	} else { // slight optimization for 0 on write or for reads
+		for (uint8_t ixI = 0; ixI < xferDataBytes; ixI++) { // data is zero so just clear it out
+			ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
+		}
+	}
+
+	// Set board SPI mux and SS for the hashBoard we are going to transfer with.
+	HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
+	HBSetSpiSelects(psDCR1Transfer->uiBoard, false);
+	(void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
+	HBSetSpiSelects(psDCR1Transfer->uiBoard, true); // SAMA5D27
+
+    return SUCCESS;
+}
+
+ApiError ob1InlineWrite(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData)
+{
+	int i = boardNum;
+
+	S_DCR1_TRANSFER_T xfer;
+	xfer.uiBoard = i;
+	xfer.uiReg = registerId;
+	xfer.eMode = E_DCR1_MODE_REG_WRITE;
+	xfer.uiChip = chipNum;
+	xfer.uiCore = engineNum;
+
+	// Do the write
+	memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
+	LOCK(&spiLock);
+	int result = inlineXfer(&xfer);
+	UNLOCK(&spiLock);
+	if (result != ERR_NONE) {
+		return GENERIC_ERROR;
+	}
+
+    return SUCCESS;
+}
+
 // Start the job and wait for the engine(s) to indicate busy.
 ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 {
+	// Support for all chips is not available.
+	if (chipNum == ALL_CHIPS || engineNum == ALL_ENGINES) {
+		return GENERIC_ERROR;
+	}
 	ApiError error = SUCCESS;
 
 	// Need to set these bits high, then clear them to signal the start
 	uint32_t data = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
-	error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+	error = ob1InlineWrite(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
 	if (error != SUCCESS) {
 		return error;
 	}
 
 	data = 0;
-	error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+	error = ob1InlineWrite(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
 	if (error != SUCCESS) {
 		return error;
 	}
 
 	// Unmask bits that define the nonce fifo masks
 	data = 0;
-	error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
+	error = ob1InlineWrite(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
 	if (error != SUCCESS) {
 		return error;
 	}
 
     data = DCR1_ECR_VALID_DATA;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    error = ob1InlineWrite(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
     if (error != SUCCESS) {
         return error;
     }
 
     data = 0;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    error = ob1InlineWrite(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
     if (error != SUCCESS) {
         return error;
     }

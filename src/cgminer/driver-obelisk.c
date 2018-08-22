@@ -1363,7 +1363,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastCheck;
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
-		applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
+		// applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
 
 		cgtimer_time(&doneEnd);
 		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
@@ -1402,9 +1402,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			}
 
 		cgtimer_time(&loadStart);
-
-			// Start the next job for this engine.
-			error = ob->startNextEngineJob(ob, chipNum, engineNum);
 
 			uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
 			ob->decredEN2[chipNum][engineNum] = extraNonce2;
