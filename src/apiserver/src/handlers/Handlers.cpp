@@ -525,8 +525,8 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     // Handle the systemInfo array
     int i = 0;
 
-    systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
-    systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
+    systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()) + "MB");
+    systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()) + "MB");
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
     systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
     systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
