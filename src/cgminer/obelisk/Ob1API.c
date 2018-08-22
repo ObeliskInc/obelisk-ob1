@@ -511,16 +511,11 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
-	UNLOCK(&spiLock);
 
-	// Unmask bits that define the nonce fifo masks
-	xfer.uiBoard = boardNum;
-	xfer.uiReg = E_DCR1_REG_FCR;
-	xfer.eMode = E_DCR1_MODE_REG_WRITE;
-	xfer.uiChip = chipNum;
-	xfer.uiCore = engineNum;
-	LOCK(&spiLock);
-
+		// Third write.
+		//
+		// Unmask bits that define the nonce fifo masks
+		xfer.uiReg = E_DCR1_REG_FCR;
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
 		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
@@ -544,16 +539,9 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
-	UNLOCK(&spiLock);
-
-    xfer.uiData = DCR1_ECR_VALID_DATA;
-	xfer.uiBoard = boardNum;
-	xfer.uiReg = E_DCR1_REG_ECR;
-	xfer.eMode = E_DCR1_MODE_REG_WRITE;
-	xfer.uiChip = chipNum;
-	xfer.uiCore = engineNum;
-	LOCK(&spiLock);
-
+		// Fourth write.
+		xfer.uiData = DCR1_ECR_VALID_DATA;
+		xfer.uiReg = E_DCR1_REG_ECR;
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
 		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
@@ -577,15 +565,8 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
-	UNLOCK(&spiLock);
-
-    xfer.uiData = 0;
-	xfer.uiBoard = boardNum;
-	xfer.eMode = E_DCR1_MODE_REG_WRITE;
-	xfer.uiChip = chipNum;
-	xfer.uiCore = engineNum;
-	LOCK(&spiLock);
-
+		// Fifth write.
+		xfer.uiData = 0;
 		// Set up the mode-address in bytes [2:0]; big-endian order
 		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
 		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
@@ -608,7 +589,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
-
 	UNLOCK(&spiLock);
 
     return SUCCESS;
