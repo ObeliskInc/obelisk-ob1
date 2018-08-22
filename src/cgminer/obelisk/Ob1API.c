@@ -502,7 +502,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 		// Do the second write.
 		xfer.uiData = 0;
-		// Set up the mode-address in bytes [2:0]; big-endian order
 		for (uint8_t ixI = 0; ixI < xferDataBytes; ixI++) { // data is zero so just clear it out
 			ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
 		}
@@ -516,13 +515,7 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		//
 		// Unmask bits that define the nonce fifo masks
 		xfer.uiReg = E_DCR1_REG_FCR;
-		// Set up the mode-address in bytes [2:0]; big-endian order
-		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
-		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
-		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
-		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
 		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
-		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
 
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
@@ -542,13 +535,7 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		// Fourth write.
 		xfer.uiData = DCR1_ECR_VALID_DATA;
 		xfer.uiReg = E_DCR1_REG_ECR;
-		// Set up the mode-address in bytes [2:0]; big-endian order
-		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
-		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
-		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
-		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
 		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
-		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
 
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
@@ -567,14 +554,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 		// Fifth write.
 		xfer.uiData = 0;
-		// Set up the mode-address in bytes [2:0]; big-endian order
-		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
-		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
-		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
-		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
-		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
-		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
-
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
 			Uint32ToArray(xfer.uiData, &ucaDCR1OutBuf[xferControlBytes], true); // convert to array with endian swap to network order
