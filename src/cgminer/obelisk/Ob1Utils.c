@@ -815,7 +815,7 @@ void resetNetworking() {
                     "iface lo inet loopback\n"
                     "iface eth0 inet dhcp\n";
 
-    snprintf(cmdBuf, CMD_BUF_LEN, "echo $'%s' > /etc/network/interfaces", netConf);
+    snprintf(cmdBuf, CMD_BUF_LEN, "echo $'%s' > /root/config/interfaces", netConf);
     runCmd(cmdBuf, NULL, 0);
 }
 
