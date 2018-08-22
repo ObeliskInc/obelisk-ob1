@@ -498,7 +498,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
 		// Do the second write.
 		xfer.uiData = 0;
@@ -520,8 +519,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
-		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
