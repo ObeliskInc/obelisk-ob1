@@ -406,69 +406,6 @@ static void* ob_control_thread(void* arg)
     return NULL;
 }
 
-#define QDX(i) (i % MAX_PENDING_NONCES)
-
-ApiError push_pending_nonce(ob_chain* ob, int chip_num, int engine_num, Nonce nonce, bool nonce_limit_reached)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    mutex_lock(&ob->lock);
-    // Ensure not full
-    if (fifo->head != QDX(fifo->tail + 1)) {
-        // Add to the queue
-        fifo->nonces[fifo->head].nonce = nonce;
-        fifo->nonces[fifo->head].chip_num = chip_num;
-        fifo->nonces[fifo->head].engine_num = engine_num;
-        fifo->nonces[fifo->head].nonce_limit_reached = nonce_limit_reached;
-
-        fifo->tail = QDX(fifo->tail + 1);
-
-        pthread_cond_signal(&ob->nonce_cond);
-
-        mutex_unlock(&ob->lock);
-        return SUCCESS;
-    } else {
-        // Full!  Just log the fact that we dropped a nonce, but keep running.
-        applog(LOG_ERR, "Can't push!  pending_nonces queue is full!");
-        mutex_unlock(&ob->lock);
-        return GENERIC_ERROR;
-    }
-}
-
-ApiError pop_pending_nonce(ob_chain* ob, nonce_info* info)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    mutex_lock(&ob->lock);
-    // If not empty
-    if (fifo->head != fifo->tail) {
-        memcpy(info, &fifo->nonces[fifo->head], sizeof(nonce_info));
-        fifo->head = QDX(fifo->head + 1);
-        mutex_unlock(&ob->lock);
-        return SUCCESS;
-    } else {
-        // Queue is empty
-        applog(LOG_ERR, "Can't pop!  pending_nonces queue is empty!");
-        mutex_unlock(&ob->lock);
-        return GENERIC_ERROR;
-    }
-}
-
-int num_pending_nonces(ob_chain* ob)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    int num;
-    mutex_lock(&ob->lock);
-    num = fifo->head > fifo->tail ? (MAX_PENDING_NONCES - fifo->head + fifo->tail + 1) : (fifo->tail - fifo->head + 1);
-    mutex_unlock(&ob->lock);
-    return num;
-}
-
-// void mark_engine_ready(ob_chain* ob, int chip_num, int engine_num)
-// {
-//     mutex_lock(&ob->lock);
-//     ob->chips[chip_num].ready_engines[engine_num] = 1;
-//     mutex_unlock(&ob->lock);
-// }
-
 #if (MODEL == SC1)
 void set_engine_busy(ob_chain* ob, int chip_num, int engine_num, bool isBusy)
 {
