@@ -103,7 +103,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             {h.accepted}/{h.rejected}
           </Table.Cell>
         )),
-      'BOARD TEMP': (s: HashboardStatus[]) =>
+      'BOARD TEMP.': (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
           <Table.Cell key={i} textAlign="center">
             {h.boardTemp} C
