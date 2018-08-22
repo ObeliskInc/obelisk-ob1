@@ -92,11 +92,12 @@ static volatile bool bSPI5_CBOccurred = false;    // SPI transfer callback occur
  *  and write buffers should be separate and sizes should be the same. For reading, the write buffer's non-address fields should
  *  be 0's or 1's to minimize system noise.
  */
-bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, uint8_t *const pucaRxBuf, const uint16_t uiLength)
+bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, uint8_t *const pucaRxBuf, const uint16_t uiLength, clock_t* transfer_time)
 {
     bool bError = false;
         
-    transfer(fileSPI, pucaTxBuf, pucaRxBuf, uiLength);
+    
+    transfer(fileSPI, pucaTxBuf, pucaRxBuf, uiLength, transfer_time);
     
     // Only sleep for reads
     if (eSPIXferType == E_SPI_XFER_READ) {

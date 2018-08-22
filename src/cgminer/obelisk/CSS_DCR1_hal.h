@@ -63,12 +63,12 @@ typedef struct {
 
 extern int iDCR1StringStartup(uint8_t uiBoard);
 extern int iDCR1DeviceInit(uint8_t uiBoard);
-extern int iDCR1SpiTransfer(S_DCR1_TRANSFER_T* psDCR1Transfer);
-extern int iDCR1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip);
+extern int iDCR1SpiTransfer(S_DCR1_TRANSFER_T* psDCR1Transfer, clock_t* transfer_time);
+extern int iDCR1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip, clock_t* transfer_time);
 extern int iDCR1StartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip);
 extern int iDCR1TestJobs(void);
 
-extern int iSetDCR1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias);
+extern int iSetDCR1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias, clock_t* transfer_time);
 extern int iDCR1TestJobs(void);
 extern int iDCR1TestReg(uint8_t uiHashBoard, uint8_t uiChip);
 extern int iDCR1EMCTestJob(int iBeginState);

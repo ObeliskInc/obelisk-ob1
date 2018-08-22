@@ -22,6 +22,7 @@
 //#include <compiler.h>
 //#include <utils.h>
 #include "CSS_SC1Defines.h"
+#include <time.h>
 
 /***  ASSOCIATED STRUCTURES/ENUMS      ***/
 #define EMC_TEST_STATE_RUN 0
@@ -60,13 +61,13 @@ typedef struct {
 /***   GLOBAL FUNCTION PROTOTYPES   ***/
 extern int iSC1StringStartup(uint8_t uiBoard);
 extern int iSC1DeviceInit(uint8_t uiBoard);
-extern int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer);
-extern int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip);
-extern int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip);
+extern int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer, clock_t* transfer_time);
+extern int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip, clock_t* transfer_time);
+extern int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip, clock_t* transfer_time);
 
 // extern void SC1OCRBias(void);        // test function disabled
-int iSetSC1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias);
-extern int iSC1TestJobs(void);
+int iSetSC1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias, clock_t* transfer_time);
+extern int iSC1TestJobs(clock_t* transfer_time);
 extern void SC1CmdTestRegRW2Read(void);
 extern int iSC1TestReg(uint8_t uiHashBoard, uint8_t uiChip);
 extern int iSC1EMCTestJob(int iBeginState);

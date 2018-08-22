@@ -89,7 +89,96 @@ ApiError ob1InitializeHashBoards()
 
 // Write the specified data
 // Supports writing to ALL_BOARDS, ALL_CHIPS and ALL_ENGINES.
-ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData)
+ApiError ob1SpiWriteRegNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time)
+{
+    int firstBoard;
+    int lastBoard;
+    if (boardNum == ALL_BOARDS) {
+        firstBoard = 0;
+        lastBoard = MAX_NUMBER_OF_HASH_BOARDS - 1;
+    } else {
+        firstBoard = boardNum;
+        lastBoard = boardNum;
+    }
+
+    for (int i = firstBoard; i <= lastBoard; i++) {
+        switch (gBoardModel) {
+        case MODEL_SC1: {
+            S_SC1_TRANSFER_T xfer;
+            xfer.uiBoard = i;
+            xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+
+            // Set address/mode
+            if (chipNum == ALL_CHIPS) {
+                xfer.uiChip = 0; // Don't care - set to zero
+                if (engineNum == ALL_ENGINES) {
+                    xfer.eMode = E_SC1_MODE_MULTICAST;
+                    xfer.uiCore = 0; // Don't care - set to zero
+                } else {
+                    // Not possible to write to a specific engine on all chips in one write
+                    return GENERIC_ERROR;
+                }
+            } else if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_SC1_MODE_CHIP_WRITE;
+                xfer.uiChip = chipNum;
+                xfer.uiCore = 0; // Don't care - set to zero
+            } else {
+                // Single chip, single engine
+                xfer.eMode = E_SC1_MODE_REG_WRITE;
+                xfer.uiChip = chipNum;
+                xfer.uiCore = engineNum;
+            }
+
+            // Do the write
+            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
+            int result = iSC1SpiTransfer(&xfer, transfer_time);
+            if (result != ERR_NONE) {
+                return GENERIC_ERROR;
+            }
+            break;
+        }
+
+        case MODEL_DCR1: {
+            S_DCR1_TRANSFER_T xfer;
+            xfer.uiBoard = i;
+            xfer.uiReg = registerId;
+
+            // Set address/mode
+            if (chipNum == ALL_CHIPS) {
+                xfer.uiChip = 0; // Don't care - set to zero
+                if (engineNum == ALL_ENGINES) {
+                    xfer.eMode = E_DCR1_MODE_MULTICAST;
+                    xfer.uiCore = 0; // Don't care - set to zero
+                } else {
+                    // Not possible to write to a specific engine on all chips in one write
+                    return GENERIC_ERROR;
+                }
+            } else if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
+                xfer.uiChip = chipNum;
+                xfer.uiCore = 0; // Don't care - set to zero
+            } else {
+                // Single chip, single engine
+                xfer.eMode = E_DCR1_MODE_REG_WRITE;
+                xfer.uiChip = chipNum;
+                xfer.uiCore = engineNum;
+            }
+
+            // Do the write
+            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
+            int result = iDCR1SpiTransfer(&xfer, transfer_time);
+            if (result != ERR_NONE) {
+                return GENERIC_ERROR;
+            }
+            break;
+        }
+        }
+    }
+
+    return SUCCESS;
+}
+
+ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time)
 {
     int firstBoard;
     int lastBoard;
@@ -132,7 +221,7 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
             // Do the write
             memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
             LOCK(&spiLock);
-            int result = iSC1SpiTransfer(&xfer);
+            int result = iSC1SpiTransfer(&xfer, transfer_time);
             UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
@@ -169,7 +258,7 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
             // Do the write
             memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
             LOCK(&spiLock);
-            int result = iDCR1SpiTransfer(&xfer);
+            int result = iDCR1SpiTransfer(&xfer, transfer_time);
             UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
@@ -184,7 +273,53 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
 
 // Decred: It will copy 32 bits of data into the pData
 // Sia: It will copy 64 bits of data into the pData
-ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData)
+ApiError ob1SpiReadRegNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time)
+{
+    // Can only read from a specific board on a specific chip on a specific engine
+    if (boardNum == ALL_BOARDS || chipNum == ALL_CHIPS || engineNum == ALL_ENGINES) {
+        return GENERIC_ERROR;
+    }
+
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        S_SC1_TRANSFER_T xfer;
+        xfer.eMode = E_DCR1_MODE_REG_READ;
+        xfer.uiBoard = boardNum;
+        xfer.uiChip = chipNum;
+        xfer.uiCore = engineNum;
+        xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+
+        int result = iSC1SpiTransfer(&xfer, transfer_time);
+        if (result != ERR_NONE) {
+            return GENERIC_ERROR;
+        }
+        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        break;
+    }
+
+    case MODEL_DCR1: {
+        S_DCR1_TRANSFER_T xfer;
+        xfer.eMode = E_DCR1_MODE_REG_READ;
+        xfer.uiBoard = boardNum;
+        xfer.uiChip = chipNum;
+        xfer.uiCore = engineNum;
+        xfer.uiReg = registerId;
+
+        int result = iDCR1SpiTransfer(&xfer, transfer_time);
+        if (result != ERR_NONE) {
+            return GENERIC_ERROR;
+        }
+        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        break;
+    }
+    }
+
+    return SUCCESS;
+}
+
+// Decred: It will copy 32 bits of data into the pData
+// Sia: It will copy 64 bits of data into the pData
+ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time)
 {
     // Can only read from a specific board on a specific chip on a specific engine
     if (boardNum == ALL_BOARDS || chipNum == ALL_CHIPS || engineNum == ALL_ENGINES) {
@@ -201,7 +336,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
 
         LOCK(&spiLock);
-        int result = iSC1SpiTransfer(&xfer);
+        int result = iSC1SpiTransfer(&xfer, transfer_time);
         UNLOCK(&spiLock);
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
@@ -219,7 +354,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         xfer.uiReg = registerId;
 
         LOCK(&spiLock);
-        int result = iDCR1SpiTransfer(&xfer);
+        int result = iDCR1SpiTransfer(&xfer, transfer_time);
         UNLOCK(&spiLock);
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
@@ -233,13 +368,13 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
 }
 
 // Read one of the "chip-level" registers instead of the engine-level registers
-ApiError ob1SpiReadChipReg(uint8_t boardNum, uint8_t chipNum, uint8_t registerId, void* pData)
+ApiError ob1SpiReadChipReg(uint8_t boardNum, uint8_t chipNum, uint8_t registerId, void* pData, clock_t* transfer_time)
 {
     switch (gBoardModel) {
     case MODEL_SC1:
-        return ob1SpiReadReg(boardNum, chipNum, E_SC1_CHIP_REGS, registerId, pData);
+        return ob1SpiReadReg(boardNum, chipNum, E_SC1_CHIP_REGS, registerId, pData, transfer_time);
     case MODEL_DCR1:
-        return ob1SpiReadReg(boardNum, chipNum, E_DCR1_CHIP_REGS, registerId, pData);
+        return ob1SpiReadReg(boardNum, chipNum, E_DCR1_CHIP_REGS, registerId, pData, transfer_time);
     }
     return GENERIC_ERROR;
 }
@@ -372,16 +507,16 @@ uint64_t getDCR1BiasBits(int8_t bias)
     return bits;
 }
 
-ApiError pulseSC1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+ApiError pulseSC1DataValidNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
 {
     uint64_t data = E_SC1_ECR_VALID_DATA;
-    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+    ApiError error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
 
     data = 0;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+    error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
@@ -407,16 +542,51 @@ ApiError pulseSC1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
     return SUCCESS;
 }
 
-ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+ApiError pulseSC1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
 {
-    uint64_t data = DCR1_ECR_VALID_DATA;
-    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    uint64_t data = E_SC1_ECR_VALID_DATA;
+    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
 
     data = 0;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    // // Wait for BUSY
+    // int timeout = 100;
+    // do {
+    //     data = 0;
+    //     // applog(LOG_ERR, "timeout=%d", timeout);
+    //     delay_ms(1);
+    //     error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_ESR, &data);
+    //     if (error != SUCCESS) {
+    //         return error;
+    //     }
+    //     if (data & (E_SC1_ESR_DONE | E_SC1_ESR_BUSY) != 0) {
+    //         applog(LOG_ERR, "chip=%u engine=%u  data=0x%016llX", chipNum, engineNum, data);
+    //         //if (chipNum == 0) {
+    //         //}
+    //         break;
+    //     }
+    // } while (--timeout > 0);
+
+    return SUCCESS;
+}
+
+ApiError pulseDCR1DataValidNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
+{
+    uint64_t data = DCR1_ECR_VALID_DATA;
+    ApiError error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    data = 0;
+    error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
@@ -437,16 +607,46 @@ ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
     return SUCCESS;
 }
 
-ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
 {
-    uint64_t data = E_SC1_ECR_READ_COMPLETE;
-    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+    uint64_t data = DCR1_ECR_VALID_DATA;
+    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
 
     data = 0;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    // Wait for BUSY
+    // int timeout = 100;
+    // do {
+    //     data = 0;
+    //     error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_ESR, &data);
+    //     if (error != SUCCESS) {
+    //         return error;
+    //     }
+    //     if (data & (E_DCR1_ESR_DONE | E_DCR1_ESR_BUSY) != 0) {
+    //         break;
+    //     }
+    //     delay_ms(1);
+    // } while (--timeout > 0);
+    return SUCCESS;
+}
+
+ApiError pulseSC1ReadCompleteNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
+{
+    uint64_t data = E_SC1_ECR_READ_COMPLETE;
+    ApiError error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    data = 0;
+    error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
@@ -454,16 +654,50 @@ ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineN
     return SUCCESS;
 }
 
-ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
 {
-    uint64_t data = DCR1_ECR_READ_COMPLETE;
-    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    uint64_t data = E_SC1_ECR_READ_COMPLETE;
+    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }
 
     data = 0;
-    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    return SUCCESS;
+}
+
+ApiError pulseDCR1ReadCompleteNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
+{
+    uint64_t data = DCR1_ECR_READ_COMPLETE;
+    ApiError error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    data = 0;
+    error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    return SUCCESS;
+}
+
+ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
+{
+    uint64_t data = DCR1_ECR_READ_COMPLETE;
+    ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
+    if (error != SUCCESS) {
+        return error;
+    }
+
+    data = 0;
+    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data, transfer_time);
     if (error != SUCCESS) {
         return error;
     }

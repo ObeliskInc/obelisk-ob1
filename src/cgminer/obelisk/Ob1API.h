@@ -1,15 +1,16 @@
 // Obelisk ASIC API
 #include "Ob1Defines.h"
+#include <time.h>
 
 //==================================================================================================
 // Chip-level API
 //==================================================================================================
 
 // Program a job the specified engine(s).
-ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob);
+ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob, clock_t* transfer_time);
 
 // Set the upper and lower bounds for the specified engine(s).
-ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound);
+ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound, clock_t* transfer_time);
 
 // Set the upper and lower bounds of each engine in each chip in the chain,
 // splitting up the provided nonce range based on the given step_size.  Each
@@ -19,19 +20,19 @@ ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, 
 //
 // This loops over the range using setEngineNonceRange().  Can specify one or
 // all boards, and one or all chips.
-ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce);
+ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce, clock_t* transfer_time);
 
 // Read all the nonces for a given engine (up to 8)
-ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet);
+ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet, clock_t* transfer_time);
 
 // Get the bits corresponding to each engine's DONE status
-ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);
+ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData, clock_t* transfer_time);
 
 // Get the bits corresponding to each engine's BUSY status
-ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);
+ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData, clock_t* transfer_time);
 
 // Start the job and wait for the engine(s) to indicate busy.
-ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
+ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time);
 
 // Stop the specified engine(s) from running (turns off the clock).
 ApiError ob1StopChip(uint8_t boardNum, uint8_t chipNum);
@@ -51,21 +52,21 @@ ApiError ob1RegisterJobCompleteHandler(JobCompleteHandler handler);
 // Set the frequency bias for the specified engines.
 //
 // The bias must be a value between -5 and +5
-ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias);
+ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias, clock_t* transfer_time);
 
 // Set the clock divider for the specified engine(s).
 //
 // The divider must be a value of 1, 2, 4 or 8.
-ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider);
+ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider, clock_t* transfer_time);
 
 // Set the clock divider for the specified engine(s).
 //
 // The divider must be a value of 1, 2, 4 or 8.
-ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t divider, int8_t bias);
+ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t divider, int8_t bias, clock_t* transfer_time);
 
-void ob1EnableMasterHashClock(uint8_t boardNum, bool isEnabled);
+void ob1EnableMasterHashClock(uint8_t boardNum, bool isEnabled, clock_t* transfer_time);
 
-bool ob1IsMasterHashClockEnabled(uint8_t boardNum);
+bool ob1IsMasterHashClockEnabled(uint8_t boardNum, clock_t* transfer_time);
 
 //==================================================================================================
 // Miner/Board-level API
@@ -90,11 +91,11 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage);
 
 // Read the Done status of the ASICs for one of the boards.  Returned value reflects
 // which ASICs on the board are signaling they are done (corresponding bit is 1)
-ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue);
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue, clock_t* transfer_time);
 
 // Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
 // which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
-ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue);
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue, clock_t* transfer_time);
 
 //==================================================================================================
 // Controller-level API

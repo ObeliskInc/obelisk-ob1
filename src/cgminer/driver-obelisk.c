@@ -283,12 +283,12 @@ static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 
 // commitBoardBias will take all of the current chip biases and commit them to the
 // string.
-static void commitBoardBias(ob_chain* ob)
+static void commitBoardBias(ob_chain* ob, clock_t* transfer_time)
 {
     ControlLoopState *state = &ob->control_loop_state;
     hashBoardModel *model = &ob->staticBoardModel;
     for (int i = 0; i < model->chipsPerBoard; i++) {
-        ob1SetClockDividerAndBias(state->boardNumber, i, state->chipDividers[i], state->chipBiases[i]);
+        ob1SetClockDividerAndBias(state->boardNumber, i, state->chipDividers[i], state->chipBiases[i], transfer_time);
     }
     state->prevBiasChangeTime = state->currentTime;
     state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
@@ -298,17 +298,17 @@ static void commitBoardBias(ob_chain* ob)
 }
 
 // decrease the clock bias of every chip on the string.
-static void decreaseStringBias(ob_chain* ob)
+static void decreaseStringBias(ob_chain* ob, clock_t* transfer_time)
 {
     int i = 0;
     for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
     }
-    commitBoardBias(ob);
+    commitBoardBias(ob, transfer_time);
 }
 
 // increase the clock bias of every chip on the string.
-static void increaseStringBias(ob_chain* ob)
+static void increaseStringBias(ob_chain* ob, clock_t* transfer_time)
 {
     for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         if (biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]) >= ob->control_loop_state.curChild.maxBiasLevel) {
@@ -318,7 +318,7 @@ static void increaseStringBias(ob_chain* ob)
     for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
         increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
     }
-    commitBoardBias(ob);
+    commitBoardBias(ob, transfer_time);
 }
 
 static void setVoltageLevel(ob_chain* ob, uint8_t level)
@@ -600,7 +600,7 @@ ApiError bufferGlobalChipJob(ob_chain* ob) {
 
 	// Prepare a job and load it onto the chip.
 	Job job = ob->prepareNextChipJob(ob);
-	ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
+	ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job, &ob->transfer_time);
 	if (error != SUCCESS) {
 		return error;
 	}
@@ -662,7 +662,7 @@ Job dcrPrepareNextChipJob(ob_chain* ob) {
 
 // siaSetChipNonceRange will set the nonce range of every engine on the chip to
 // a different value, offset by the nonce range of the board model.
-ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
+ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries, clock_t* transfer_time) {
 	// Set every engine.
 	for (int engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
 		Nonce nonceStart = (chipNum * ob->staticBoardModel.enginesPerChip * ob->staticBoardModel.nonceRange) + (engineNum * ob->staticBoardModel.nonceRange);
@@ -673,15 +673,15 @@ ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 		for (uint8_t i = 0; i < tries; i++) {
 			// Check that the nonce range was set correctly.
 			uint64_t lowerBound, upperBound;
-			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound);
-			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound, &ob->transfer_time);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound, &ob->transfer_time);
 			if (lowerBound == nonceStart && upperBound == nonceEnd) {
 				// Bounds set correctly, move on.
 				break;
 			}
 
 			// Attempt setting the nonce range.
-			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd);
+			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd, transfer_time);
 			if (error != SUCCESS) {
 				continue;
 			}
@@ -691,7 +691,7 @@ ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 
 // dcrSetChipNonceRange will set the nonce range of every engine on the chip to
 // span the full possible nonce range, which is only 2^32 for the DCR1.
-ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
+ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries, clock_t* transfer_time) {
 	// Set the baseline nonces.
 	Nonce nonceStart = 0x00000000;
 	Nonce nonceEnd   = 0xffffffff;
@@ -703,15 +703,15 @@ ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 		for (uint8_t i = 0; i < tries; i++) {
 			// Check that the nonce range was set correctly.
 			uint64_t lowerBound, upperBound;
-			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound);
-			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_LB, &lowerBound, &ob->transfer_time);
+			ob1SpiReadReg(ob->staticBoardNumber, chipNum, engineNum, E_SC1_REG_UB, &upperBound, &ob->transfer_time);
 			if (lowerBound == nonceStart && upperBound == nonceEnd) {
 				// Bounds set correctly, move on.
 				break;
 			}
 
 			// Attempt setting the nonce range.
-			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd);
+			ApiError error = ob1SetNonceRange(ob->chain_id, chipNum, engineNum, nonceStart, nonceEnd, transfer_time);
 			if (error != SUCCESS) {
 				continue;
 			}
@@ -719,8 +719,25 @@ ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 	}
 }
 
+ApiError siaStartNextEngineJobNoLock(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+	return ob1StartJobNoLock(ob->staticBoardNumber, chipNum, engineNum, &ob->transfer_time);
+}
+
 ApiError siaStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
-	return ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+	return ob1StartJob(ob->staticBoardNumber, chipNum, engineNum, &ob->transfer_time);
+}
+
+// For Decred, we need to set the M5 register and save it somewhere that it can
+// be recovered during validNonce.
+ApiError dcrStartNextEngineJobNoLock(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+	uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
+	ob->decredEN2[chipNum][engineNum] = extraNonce2;
+	ApiError error = ob1SpiWriteRegNoLock(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2, &ob->transfer_time);
+	if (error != SUCCESS) {
+		return error;
+	}
+	error = ob1StartJobNoLock(ob->staticBoardNumber, chipNum, engineNum);
+	return error;
 }
 
 // For Decred, we need to set the M5 register and save it somewhere that it can
@@ -728,15 +745,15 @@ ApiError siaStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNu
 ApiError dcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
 	uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
 	ob->decredEN2[chipNum][engineNum] = extraNonce2;
-	ApiError error = ob1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
+	ApiError error = ob1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2, &ob->transfer_time);
 	if (error != SUCCESS) {
 		return error;
 	}
-	error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+	error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum, &ob->transfer_time);
 	return error;
 }
 
-static void obelisk_detect(bool hotplug)
+static void obelisk_detect(bool hotplug, clock_t* transfer_time)
 {
     pthread_t pth;
 
@@ -885,11 +902,11 @@ static void obelisk_detect(bool hotplug)
 			ob->control_loop_state.populationSize = 0;
 		}
 		setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
-		commitBoardBias(ob);
+		commitBoardBias(ob, transfer_time);
 
 		// Set the nonce ranges for this chip.
 		for (uint16_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			ob->setChipNonceRange(ob, chipNum, 3);
+			ob->setChipNonceRange(ob, chipNum, 3, transfer_time);
 		}
 		ob->bufferWork = true;
 
@@ -1121,34 +1138,34 @@ static double getTargetTemp(ob_chain* ob)
 // handleOvertemps will clock down the string if the string is overheating.
 //
 // TODO: Add the deviation growth bits for unstable strings.
-static void handleOvertemps(ob_chain* ob, double targetTemp)
+static void handleOvertemps(ob_chain* ob, double targetTemp, clock_t* transfer_time)
 {
     time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevOvertempCheck;
     double currentTemp = ob->control_loop_state.currentStringTemp;
     if (timeElapsed > OvertempCheckFrequency) {
         // Reduce the string bias if we are overtemp.
         if (currentTemp > targetTemp + TempDeviationAcceptable) {
-            decreaseStringBias(ob);
+            decreaseStringBias(ob, transfer_time);
         }
         // Rapidly reduce the string bias again if we are at an urgent
         // temperature.
         if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
-            decreaseStringBias(ob);
-            decreaseStringBias(ob);
+            decreaseStringBias(ob, transfer_time);
+            decreaseStringBias(ob, transfer_time);
         }
         ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
     }
 }
 
 // handleUndertemps will clock up the string if the string is too cold.
-static void handleUndertemps(ob_chain* ob, double targetTemp)
+static void handleUndertemps(ob_chain* ob, double targetTemp, clock_t* transfer_time)
 {
     time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevUndertempCheck;
     double currentTemp = ob->control_loop_state.currentStringTemp;
     double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
     if (timeElapsed > UndertempCheckFrequency) {
         if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
-            increaseStringBias(ob);
+            increaseStringBias(ob, transfer_time);
         }
         ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
         ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
@@ -1209,7 +1226,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// Commit the new settings and mark that an adjustment has taken place.
 	setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
-	commitBoardBias(ob);
+	commitBoardBias(ob, &ob->transfer_time);
 	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 		ob->chipBadNonces[i] = 0;
 		ob->chipGoodNonces[i] = 0;
@@ -1234,8 +1251,8 @@ static void control_loop(ob_chain* ob)
 
     // Determine the target temperature for the temperature chip.
     double targetTemp = getTargetTemp(ob);
-    handleOvertemps(ob, targetTemp);
-    handleUndertemps(ob, targetTemp);
+    handleOvertemps(ob, targetTemp, &ob->transfer_time);
+    handleUndertemps(ob, targetTemp, &ob->transfer_time);
 
 	// Perform any adjustments to the voltage and bias that may be required.
 	handleVoltageAndBiasTuning(ob);
@@ -1254,7 +1271,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	// Check against the global timer to see if 100ms has passed since we
 	// started the previous iteration.
-	int minMSPerIter = 500;
+	int minMSPerIter = 100;
 	cgtimer_t currentTime, timeSinceLastIter;
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
@@ -1291,10 +1308,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_t doneStart, doneEnd, doneDuration;
 	cgtimer_t readStart, readEnd, readDuration;
 	cgtimer_t loadStart, loadEnd, loadDuration;
+	cgtimer_t readNoncesStart, readNoncesEnd, readNoncesDuration;
+	cgtimer_t callValidNonceStart, callValidNonceEnd, callValidNonceDuration;
 	int lastTotal = 0;
 	int doneTotal = 0;
 	int readTotal = 0;
 	int loadTotal = 0;
+	int readNoncesTotal = 0;
+	int callValidNonceTotal = 0;
 
 	// Look for done engines, and read their nonces
 	for (uint8_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
@@ -1304,7 +1325,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastChipStart;
 		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
 		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
-		if (msLastChipStart < 2500) {
+		if (msLastChipStart < 7500) {
 			// It has been less than 7.5 seconds, assume that this chip is not
 			// finished. 7.5 seconds would imply a clock speed of 570 MHz, which
 			// we do not believe the chips are capable of. 
@@ -1316,9 +1337,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// It has been more than 120 seconds, assume that something went
 			// wrong with the chip, and that the chip needs to be started again.
 			applog(LOG_ERR, "Doing a chip reset due to time out: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastChipStart);
-			ob->setChipNonceRange(ob, chipNum, 1);
+			ob->setChipNonceRange(ob, chipNum, 1, &ob->transfer_time);
 			for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
-				ApiError error = ob->startNextEngineJob(ob, chipNum, engineNum);
+				ApiError error = ob->startNextEngineJob(ob, chipNum, engineNum, &ob->transfer_time);
 				if (error != SUCCESS) {
 					applog(LOG_ERR, "Error loading engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 				}
@@ -1341,7 +1362,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		// chip. The idea behind only checking the first engines is that by the
 		// time we get through them, the later engines will also be done.
 		uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
-		ApiError error = ob1GetDoneEngines(ob->chain_id, chipNum, (uint64_t*)doneBitmask);
+		ApiError error = ob1GetDoneEngines(ob->chain_id, chipNum, (uint64_t*)doneBitmask, &ob->transfer_time);
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "error from GetDoneEngines: %u.%u", ob->staticBoardNumber, chipNum);
 		cgtimer_time(&doneEnd);
@@ -1376,13 +1397,20 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Read any nonces that the engine found.
 			NonceSet nonceSet;
 			nonceSet.count = 0;
-			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
+			cgtimer_time(&readNoncesStart);
+			ob1LockSpi();
+			error = ob1ReadNoncesNoLock(ob->chain_id, chipNum, engineNum, &nonceSet);
+			ob1UnLockSpi();
+			cgtimer_time(&readNoncesEnd);
+			cgtimer_sub(&readNoncesEnd, &readNoncesStart, &readNoncesDuration);
+			readNoncesTotal += cgtimer_to_ms(&readNoncesDuration);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 				continue;
 			}
 
 			// Check the nonces and submit them to a pool if valid.
+			cgtimer_time(&callValidNonceStart);
 			for (uint8_t i = 0; i < nonceSet.count; i++) {
 				// Check that the nonce is valid
 				int nonceResult = ob->validNonce(ob, chipNum, engineNum, nonceSet.nonces[i]);
@@ -1398,20 +1426,36 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i]);
 				}
 			}
-
-		cgtimer_time(&loadStart);
+			cgtimer_time(&callValidNonceEnd);
+			cgtimer_sub(&callValidNonceEnd, &callValidNonceStart, &callValidNonceDuration);
+			callValidNonceTotal += cgtimer_to_ms(&callValidNonceDuration);
 
 			// Start the next job for this engine.
-			error = ob->startNextEngineJob(ob, chipNum, engineNum);
+		//	cgtimer_time(&loadStart);
+		//	error = ob->startNextEngineJob(ob, chipNum, engineNum);
+		//	if (error != SUCCESS) {
+		//		applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
+		//	}
+
+		//	cgtimer_time(&loadEnd);
+		//	cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
+		//	loadTotal += cgtimer_to_ms(&loadDuration);
+		}
+
+		ob1LockSpi();
+		for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+			// Start the next job for this engine.
+			cgtimer_time(&loadStart);
+			error = dcrStartNextEngineJobNoLock(ob, chipNum, engineNum);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}
 
-		cgtimer_time(&loadEnd);
-		cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
-		loadTotal += cgtimer_to_ms(&loadDuration);
-
+			cgtimer_time(&loadEnd);
+			cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
+			loadTotal += cgtimer_to_ms(&loadDuration);
 		}
+		ob1UnLockSpi();
 
 		cgtimer_time(&readEnd);
 		cgtimer_sub(&readEnd, &readStart, &readDuration);
@@ -1423,7 +1467,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ob->bufferWork = true;
 	}
 
-	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal, readNoncesTotal, callValidNonceTotal);
 
 	// See if the pool asked us to start clean on new work
 	if (ob->curr_work && ob->curr_work->pool->swork.clean) {

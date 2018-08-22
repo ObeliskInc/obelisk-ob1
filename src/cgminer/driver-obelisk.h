@@ -110,8 +110,8 @@ typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
 
 typedef Job      (*prepareNextChipJobFn)(ob_chain* ob);
-typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
-typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum);
+typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries, clock_t* transfer_time);
+typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, clock_t* transfer_time);
 typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce);
 
 // stringSettings contains a list of settings for the string.
@@ -178,6 +178,7 @@ struct ob_chain {
 	int doneNonceTime;
 	int chipScanTime;
 	int statsTime;
+    clock_t transfer_time;
 
 	// String setings.
 	stringSettings bestSettings[10];

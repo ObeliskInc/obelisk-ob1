@@ -29,7 +29,7 @@ Job gShadowJobRegs[MAX_NUMBER_OF_HASH_BOARDS];
 //       of combining both device types into each function.
 
 
-void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum) {
+void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time) {
     ApiError error;
     if (chipNum == ALL_CHIPS) {
         chipNum = 0;
@@ -40,7 +40,7 @@ void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
 
     for (int i = 0; i < E_DCR1_NUM_VREGS; i++) {
         uint32_t data;
-        ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data);
+        ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data, transfer_time);
         applog(LOG_ERR, "    V%d: 0x%08lX (readback)", i, data);
     }
 
@@ -52,13 +52,13 @@ void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
         if (i >= 10)  {
             regAddr += (E_DCR1_REG_M10 - (E_DCR1_REG_M9 + 1));
         }
-        ob1SpiReadReg(boardNum, chipNum, engineNum,  regAddr, &data);
+        ob1SpiReadReg(boardNum, chipNum, engineNum,  regAddr, &data, transfer_time);
         applog(LOG_ERR, "    M%02d: 0x%08lX (readback)", i, data);
     }
 
     // The Match register has the same value as V7
     uint32_t data;
-    ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data);
+    ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data, transfer_time);
     applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
 }
 
@@ -67,7 +67,7 @@ void readAndPrintAllJobRegs(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum
 //==================================================================================================
 
 // Program a job the specified engine(s).
-ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob)
+ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Job* pJob, clock_t* transfer_time)
 {
     ApiError error = GENERIC_ERROR;
     int writesAvoided = 0;
@@ -83,7 +83,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                 // Only write if the M register differs from the shadow register
                 if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake2b.m[i] != data) {
                     // applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
-                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &data);
+                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &data, transfer_time);
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -111,7 +111,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
         if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[7] != data) {
             // applog(LOG_ERR, "    V0MATCH: 0x%08lX", data);
             cgtimer_time(&start_WriteReg);
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V0MATCH, &data, transfer_time);
             cgtimer_time(&end_WriteReg);
             cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
             *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
@@ -131,7 +131,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                 if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.v[i] != data) {
                     // applog(LOG_ERR, "    V%d: 0x%08lX", i, data);
                     cgtimer_time(&start_WriteReg);
-                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data);
+                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_V00 + i, &data, transfer_time);
                     cgtimer_time(&end_WriteReg);
                     cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
                     *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
@@ -160,7 +160,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                 if (chipNum != ALL_CHIPS || gShadowJobRegs[boardNum].blake256.m[i] != data) {
                     // applog(LOG_ERR, "    M%02d: 0x%08lX  (regAddr = 0x%02X)", i, data, regAddr);
                     cgtimer_time(&start_WriteReg);
-                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum,  regAddr, &data);
+                    error = ob1SpiWriteReg(boardNum, chipNum, engineNum,  regAddr, &data, transfer_time);
                     cgtimer_time(&end_WriteReg);
                     cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
                     *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
@@ -189,20 +189,20 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
 }
 
 // Set the upper and lower bounds for the specified engine(s).
-ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound)
+ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Nonce lowerBound, Nonce upperBound, clock_t* transfer_time)
 {
     switch (gBoardModel) {
     case MODEL_SC1: {
-        ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_LB, &lowerBound);
+        ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_LB, &lowerBound, transfer_time);
         if (error == SUCCESS) {
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_UB, &upperBound);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_UB, &upperBound, transfer_time);
         }
         return error;
     }
     case MODEL_DCR1: {
-        ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_LB, &lowerBound);
+        ApiError error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_LB, &lowerBound, transfer_time);
         if (error == SUCCESS) {
-            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_UB, &upperBound);
+            error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_UB, &upperBound, transfer_time);
             // applog(LOG_ERR, "Set nonce range: 0x%08lX -> 0x%08lX (%u:%u:%u)", nonce32bitLower, nonce32bitUpper, boardNum, chipNum, engineNum);
         }
 
@@ -227,7 +227,7 @@ ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, 
 // engine will be given the next chunk of the range (e.g., if the lower bound is
 // 10 and the subrange_size is 5, the first engine would get 10-14, the second
 // would get 15-19, the third would get 20-24, etc.).
-ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce)
+ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce, clock_t* transfer_time)
 {
     int firstBoard;
     int lastBoard;
@@ -255,7 +255,7 @@ ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound
         for (uint8_t chip = firstChip; chip <= lastChip; chip++) {
             for (uint8_t engine = 0; engine < ob1GetNumEnginesPerChip(); engine++) {
 
-                ApiError error = ob1SetNonceRange(board, chip, engine, currLowerBound, currUpperBound);
+                ApiError error = ob1SetNonceRange(board, chip, engine, currLowerBound, currUpperBound, transfer_time);
                 if (error != SUCCESS) {
                     return error;
                 }
@@ -272,13 +272,13 @@ ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound
 }
 
 // Read the nonces of the specified engine
-ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet)
+ApiError ob1ReadNoncesNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet)
 {
     Nonce nonce;
     switch (gBoardModel) {
     case MODEL_SC1: {
         uint64_t fsr;
-        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr);
+        ApiError error = ob1SpiReadRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr);
         if (error != SUCCESS) {
             return error;
         }
@@ -291,7 +291,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
                 // See which bits are set and extract the nonces for them
                 if ((1 << i) & fsr_mask) {
-                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]));
+                    error = ob1SpiReadRegNoLock(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]));
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -302,12 +302,12 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         nonceSet->count = n;
         // applog(LOG_ERR, "nonceSet->count=%u", nonceSet->count);
 
-        pulseSC1ReadComplete(boardNum, chipNum, engineNum);
+        pulseSC1ReadCompleteNoLock(boardNum, chipNum, engineNum);
         break;
     }
     case MODEL_DCR1: {
         uint32_t fsr;
-        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+        ApiError error = ob1SpiReadRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
         if (error != SUCCESS) {
             return error;
         }
@@ -321,7 +321,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
                 // See which bits are set and extract the nonces for them
                 if ((1 << i) & fsr_mask) {
                     Nonce nonce;
-                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce);
+                    error = ob1SpiReadRegNoLock(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce);
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -335,7 +335,79 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         }
         nonceSet->count = n;
 
-        pulseDCR1ReadComplete(boardNum, chipNum, engineNum);
+        pulseDCR1ReadCompleteNoLock(boardNum, chipNum, engineNum);
+        break;
+    }
+    }
+
+    return SUCCESS;
+}
+
+// Read the nonces of the specified engine
+ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet, clock_t* transfer_time)
+{
+    Nonce nonce;
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        uint64_t fsr;
+        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr, transfer_time);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        int n = 0;
+        uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
+        // Quick check to early out if no nonces have been found
+        if (fsr_mask > 0) {
+            uint8_t fifoDataReg = E_SC1_REG_FDR0;
+            for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
+                // See which bits are set and extract the nonces for them
+                if ((1 << i) & fsr_mask) {
+                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]), transfer_time);
+                    if (error != SUCCESS) {
+                        return error;
+                    }
+                    n++;
+                }
+            }
+        }
+        nonceSet->count = n;
+        // applog(LOG_ERR, "nonceSet->count=%u", nonceSet->count);
+
+        pulseSC1ReadComplete(boardNum, chipNum, engineNum, transfer_time);
+        break;
+    }
+    case MODEL_DCR1: {
+        uint32_t fsr;
+        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr, transfer_time);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        int n = 0;
+        uint8_t fsr_mask = (uint8_t)(fsr & 0xFFULL);
+        // Quick check to early out if no nonces have been found
+        if (fsr_mask > 0) {
+            uint8_t fifoDataReg = E_DCR1_REG_FDR0;
+            for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
+                // See which bits are set and extract the nonces for them
+                if ((1 << i) & fsr_mask) {
+                    Nonce nonce;
+                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce, transfer_time);
+                    if (error != SUCCESS) {
+                        return error;
+                    }
+                    // applog(LOG_ERR, "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                    // applog(LOG_ERR, "readnonce: 0x%08lX", nonce);
+                    // applog(LOG_ERR, "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                    nonceSet->nonces[n] = nonce;
+                    n++;
+                }
+            }
+        }
+        nonceSet->count = n;
+
+        pulseDCR1ReadComplete(boardNum, chipNum, engineNum, transfer_time);
         break;
     }
     }
@@ -345,26 +417,26 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
 
 // For Sia, pass a pointer to a single uint64_t
 // For Decred, pass a pointer to an array of two uint64_t's
-ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
+ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData, clock_t* transfer_time)
 {
     ApiError error = GENERIC_ERROR;
 
     switch (gBoardModel) {
     case MODEL_SC1:
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_SC1_REG_EDR, pData);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_SC1_REG_EDR, pData, transfer_time);
         break;
 
     case MODEL_DCR1: {
         uint32_t dataLow = 0;
         uint32_t dataHigh = 0;
         // applog(LOG_ERR, "Reading EDR registers for %u.%u", boardNum, chipNum);
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR0, &dataLow);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR0, &dataLow, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
         // applog(LOG_ERR, "gdr: low1=0x%04lX", dataLow);
 
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR1, &dataHigh);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR1, &dataHigh, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
@@ -377,13 +449,13 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 
         dataLow = 0;
         dataHigh = 0;
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR2, &dataLow);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR2, &dataLow, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
         // applog(LOG_ERR, "gdr: low2=0x%04lX", dataLow);
 
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR3, &dataHigh);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR3, &dataHigh, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
@@ -401,38 +473,38 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 
 // For Sia, pass a pointer to a single uint64_t
 // For Decred, pass a pointer to an array of two uint64_t's
-ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
+ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData, clock_t* transfer_time)
 {
     ApiError error = GENERIC_ERROR;
 
     switch (gBoardModel) {
     case MODEL_SC1:
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_SC1_REG_EBR, pData);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_SC1_REG_EBR, pData, transfer_time);
         break;
 
     case MODEL_DCR1: {
         uint32_t dataLow;
         uint32_t dataHigh;
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR0, &dataLow);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR0, &dataLow, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
         // applog(LOG_ERR, "gdr: low1=0x%04lX", dataLow);
 
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR1, &dataHigh);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR1, &dataHigh, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
         // applog(LOG_ERR, "gdr: high1=0x%04lX", dataHigh);
         *(&pData[1]) = ((uint64_t)dataHigh << 32) | (uint64_t)dataLow;
 
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR2, &dataLow);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR2, &dataLow, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
         // applog(LOG_ERR, "gdr: low2=0x%04lX", dataLow);
 
-        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR3, &dataHigh);
+        error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EBR3, &dataHigh, transfer_time);
         if (error != SUCCESS) {
             return error;
         }
@@ -445,56 +517,125 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
     return error;
 }
 
+void ob1LockSpi() {
+    LOCK(&spiLock);
+}
+void ob1UnLockSpi() {
+    UNLOCK(&spiLock);
+}
+
 // Start the job and wait for the engine(s) to indicate busy.
-ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+ApiError ob1StartJobNoLock(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 {
     ApiError error = GENERIC_ERROR;
     switch (gBoardModel) {
     case MODEL_SC1: {
         // Need to set these bits high, then clear them to signal the start
         uint64_t data = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
         if (error != SUCCESS) {
             return error;
         }
 
         data = 0;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
         if (error != SUCCESS) {
             return error;
         }
 
         // Unmask bits that define the nonce fifo masks
         data = 0;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_FCR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_SC1_REG_FCR, &data);
         if (error != SUCCESS) {
             return error;
         }
 
-        error = pulseSC1DataValid(boardNum, chipNum, engineNum);
+        error = pulseSC1DataValidNoLock(boardNum, chipNum, engineNum);
         break;
     }
     case MODEL_DCR1: {
         // Need to set these bits high, then clear them to signal the start
         uint32_t data = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
         if (error != SUCCESS) {
             return error;
         }
 
         data = 0;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
         if (error != SUCCESS) {
             return error;
         }
 
         // Unmask bits that define the nonce fifo masks
         data = 0;
-        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
         if (error != SUCCESS) {
             return error;
         }
-        error = pulseDCR1DataValid(boardNum, chipNum, engineNum);
+        error = pulseDCR1DataValidNoLock(boardNum, chipNum, engineNum);
+        break;
+    }
+    }
+
+    return error;
+}
+
+// Start the job and wait for the engine(s) to indicate busy.
+ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time)
+{
+    ApiError error = GENERIC_ERROR;
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        // Need to set these bits high, then clear them to signal the start
+        uint64_t data = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
+        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        data = 0;
+        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data, transfer_time);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        // Unmask bits that define the nonce fifo masks
+        data = 0;
+        error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_FCR, &data, transfer_time);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        error = pulseSC1DataValid(boardNum, chipNum, engineNum, transfer_time);
+        break;
+    }
+    case MODEL_DCR1: {
+        // Need to set these bits high, then clear them to signal the start
+        LOCK(&spiLock);
+        uint32_t data = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            UNLOCK(&spiLock);
+            return error;
+        }
+
+        data = 0;
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            UNLOCK(&spiLock);
+            return error;
+        }
+
+        // Unmask bits that define the nonce fifo masks
+        data = 0;
+        error = ob1SpiWriteRegNoLock(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
+        if (error != SUCCESS) {
+            UNLOCK(&spiLock);
+            return error;
+        }
+        error = pulseDCR1DataValidNoLock(boardNum, chipNum, engineNum);
+        UNLOCK(&spiLock);
         break;
     }
     }
@@ -538,7 +679,7 @@ ApiError ob1RegisterJobCompleteHandler(JobCompleteHandler handler)
 // Set the frequency bias for the specified engines.
 //
 // The bias must be a value between -5 and +5
-ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
+ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias, clock_t* transfer_time)
 {
     switch (gBoardModel) {
     case MODEL_SC1: {
@@ -546,7 +687,7 @@ ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
         // Always mask in the clock enable bits
         newOCRValue = (newOCRValue & ~SC1_OCR_CORE_MSK) | SC1_OCR_CORE_ENB;
-        return ob1SpiWriteReg(boardNum, chipNum, 0, E_SC1_REG_OCR, &newOCRValue);
+        return ob1SpiWriteReg(boardNum, chipNum, 0, E_SC1_REG_OCR, &newOCRValue, transfer_time);
     }
     case MODEL_DCR1: {
         uint64_t newOCRValue = (gLastOCRWritten[boardNum][chipNum] & ~DCR1_OCR_BIAS_64BIT_MASK) | getDCR1BiasBits(bias);
@@ -554,11 +695,11 @@ ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
         newOCRValue = (newOCRValue & DCR1_OCR_CORE_MSK) | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
         uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
-        ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
+        ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA, transfer_time);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;
             gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-            ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRB, &ocrB);
+            ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRB, &ocrB, transfer_time);
         }
         return error;
     }
@@ -568,7 +709,7 @@ ApiError ob1SetClockBias(uint8_t boardNum, uint8_t chipNum, int8_t bias)
 // Set the clock divider for the specified engine(s).
 //
 // The divider must be a value of 1, 2, 4 or 8.
-ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider)
+ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider, clock_t* transfer_time)
 {
     switch (gBoardModel) {
     case MODEL_SC1: {
@@ -576,14 +717,14 @@ ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider)
         // Always mask in the clock enable bits
         newOCRValue = (newOCRValue & ~SC1_OCR_CORE_MSK) | SC1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue);
+        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue, transfer_time);
     }
     case MODEL_DCR1: {
         uint64_t newOCRValue = gLastOCRWritten[boardNum][chipNum] & ~(DCR1_OCR_CLK_DIV_MSK) | getDCR1DividerBits(divider);
         // Always mask in the clock enable bits
         newOCRValue = (newOCRValue & DCR1_OCR_CORE_MSK) | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &newOCRValue);
+        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &newOCRValue, transfer_time);
         // No need to write to E_DCR1_REG_OCRA for divider
     }
     }
@@ -592,7 +733,7 @@ ApiError ob1SetClockDivider(uint8_t boardNum, uint8_t chipNum, uint8_t divider)
 // Set the clock divider for the specified engine(s).
 //
 // The divider must be a value of 1, 2, 4 or 8.
-ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t divider, int8_t bias)
+ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t divider, int8_t bias, clock_t* transfer_time)
 {
     switch (gBoardModel) {
     case MODEL_SC1: {
@@ -605,7 +746,7 @@ ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t di
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
         // applog(LOG_ERR, "Setting new OCR to 0x%016llX (divider=%u dividerBits=0x%016llX bias=%d biasBits=0x%016llX)", newOCRValue, divider, getSC1DividerBits(divider), bias, getSC1BiasBits(bias));
         // applog(LOG_ERR, "CH%u: Setting divider/bias:  /%u%s%d", boardNum, divider, bias < 0 ? "" : "+", bias);
-        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue);
+        return ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_SC1_REG_OCR, &newOCRValue, transfer_time);
     }
     case MODEL_DCR1: {
         // applog(LOG_ERR, "DCR1_OCR_BIAS_64BIT_MASK = 0x%016llX", DCR1_OCR_BIAS_64BIT_MASK);
@@ -616,26 +757,26 @@ ApiError ob1SetClockDividerAndBias(uint8_t boardNum, uint8_t chipNum, uint8_t di
         newOCRValue = newOCRValue | DCR1_OCR_CORE_ENB;
         gLastOCRWritten[boardNum][chipNum] = newOCRValue;
         uint32_t ocrA = newOCRValue & 0xFFFFFFFFL;
-        ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA);
+        ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRA, &ocrA, transfer_time);
         if (error == SUCCESS) {
             uint32_t ocrB = newOCRValue >> 32;
             gLastOCRWritten[boardNum][chipNum] = newOCRValue;
-            ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRB, &ocrB);
+            ApiError error = ob1SpiWriteReg(boardNum, chipNum, ALL_ENGINES, E_DCR1_REG_OCRB, &ocrB, transfer_time);
         }
         return error;
     }
     }
 }
 
-void ob1EnableMasterHashClock(uint8_t boardNum, bool isEnabled)
+void ob1EnableMasterHashClock(uint8_t boardNum, bool isEnabled, clock_t* transfer_time)
 {
-    iSetHashClockEnable(boardNum, isEnabled);
+    iSetHashClockEnable(boardNum, isEnabled, transfer_time);
 }
 
-bool ob1IsMasterHashClockEnabled(uint8_t boardNum)
+bool ob1IsMasterHashClockEnabled(uint8_t boardNum, clock_t* transfer_time)
 {
     bool isEnabled;
-    iGetHashClockEnable(boardNum, &isEnabled);
+    iGetHashClockEnable(boardNum, &isEnabled, transfer_time);
     return isEnabled;
 }
 
@@ -715,20 +856,20 @@ ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage)
 
 // Read the Done status of the ASICs for one of the boards.  Returned value reflects
 // which ASICs on the board are signaling they are done (corresponding bit is 1)
-ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue)
+ApiError ob1ReadBoardDoneFlags(uint8_t boardNum, uint16_t* pValue, clock_t* transfer_time)
 {
     LOCK(&spiLock);
-    int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue);
+    int result = iReadPexPins(boardNum, PEX_DONE_ADR, pValue, transfer_time);
     UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }
 
 // Read the Nonce status of the ASICs for one of the boards.  Returned value reflects
 // which ASICs on the board are signaling they have a Nonce (corresponding bit is 1).
-ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue)
+ApiError ob1ReadBoardNonceFlags(uint8_t boardNum, uint16_t* pValue, clock_t* transfer_time)
 {
     LOCK(&spiLock);
-    int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue);
+    int result = iReadPexPins(boardNum, PEX_NONCE_ADR, pValue, transfer_time);
     UNLOCK(&spiLock);
     return result == ERR_NONE ? SUCCESS : GENERIC_ERROR;
 }

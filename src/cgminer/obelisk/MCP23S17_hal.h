@@ -76,16 +76,16 @@ typedef struct {
 
 /***   GLOBAL FUNCTION PROTOTYPES   ***/
 extern int iPexInit(uint8_t uiBoard);
-extern int iReadBoardRevision(uint8_t uiBoard, uint8_t *puiRevision, E_ASIC_TYPE_T *puiType);
-extern int iReadBoardDoneInts(uint8_t uiBoard, uint16_t *puiValue);
-extern int iReadBoardNonceInts(uint8_t uiBoard, uint16_t *puiValue);
-extern int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t *puiValue);
-extern int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue);
-extern int iSetHashClockEnable(uint8_t uiBoard, bool bEnable);
-extern int iGetHashClockEnable(uint8_t uiBoard, bool *pbEnable);
-extern int iToggleHashClockEnable(uint8_t uiBoard);
-extern int iSetPSEnable(uint8_t uiBoard, bool bEnable);
-extern int iGetPSEnable(uint8_t uiBoard, bool *pbEnable);
-extern int iTogglePSEnable(uint8_t uiBoard);
+extern int iReadBoardRevision(uint8_t uiBoard, uint8_t *puiRevision, E_ASIC_TYPE_T *puiType, clock_t* transfer_time);
+extern int iReadBoardDoneInts(uint8_t uiBoard, uint16_t *puiValue, clock_t* transfer_time);
+extern int iReadBoardNonceInts(uint8_t uiBoard, uint16_t *puiValue, clock_t* transfer_time);
+extern int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t *puiValue, clock_t* transfer_time);
+extern int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue, clock_t* transfer_time);
+extern int iSetHashClockEnable(uint8_t uiBoard, bool bEnable, clock_t* transfer_time);
+extern int iGetHashClockEnable(uint8_t uiBoard, bool *pbEnable, clock_t* transfer_time);
+extern int iToggleHashClockEnable(uint8_t uiBoard, clock_t* transfer_time);
+extern int iSetPSEnable(uint8_t uiBoard, bool bEnable, clock_t* transfer_time);
+extern int iGetPSEnable(uint8_t uiBoard, bool *pbEnable, clock_t* transfer_time);
+extern int iTogglePSEnable(uint8_t uiBoard, clock_t* transfer_time);
 
 #endif /* ifndef _MCP23S17_HAL_H_INCLUDED */

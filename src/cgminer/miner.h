@@ -4,6 +4,7 @@
 #include "obelisk-config.h"
 #include "obelisk-model.h"
 #include "config.h"
+#include <time.h>
 
 // TODO: Why isn't this already defined by the configure system?
 #ifndef USE_OBELISK
@@ -370,7 +371,7 @@ struct device_drv {
     char* name;
 
     // DRV-global functions
-    void (*drv_detect)(bool);
+    void (*drv_detect)(bool, clock_t*);
 
     // Device-specific functions
     void (*reinit_device)(struct cgpu_info*);

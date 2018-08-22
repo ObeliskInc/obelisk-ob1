@@ -134,18 +134,18 @@ static const uint64_t ullVRegTable[16] = {
 
 /***    LOCAL FUNCTION PROTOTYPES   ***/
 
-static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job);
-static int iSC1CmdStartJob(void);
-static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job);
-static int iSC1CmdDataValid(void);
-static void SC1CmdReadComplete(void);
+static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job, clock_t* transfer_time);
+static int iSC1CmdStartJob(clock_t* transfer_time);
+static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job, clock_t* transfer_time);
+static int iSC1CmdDataValid(clock_t* transfer_time);
+static void SC1CmdReadComplete(clock_t* transfer_time);
 
-static int iSC1TestJobVerify(uint64_t* puiSolution);
+static int iSC1TestJobVerify(uint64_t* puiSolution, clock_t* transfer_time);
 static void SC1GetTestJob(uint8_t uiSampleNum);
 
-static int iSC1EMCDataValid(void);
-static int iSC1EMCTestJobVerify(uint64_t* puiSolution);
-static int iSC1EMCStartJob(void);
+static int iSC1EMCDataValid(clock_t* transfer_time);
+static int iSC1EMCTestJobVerify(uint64_t* puiSolution, clock_t* transfer_time);
+static int iSC1EMCStartJob(clock_t* transfer_time);
 
 /***    LOCAL DATA DECLARATIONS     ***/
 static S_SC1_JOB_T sSC1JobBuf;
@@ -227,13 +227,14 @@ int iSC1StringStartup(uint8_t uiBoard)
     uint16_t uiTestData;
     int iResult = ERR_NONE;
     uint16_t uiAsicTestFlags, uiAsicAwakeCnt;
+    clock_t transfer_time = 0;
 
     uiUUT = (uint8_t)uiBoard;
     iResult = iIsBoardValid(uiUUT, true); // board must be there to startup and should have passed initial testing
     if (ERR_NONE == iResult) {
         iSetBoardStatus(uiUUT, ERR_NOT_INITIALIZED);
 
-        iResult = iSetHashClockEnable(uiUUT, false); // ensure clock enable is off
+        iResult = iSetHashClockEnable(uiUUT, false, &transfer_time); // ensure clock enable is off
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d hash clock disable Error\r\n", uiUUT + 1);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -247,7 +248,7 @@ int iSC1StringStartup(uint8_t uiBoard)
                 (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply control error\r\n", uiUUT + 1);
                 CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
             } else {
-                iResult = iSetPSEnable(uiUUT, true); // turn on the string
+                iResult = iSetPSEnable(uiUUT, true, &transfer_time); // turn on the string
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply enable error\r\n", uiUUT + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -275,7 +276,8 @@ int iSC1StringStartup(uint8_t uiBoard)
                             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "."); // indicate a retry
                             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                         }
-                        iResult = iStartupOCRInitValue(uiUUT, ixJ);
+                        clock_t transfer_time = 0;
+                        iResult = iStartupOCRInitValue(uiUUT, ixJ, &transfer_time);
                         if (ERR_NONE == iResult) {
                             break; // break do..while
                         } else if (ERR_FAILURE == iResult) {
@@ -321,7 +323,7 @@ int iSC1StringStartup(uint8_t uiBoard)
             } // while (false == bDone)
 
             if (ASIC_TEST_FLAGS_PASS != uiAsicTestFlags) {
-                (void)iSetPSEnable(uiUUT, false); // turn off the string on failure to launch all OCRs
+                (void)iSetPSEnable(uiUUT, false, &transfer_time); // turn off the string on failure to launch all OCRs
                 iSetBoardStatus(uiUUT, ERR_FAILURE);
                 (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_ERROR "HB%d OCR initialize FAIL (%d of %d)\r\n",
                     (uiUUT + 1), (MAX_SC1_CHIPS_PER_STRING - uiAsicAwakeCnt), MAX_SC1_CHIPS_PER_STRING);
@@ -430,7 +432,7 @@ int iSC1StringStartup(uint8_t uiBoard)
  *  \param uint8_t uiChip determines which ASIC to configure; 0 to LAST_SC1_CORE
  *  \return int status of operation (see err_codes.h)
  */
-int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip)
+int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip, clock_t* transfer_time)
 {
 #define TEST_PASSES 4
 #define REG_TO_START_TEST E_SC1_REG_M0
@@ -455,7 +457,7 @@ int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip)
                 sSC1XferBuf.eRegister = uixRegUnderTest;
                 sSC1XferBuf.uiData = uiTestDataPattern;
 
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
                 // and verify the values
                 if (ERR_NONE == iResult) {
@@ -473,7 +475,7 @@ int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip)
                         iRetry = 0;
                         while (MAX_RETRY_MREG_CHECK > iRetry) {
                             sSC1XferBuf.uiData = 0; // hold MOSI fixed low during data part of transfer
-                            iResult = iSC1SpiTransfer(&sSC1XferBuf); // Read to the chip; should block until completed
+                            iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Read to the chip; should block until completed
 
                             if (ERR_NONE != iResult) {
                                 break; // break while if SPI transfer error
@@ -542,7 +544,7 @@ int iSC1MRegCheck(uint8_t uiHashBoard, uint8_t uiChip)
  *
  * Note: The OCR is tested by CSS on each device and all asics should pass this test.
  */
-int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip)
+int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip, clock_t* transfer_time)
 {
 #define NUM_OSC_IN_A_CHIP 4
     int ixI;
@@ -556,7 +558,7 @@ int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip)
     sSC1XferBuf.eRegister = E_SC1_REG_OCR;
     sSC1XferBuf.uiData = SC1_OCR_STARTUP_VAL;
 
-    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
     // Next verify the values
     if (ERR_NONE == iResult) {
@@ -590,7 +592,7 @@ int iStartupOCRInitValue(uint8_t uiHashBoard, uint8_t uiChip)
             }
 
             sSC1XferBuf.uiData = 0x0; // hold MOSI fixed low during data part of transfer
-            iResult = iSC1SpiTransfer(&sSC1XferBuf); // Read to the chip; should block until completed
+            iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Read to the chip; should block until completed
 
 #if (0 != CSS_SC1_REVA_WORKAROUND)
             sSC1XferBuf.uiData = sSC1XferBuf.uiData >> CSS_SC1_REVA_WORKAROUND;
@@ -657,6 +659,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
     int iStart, iEnd, iConfigStep;
     int iResult;
     int iRetval = ERR_NONE;
+    clock_t transfer_time = 0;
 
     if ((0 <= uiBoard) && (MAX_NUMBER_OF_HASH_BOARDS > uiBoard)) { // do one or all?
         iStart = (int)uiBoard; // individual board
@@ -690,12 +693,12 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_FCR;
                 sSC1XferBuf.uiData = E_SC1_FCR_MASK_ALL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
             // 3) Set SC1 START_CLK high; global to all chips to disable clocking of oscillators
-            (void)iSetHashClockEnable(uiUUT, false); // Deassert START_CLK (HASHENB)
+            (void)iSetHashClockEnable(uiUUT, false, &transfer_time); // Deassert START_CLK (HASHENB)
 
             // *************
             // 4) Set up the oscillator control register (OCR); using slow clocking to start
@@ -707,7 +710,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.eRegister = E_SC1_REG_OCR;
                 sSC1XferBuf.uiData = (SC1_OCR_SLOW_VAL | SC1_OCR_CORE_ENB); // At startup, we clock all cores; later we may turn off some
                 // Not actually clocking cores yet until we enable hashing clock signal
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -719,7 +722,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_ECR;
                 sSC1XferBuf.uiData = 0;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -731,7 +734,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_LIMITS;
                 sSC1XferBuf.uiData = SC1_LIMITS_VAL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -743,7 +746,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_STEP;
                 sSC1XferBuf.uiData = SC1_STEP_VAL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -755,7 +758,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_LB;
                 sSC1XferBuf.uiData = 0;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -767,7 +770,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_UB;
                 sSC1XferBuf.uiData = 0;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // *************
@@ -779,7 +782,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                     sSC1XferBuf.uiCore = 0;
                     sSC1XferBuf.eRegister = uixI;
                     sSC1XferBuf.uiData = ullVRegTable[uixI];
-                    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                    iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
                 } // if (ERR_NONE == iResult)
             } // for
             if (ERR_NONE == iResult) {
@@ -789,7 +792,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_V0MATCH;
                 sSC1XferBuf.uiData = SC1_V0_MATCH_VAL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
             if (ERR_NONE == iResult) {
                 sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST; // global write to all chips and engines
@@ -797,7 +800,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_V8MATCH;
                 sSC1XferBuf.uiData = SC1_V8_MATCH_VAL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
                 iConfigStep++;
             } // if (ERR_NONE == iResult)
 
@@ -811,7 +814,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 if (E_SC1_REG_M4_RSV != uixI) { // skip M4 on SC1 ASIC
                     sSC1XferBuf.eRegister = uixI;
                     sSC1XferBuf.uiData = 0;
-                    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                    iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
                     if (ERR_NONE != iResult) {
                         break; // for
                     }
@@ -828,13 +831,13 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_ECR;
                 sSC1XferBuf.uiData = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             // 13) Set SC1 START_CLK low; will start clocking and reset cores
             if (ERR_NONE == iResult) {
                 iConfigStep++;
-                iResult = iSetHashClockEnable(uiUUT, true); // Assert START_CLK to begin clocking oscillators and cores
+                iResult = iSetHashClockEnable(uiUUT, true, &transfer_time); // Assert START_CLK to begin clocking oscillators and cores
             } // if (ERR_NONE == iResult)
 
             // 14) Set ECR reg to release the resets while cores are clocked to reset all cores
@@ -845,12 +848,12 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_ECR;
                 sSC1XferBuf.uiData = 0;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
                 // not sure how much to delay for reset; best guess this is ok
                 delay_ms(20);
             } // if (ERR_NONE == iResult)
 
-            iResult = iSetHashClockEnable(uiUUT, false); // Deassert START_CLK (HASHENB)
+            iResult = iSetHashClockEnable(uiUUT, false, &transfer_time); // Deassert START_CLK (HASHENB)
 
             // *************
             // 15) Disable clocking to any cores we won't be using; set all chips the same though
@@ -863,7 +866,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0x00;
                 sSC1XferBuf.eRegister = E_SC1_REG_OCR;
                 sSC1XferBuf.uiData = SC1_OCR_SLOW_VAL; // mask off clocking to all cores
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             if (ERR_NONE == iResult) {
@@ -876,7 +879,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 for (uixI = 0; uixI <= MAX_SC1_CHIPS_PER_STRING; uixI++) {
                     sSC1XferBuf.uiChip = uixI;
                     sSC1XferBuf.uiData = OCR37_CORE63_CLKENB;
-                    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                    iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
                     if (ERR_NONE != iResult) {
                         break; // for
                     }
@@ -884,14 +887,14 @@ int iSC1DeviceInit(uint8_t uiBoard)
             } // if (ERR_NONE == iResult)
 
             if (ERR_NONE == iResult) {
-                iResult = iSetHashClockEnable(uiUUT, true); // Assert START_CLK to begin clocking oscillators and cores
+                iResult = iSetHashClockEnable(uiUUT, true, &transfer_time); // Assert START_CLK to begin clocking oscillators and cores
             }
             // *************
 
             // 16) Verify there are no DONE or NONCE assertions since we have not yet submitted any jobs
             if (ERR_NONE == iResult) {
                 // Test read of DONE signals.  All the DONE/ATTN signals should be low.
-                iResult = iReadBoardDoneInts(uiUUT, &uiTestData);
+                iResult = iReadBoardDoneInts(uiUUT, &uiTestData, &transfer_time);
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "ERROR reading DONE status %d\r\n", iResult);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -905,7 +908,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
 
             if (ERR_NONE == iResult) {
                 // Test read of NONCE signals.  All the DONE/ATTN signals should be low.
-                iResult = iReadBoardNonceInts(uiUUT, &uiTestData);
+                iResult = iReadBoardNonceInts(uiUUT, &uiTestData, &transfer_time);
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "ERROR reading NONCE status %d\r\n", iResult);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -925,7 +928,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_FCR;
                 sSC1XferBuf.uiData = E_SC1_FCR_MASK_ALL;
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, &transfer_time);
             } // if (ERR_NONE == iResult)
 
             if (ERR_NONE != iResult) {
@@ -956,7 +959,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
  * PRESENTLY A TEST FUNCTION ONLY.
  * #TODO Make this more generic and public so it can load jobs on the real board.
  */
-static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job)
+static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job, clock_t* transfer_time)
 {
     int ixI;
     int iResult;
@@ -965,7 +968,7 @@ static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job)
     // Load in the bounds
     // #TODO: in the real system loading the bounds may be done separately and only done once and then
     // the M-regs are changed only for new jobs. The method is yet to be determined.
-    iResult = iSC1CmdLoadRange(psSC1Job);
+    iResult = iSC1CmdLoadRange(psSC1Job, transfer_time);
 
     if (ERR_NONE == iResult) {
         sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST; // global write to all chips and cores on the board
@@ -979,7 +982,7 @@ static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job)
             if (E_SC1_REG_M4_RSV != eReg) { // skip M4 on SC1 ASIC
                 sSC1XferBuf.eRegister = eReg;
                 sSC1XferBuf.uiData = psSC1Job->uiaMReg[ixI];
-                iResult = iSC1SpiTransfer(&sSC1XferBuf);
+                iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
                 if (ERR_NONE != iResult) {
                     break; // for
                 }
@@ -1000,7 +1003,7 @@ static int iSC1CmdPreLoadJob(S_SC1_JOB_T* psSC1Job)
  *  if cgminer does that with function calls.
  * #TODO Make this more generic and public so it can submit jobs on the real board.
  */
-static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job)
+static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job, clock_t* transfer_time)
 {
     int iResult;
     // Determine what boards, chips and cores to transfer to.
@@ -1012,12 +1015,12 @@ static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job)
     // Using same test bounds on all ASICs for test purposes here.
     sSC1XferBuf.eRegister = E_SC1_REG_LB;
     sSC1XferBuf.uiData = psSC1Job->uiLBReg;
-    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
     if (ERR_NONE == iResult) {
         sSC1XferBuf.eRegister = E_SC1_REG_UB;
         sSC1XferBuf.uiData = psSC1Job->uiUBReg;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     }
     return (iResult);
 
@@ -1033,7 +1036,7 @@ static int iSC1CmdLoadRange(S_SC1_JOB_T* psSC1Job)
  * PRESENTLY A TEST FUNCTION ONLY.
  * #TODO Make this more generic and public so it can start jobs on the real board.
  */
-static int iSC1CmdStartJob(void)
+static int iSC1CmdStartJob(clock_t* transfer_time)
 {
     int iResult;
     uint16_t uiTestData, uiTestVerify;
@@ -1042,10 +1045,10 @@ static int iSC1CmdStartJob(void)
     sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
-    iResult = iSC1SpiTransfer(&sSC1XferBuf); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) high
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) high
     if (ERR_NONE == iResult) {
         sSC1XferBuf.uiData = 0;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) low
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) low
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
@@ -1053,12 +1056,12 @@ static int iSC1CmdStartJob(void)
         sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
         sSC1XferBuf.eRegister = E_SC1_REG_FCR;
         sSC1XferBuf.uiData = 0; // clear all mask bits to unmask
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
         // Test read of NONCE signals; ; expecting target bit to be clear
-        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading NONCE status (%d)\r\n", iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1074,7 +1077,7 @@ static int iSC1CmdStartJob(void)
 
     if (ERR_NONE == iResult) {
         // Test read of DONE signals; ; expecting target bit to be clear
-        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading DONE status (%d)\r\n", iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1089,7 +1092,7 @@ static int iSC1CmdStartJob(void)
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
-        iResult = iSC1CmdDataValid(); // submit job(s) by pulsing Data_Valid
+        iResult = iSC1CmdDataValid(transfer_time); // submit job(s) by pulsing Data_Valid
     } // if (ERR_NONE == iResult)
     return (iResult);
 
@@ -1106,7 +1109,7 @@ static int iSC1CmdStartJob(void)
  * #TODO Make this more generic and public so it can start job on the real board.
  * Assumes the board, chip and core are already set in the transfer buffer structure.
  */
-static int iSC1TestJobVerify(uint64_t* puiSolution)
+static int iSC1TestJobVerify(uint64_t* puiSolution, clock_t* transfer_time)
 {
     int iResult;
     uint8_t uiCoreSave;
@@ -1131,7 +1134,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
     //      it, verify DONE is deasserted and then deassert Read_Complete
 
     // Test read of DONE signals; expecting target bit to be set
-    iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData);
+    iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
     if (ERR_NONE != iResult) {
         (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading DONE status (%d)\r\n", iResult);
         CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1151,7 +1154,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
 
     if (ERR_NONE == iResult) {
         // Test read of NONCE signals; expecting target bit to be set
-        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading NONCE status (%d)\r\n", iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1178,7 +1181,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
         sSC1XferBuf.uiCore = E_SC1_CHIP_REGS;
         sSC1XferBuf.eRegister = E_SC1_REG_IVR;
         sSC1XferBuf.uiData = 0;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
         sSC1XferBuf.uiCore = uiCoreSave;
         if (ERR_NONE == iResult) {
             // Verify CORE ID is last core and interrupt vector is 0th fifo location only
@@ -1200,7 +1203,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
             sSC1XferBuf.eMode = E_SC1_MODE_REG_READ;
             sSC1XferBuf.eRegister = E_SC1_REG_FDR0;
             sSC1XferBuf.uiData = 0;
-            iResult = iSC1SpiTransfer(&sSC1XferBuf);
+            iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
             if (ERR_NONE == iResult) {
                 *puiSolution = sSC1XferBuf.uiData;
             } // if (ERR_NONE == iResult)
@@ -1212,7 +1215,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
         sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
         sSC1XferBuf.eRegister = E_SC1_REG_FCR;
         sSC1XferBuf.uiData = E_SC1_FCR_MASK_ALL;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     } // if (ERR_NONE == iResult)
 
     // For test purposes we are checking that masking above cleared the NONCE signal.  In this case it is testing one asic so the other
@@ -1220,7 +1223,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
     // completed.
     if (ERR_NONE == iResult) {
         // Test read of NONCE signals to verify they are cleared
-        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading NONCE status (%d)\r\n", iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1232,14 +1235,14 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
         } // if (ERR_NONE != iResult)
     } // if (ERR_NONE == iResult)
 
-    SC1CmdReadComplete(); // Acknowledge reading the solution by pulsing Read_Complete (removes Done but not NONCE)
+    SC1CmdReadComplete(transfer_time); // Acknowledge reading the solution by pulsing Read_Complete (removes Done but not NONCE)
 
     // For test purposes we are checking that steps above cleared the DONE signal.  In this case it is testing one asic so the other
     // asics should not be active.  We would not do this check in normal operation except perhaps to test the specific asic we just
     // completed.
     if (ERR_NONE == iResult) {
         // Test read of DONE signals to verify they are cleared
-        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "reading DONE status (%d)\r\n", iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1273,7 +1276,7 @@ static int iSC1TestJobVerify(uint64_t* puiSolution)
  *  \return int status of operation (see err_codes.h)
  *  Assumes sSC1XferBuf structure has the target device in board, chip and core fields
  */
-static int iSC1CmdDataValid(void)
+static int iSC1CmdDataValid(clock_t* transfer_time)
 {
     int iTimeOut;
     int iResult = ERR_NONE;
@@ -1284,12 +1287,12 @@ static int iSC1CmdDataValid(void)
         sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
         sSC1XferBuf.eRegister = E_SC1_REG_ECR;
         sSC1XferBuf.uiData = E_SC1_ECR_VALID_DATA; // assert DATA_VALID
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     } // if (ERR_NONE == iResult)
     // Deassert DATA_VALID even if we had an error above
     delay_us(10); // I have no idea how much to wait; CSS datasheet doesn't say
     sSC1XferBuf.uiData = 0x0; // deassert DATA_VALID
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
 #else
     //     // Check for busy status...expected to be not busy before we submit the data valid
@@ -1297,7 +1300,7 @@ static int iSC1CmdDataValid(void)
     //     sSC1XferBuf.eMode     = E_SC1_MODE_REG_READ;
     //     sSC1XferBuf.eRegister = E_SC1_REG_ESR;
     //     sSC1XferBuf.uiData    = 0;
-    //     iResult = iSC1SpiTransfer(&sSC1XferBuf);
+    //     iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     //     if ( (ERR_NONE == iResult) && (0 != (sSC1XferBuf.uiData & E_SC1_ESR_BUSY)) ) {
     //         iResult = ERR_BUSY;     // engine is busy do we cannot give it a job
     //     }
@@ -1306,7 +1309,7 @@ static int iSC1CmdDataValid(void)
         sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
         sSC1XferBuf.eRegister = E_SC1_REG_ECR;
         sSC1XferBuf.uiData = E_SC1_ECR_VALID_DATA; // assert DATA_VALID
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
@@ -1316,7 +1319,7 @@ static int iSC1CmdDataValid(void)
         iTimeOut = 1000; // in millsecs assuming 1ms delay below
         do {
             sSC1XferBuf.uiData = 0;
-            iResult = iSC1SpiTransfer(&sSC1XferBuf);
+            iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
             if ((ERR_NONE != iResult) || (0 != (sSC1XferBuf.uiData & (E_SC1_ESR_DONE | E_SC1_ESR_BUSY)))) {
                 break;
             } // if ( (ERR_NONE != iResult)...
@@ -1331,7 +1334,7 @@ static int iSC1CmdDataValid(void)
     sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = 0x0; // deassert DATA_VALID
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
 #endif // #if (1 == CSS_SC1_REVA_WORKAROUND)
 
@@ -1348,15 +1351,15 @@ static int iSC1CmdDataValid(void)
  * \return none
  *  Assumes sSC1XferBuf structure has the target device in board, chip and core fields
  */
-static void SC1CmdReadComplete(void)
+static void SC1CmdReadComplete(clock_t* transfer_time)
 {
     sSC1XferBuf.eMode = E_SC1_MODE_REG_WRITE;
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = E_SC1_ECR_READ_COMPLETE; // assert READ_COMPLETE
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     delay_us(50); // I have no idea how much to wait; CSS datasheet doesn't say
     sSC1XferBuf.uiData = 0x0; // deassert READ_COMPLETE
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
 } // SC1CmdReadComplete()
 
@@ -1378,7 +1381,7 @@ static void SC1CmdReadComplete(void)
  *  \retval ERR_BUSY SPI comms busy or timeout; try again later
  *  \retval ERR_INVALID_DATA invalid parameter?
  */
-int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
+int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer, clock_t* transfer_time)
 {
     uint8_t ixI;
     int iRetVal = ERR_NONE;
@@ -1431,7 +1434,7 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
         // On SAMA5D27 SOM; it must be done in the code because callback is not used.
         if (E_SC1_MODE_REG_READ == psSC1Transfer->eMode) {
             // read transfer; this will wait for the data so it returns with the result
-            (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT);
+            (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT, transfer_time);
 #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
             HBSetSpiSelects(psSC1Transfer->uiBoard, true); // SAMA5D27
             psSC1Transfer->uiData = uiArrayToUint64(&ucaSC1InBuf[3], true);
@@ -1450,7 +1453,7 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
             } // if (0 != iIsHBSpiBusy(true))
 #endif // #if (HW_ATSAMG55_XP_BOARD == HARDWARE_PLATFORM)
         } else { // write transfer; start the transfer but don't wait
-            (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT);
+            (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSC1OutBuf, ucaSC1InBuf, SC1_TRANSFER_BYTE_COUNT, transfer_time);
 
 #if (HW_SAMA5D27_SOM == HARDWARE_PLATFORM)
             HBSetSpiSelects(psSC1Transfer->uiBoard, true); // SAMA5D27
@@ -1476,7 +1479,7 @@ int iSC1SpiTransfer(S_SC1_TRANSFER_T* psSC1Transfer)
  * \return int type; is less than 0 for an error, 0 for no error, 1 for completed
  * Assumes each example only has a single solution.
  */
-int iSC1TestJobs(void)
+int iSC1TestJobs(clock_t* transfer_time)
 {
 #define FIRST_STATE 0
 #define NEW_JOB 1
@@ -1584,7 +1587,7 @@ int iSC1TestJobs(void)
         break;
 
     case LOAD_JOB: // pre-load into the target
-        iResult = iSC1CmdPreLoadJob(&sSC1JobBuf); // preload the job parameters to the ASIC(s)
+        iResult = iSC1CmdPreLoadJob(&sSC1JobBuf, transfer_time); // preload the job parameters to the ASIC(s)
         if (ERR_NONE != iResult) {
             iReturn = iResult;
         } else {
@@ -1593,7 +1596,7 @@ int iSC1TestJobs(void)
         break;
 
     case START_JOB: // Configure the target
-        iResult = iSC1CmdStartJob(); // submit the job
+        iResult = iSC1CmdStartJob(transfer_time); // submit the job
         if (ERR_NONE != iResult) {
             iReturn = iResult;
         } else {
@@ -1604,7 +1607,7 @@ int iSC1TestJobs(void)
     case WAIT_FOR_DONE: // waiting for nonce/done
         uiTimeOut = 2000; // in millisecs (assuming 1 ms delay below)
         do {
-            iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData);
+            iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
             if (ERR_NONE != iResult) {
                 // problem reading the done status
                 iResult = ERR_FAILURE;
@@ -1630,7 +1633,7 @@ int iSC1TestJobs(void)
 
     case READ_NONCE: // read and verify the nonce
         // since these are sample jobs they should have a single nonce returned; read and verify and clear the nonce
-        iResult = iSC1TestJobVerify(&uiSolution);
+        iResult = iSC1TestJobVerify(&uiSolution, transfer_time);
         if (ERR_NONE != iResult) {
             iReturn = iResult;
         } else {
@@ -1728,7 +1731,7 @@ static void SC1GetTestJob(uint8_t uiSampleNum)
  *
  * PRESENTLY A TEST FUNCTION ONLY.
  */
-static int iSC1EMCStartJob(void)
+static int iSC1EMCStartJob(clock_t* transfer_time)
 {
     int iResult;
     uint16_t uiTestData, uiTestVerify;
@@ -1739,10 +1742,10 @@ static int iSC1EMCStartJob(void)
     sSC1XferBuf.uiCore = 0; // all cores
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
-    iResult = iSC1SpiTransfer(&sSC1XferBuf); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) high
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) high
     if (ERR_NONE == iResult) {
         sSC1XferBuf.uiData = 0;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) low
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time); // Set ECR: MRST (bit 3) and reset error SPI (bit 0) low
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
@@ -1750,12 +1753,12 @@ static int iSC1EMCStartJob(void)
         sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST;
         sSC1XferBuf.eRegister = E_SC1_REG_FCR;
         sSC1XferBuf.uiData = 0; // clear all mask bits to unmask
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
         // Test read of NONCE signals; ; expecting target bit to be clear
-        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d Reading NONCE status (%d)\r\n", sSC1XferBuf.uiBoard + 1, iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1771,7 +1774,7 @@ static int iSC1EMCStartJob(void)
 
     if (ERR_NONE == iResult) {
         // Test read of DONE signals; ; expecting target bit to be clear
-        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardDoneInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d reading DONE status (%d)\r\n", sSC1XferBuf.uiBoard + 1, iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1786,7 +1789,7 @@ static int iSC1EMCStartJob(void)
     } // if (ERR_NONE == iResult)
 
     if (ERR_NONE == iResult) {
-        iResult = iSC1EMCDataValid(); // submit job(s) by pulsing Data_Valid
+        iResult = iSC1EMCDataValid(transfer_time); // submit job(s) by pulsing Data_Valid
     } // if (ERR_NONE == iResult)
     return (iResult);
 
@@ -1802,18 +1805,18 @@ static int iSC1EMCStartJob(void)
  *  \return int status of operation (see err_codes.h)
  *  Assumes sSC1XferBuf structure has the target device in board, chip and core fields
  */
-static int iSC1EMCDataValid(void)
+static int iSC1EMCDataValid(clock_t* transfer_time)
 {
     int iResult;
 
     sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST;
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = E_SC1_ECR_VALID_DATA; // assert DATA_VALID
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
     delay_us(50); // I have no idea how much to wait; CSS datasheet doesn't say
     sSC1XferBuf.uiData = 0x0; // deassert DATA_VALID
-    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
     return (iResult);
 
@@ -1829,16 +1832,16 @@ static int iSC1EMCDataValid(void)
  * \return none
  *  Assumes sSC1XferBuf structure has the target device in board, chip and core fields
  */
-static void SC1EMCReadComplete(void)
+static void SC1EMCReadComplete(clock_t* transfer_time)
 {
     sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST;
     sSC1XferBuf.eRegister = E_SC1_REG_ECR;
     sSC1XferBuf.uiData = E_SC1_ECR_READ_COMPLETE; // assert READ_COMPLETE
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
     delay_us(50); // I have no idea how much to wait; CSS datasheet doesn't say
     sSC1XferBuf.uiData = 0x0; // deassert READ_COMPLETE
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
 } // SC1EMCReadComplete()
 
@@ -1853,7 +1856,7 @@ static void SC1EMCReadComplete(void)
  *
  * PRESENTLY A TEST FUNCTION ONLY.
  */
-static int iSC1EMCTestJobVerify(uint64_t* puiSolution)
+static int iSC1EMCTestJobVerify(uint64_t* puiSolution, clock_t* transfer_time)
 {
     int iResult = ERR_NONE;
     uint8_t uiCoreSave;
@@ -1863,7 +1866,7 @@ static int iSC1EMCTestJobVerify(uint64_t* puiSolution)
 
     if (ERR_NONE == iResult) {
         // Test read of NONCE signals; expecting target bit to be set
-        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData);
+        iResult = iReadBoardNonceInts(sSC1XferBuf.uiBoard, &uiTestData, transfer_time);
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d reading NONCE status (%d)\r\n", sSC1XferBuf.uiBoard + 1, iResult);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -1884,7 +1887,7 @@ static int iSC1EMCTestJobVerify(uint64_t* puiSolution)
         sSC1XferBuf.uiCore = E_SC1_CHIP_REGS;
         sSC1XferBuf.eRegister = E_SC1_REG_IVR;
         sSC1XferBuf.uiData = 0;
-        iResult = iSC1SpiTransfer(&sSC1XferBuf);
+        iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
         sSC1XferBuf.uiCore = LAST_SC1_CORE;
         if (ERR_NONE == iResult) {
             // Verify CORE ID is last core and interrupt vector is 0th fifo location only
@@ -1899,7 +1902,7 @@ static int iSC1EMCTestJobVerify(uint64_t* puiSolution)
             sSC1XferBuf.eMode = E_SC1_MODE_REG_READ;
             sSC1XferBuf.eRegister = E_SC1_REG_FDR0;
             sSC1XferBuf.uiData = 0;
-            iResult = iSC1SpiTransfer(&sSC1XferBuf);
+            iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
             if (ERR_NONE == iResult) {
                 *puiSolution = sSC1XferBuf.uiData; // solution to return
             } // if (ERR_NONE == iResult)
@@ -1910,9 +1913,9 @@ static int iSC1EMCTestJobVerify(uint64_t* puiSolution)
     sSC1XferBuf.eMode = E_SC1_MODE_MULTICAST;
     sSC1XferBuf.eRegister = E_SC1_REG_FCR;
     sSC1XferBuf.uiData = E_SC1_FCR_MASK_ALL;
-    iResult = iSC1SpiTransfer(&sSC1XferBuf);
+    iResult = iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
-    SC1EMCReadComplete(); // Acknowledge reading the solution by pulsing Read_Complete (removes Done but not NONCE)
+    SC1EMCReadComplete(transfer_time); // Acknowledge reading the solution by pulsing Read_Complete (removes Done but not NONCE)
 
     return (iResult);
 
@@ -1982,12 +1985,12 @@ void SC1OCRBias(void)
 //     sSC1XferBuf.uiChip = 0;      // ASIC 1
     sSC1XferBuf.uiChip = 1;      // ASIC 2
 
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 
 }  // SC1OCRBias()
 #endif // #if 0  // SC1OCRBias() TEST FUNCTION DISABLED
 
-int iSetSC1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias)
+int iSetSC1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias, clock_t* transfer_time)
 {
     uint64_t uiDividerBits = 0;
     switch (uiDivider) {
@@ -2054,5 +2057,5 @@ int iSetSC1OCRDividerAndBias(uint8_t uiBoard, uint8_t uiDivider, int8_t iVcoBias
     sSC1XferBuf.eRegister = E_SC1_REG_OCR;
     sSC1XferBuf.uiBoard = uiBoard;
     sSC1XferBuf.uiData = (SC1_OCR_CORE_ENB | uiVcoBiasBits | uiDividerBits);
-    (void)iSC1SpiTransfer(&sSC1XferBuf);
+    (void)iSC1SpiTransfer(&sSC1XferBuf, transfer_time);
 } // iSetSC1OCRDividerAndBias()

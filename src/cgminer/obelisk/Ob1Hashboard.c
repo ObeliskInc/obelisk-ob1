@@ -497,7 +497,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
     int iResult = ERR_NONE;
     int iResult2 = ERR_NONE;
     S_ADS1015_DATA_T* psVMonData;
-
+    clock_t transfer_time = 0;
     int tempRet;
 
     if (iIsBoardValid(uiBoard, false) == ERR_NONE) {
@@ -537,7 +537,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
 
             if (ERR_NONE == iResult2) {
                 // Read revision of board from GPIO pins; also identifies the hash board type
-                iResult2 = iReadBoardRevision(uiUUT, &saHashBoardInfo[uiUUT].uiRev, &saHashBoardInfo[uiUUT].eAsicType);
+                iResult2 = iReadBoardRevision(uiUUT, &saHashBoardInfo[uiUUT].uiRev, &saHashBoardInfo[uiUUT].eAsicType, &transfer_time);
                 if (ERR_NONE != iResult2) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "rev read error %d\r\n", iResult2);
                 } else {
@@ -561,7 +561,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
 
             if (ERR_NONE == iResult2) {
                 // Test read of DONE signals.  The board reset above should have turned off ASIC power so the DONE/ATTN signals should be high.
-                iResult2 = iReadBoardDoneInts(uiUUT, &uiTestData);
+                iResult2 = iReadBoardDoneInts(uiUUT, &uiTestData, &transfer_time);
                 if (ERR_NONE != iResult2) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "ERROR reading DONE status %d\r\n", iResult2);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -577,7 +577,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
 
             if (ERR_NONE == iResult2) {
                 // Test read of NONCE signals.  The reset above should have turned off ASIC power so the DONE/ATTN signals should be high.
-                iResult2 = iReadBoardNonceInts(uiUUT, &uiTestData);
+                iResult2 = iReadBoardNonceInts(uiUUT, &uiTestData, &transfer_time);
                 if (ERR_NONE != iResult2) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "ERROR reading NONCE status %d\r\n", iResult2);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -658,7 +658,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
             // IF the above tests passed, it can turn on asic string power at a low voltage .  That is, if we have
             // working fans, temperature sensors, ps control, voltage monitoring, etc.
             if (ERR_NONE == iResult) {
-                iResult = iSetPSEnable(uiUUT, true); // turn on the string
+                iResult = iSetPSEnable(uiUUT, true, &transfer_time); // turn on the string
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR power supply enable\r\n");
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
@@ -695,7 +695,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
             // #TODO add in code to check temperature sensors
             //iMCP9903ReportTemps
 
-            (void)iSetPSEnable(uiUUT, false); // At the end, turn off the string while we go on to test any others
+            (void)iSetPSEnable(uiUUT, false, &transfer_time); // At the end, turn off the string while we go on to test any others
 
             saHashBoardInfo[uiUUT].iStatus = iResult;
 

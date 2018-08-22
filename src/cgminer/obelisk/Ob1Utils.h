@@ -3,6 +3,7 @@
 #ifndef __OB1UTILS__
 #define __OB1UTILS__
 #include "Ob1Defines.h"
+#include <time.h>
 
 #define INIT_LOCK(m) (pthread_mutex_init(m, NULL))
 #define LOCK(m) (pthread_mutex_lock(m))
@@ -21,20 +22,20 @@ void ob1ToggleGreenLED();
 ApiError ob1InitializeControlBoard();
 ApiError ob1InitializeHashBoards();
 
-ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
+ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time);
 
-ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
+ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData, clock_t* transfer_time);
 
-ApiError ob1SpiReadChipReg(uint8_t boardNum, uint8_t chipNum, uint8_t registerId, void* pData);
+ApiError ob1SpiReadChipReg(uint8_t boardNum, uint8_t chipNum, uint8_t registerId, void* pData, clock_t* transfer_time);
 
 uint64_t getSC1DividerBits(uint8_t divider);
 uint64_t getDCR1DividerBits(uint8_t divider);
 uint64_t getSC1BiasBits(int8_t bias);
 uint64_t getDCR1BiasBits(int8_t bias);
-ApiError pulseSC1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
-ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
-ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
-ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
+ApiError pulseSC1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time);
+ApiError pulseDCR1DataValid(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time);
+ApiError pulseSC1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time);
+ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, clock_t* transfer_time);
 
 void logNonceSet(NonceSet* pNonceSet, char* prefix);
 

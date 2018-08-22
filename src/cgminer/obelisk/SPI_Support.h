@@ -22,6 +22,7 @@
 //#include <compiler.h>
 //#include <utils.h>
 #include "Ob1Hashboard.h"
+#include <time.h>
 
 /***  ASSOCIATED STRUCTURES/ENUMS      ***/
 typedef enum  {
@@ -50,7 +51,7 @@ extern void SetSPIClockRate(void);
 
 extern bool bIsSPI5_CBOccurred(bool bClear);
 
-extern bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, uint8_t *const pucaRxBuf, const uint16_t uiLength);
+extern bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, uint8_t *const pucaRxBuf, const uint16_t uiLength, clock_t* transfer_time);
 //extern bool bSPI5StartDataXfer(void);
 
 extern int iIsHBSpiBusy(bool bWait);

@@ -105,7 +105,7 @@
 /***    LOCAL STRUCTURES/ENUMS      ***/
 
 /***    LOCAL FUNCTION PROTOTYPES   ***/
-static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf);
+static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf, clock_t* transfer_time);
 
 /***    LOCAL DATA DECLARATIONS     ***/
 
@@ -129,20 +129,20 @@ static uint8_t ucaSPIInBuf[DEV_READ_BUFF_SIZE]; // buffer for reading in
  * \param uiBoard sets which board to target; can only target one board at a time
  * \return int error codes from err_codes.h
  */
-int iToggleHashClockEnable(uint8_t uiBoard)
+int iToggleHashClockEnable(uint8_t uiBoard, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     bool bValue;
 
     // Get the present value
-    iRetval = iGetHashClockEnable(uiBoard, &bValue);
+    iRetval = iGetHashClockEnable(uiBoard, &bValue, transfer_time);
 
     if (ERR_NONE == iRetval) {
         // Set to the opposite value
         if (false == bValue) {
-            iRetval = iSetHashClockEnable(uiBoard, true);
+            iRetval = iSetHashClockEnable(uiBoard, true, transfer_time);
         } else {
-            iRetval = iSetHashClockEnable(uiBoard, false);
+            iRetval = iSetHashClockEnable(uiBoard, false, transfer_time);
         }
     }
     return (iRetval);
@@ -157,7 +157,7 @@ int iToggleHashClockEnable(uint8_t uiBoard)
  * \param bEnable set true to enable clocking
  * \return int error codes from err_codes.h
  */
-int iSetHashClockEnable(uint8_t uiBoard, bool bEnable)
+int iSetHashClockEnable(uint8_t uiBoard, bool bEnable, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     uint16_t uiValue;
@@ -165,7 +165,7 @@ int iSetHashClockEnable(uint8_t uiBoard, bool bEnable)
     iRetval = iIsBoardValid(uiBoard, false);
     if (ERR_NONE == iRetval) {
         // get port status so we can change only the signal we want
-        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue);
+        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue, transfer_time);
         uiValue = uiValue & CTL_MASK;
     }
     if (ERR_NONE == iRetval) {
@@ -174,7 +174,7 @@ int iSetHashClockEnable(uint8_t uiBoard, bool bEnable)
         } else {
             uiValue &= ~HASHOFF; // clear HASHOFF bit to turn hashing on
         }
-        iRetval = iWritePexPins(uiBoard, PEX_MISC_ADR, uiValue);
+        iRetval = iWritePexPins(uiBoard, PEX_MISC_ADR, uiValue, transfer_time);
     }
     return (iRetval);
 
@@ -187,7 +187,7 @@ int iSetHashClockEnable(uint8_t uiBoard, bool bEnable)
  * \param pbEnable is ptr to bool to return; true if hashing enabled
  * \return int error codes from err_codes.h
  */
-int iGetHashClockEnable(uint8_t uiBoard, bool* pbEnable)
+int iGetHashClockEnable(uint8_t uiBoard, bool* pbEnable, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     uint16_t uiValue;
@@ -195,7 +195,7 @@ int iGetHashClockEnable(uint8_t uiBoard, bool* pbEnable)
     iRetval = iIsBoardValid(uiBoard, false);
     if (ERR_NONE == iRetval) {
         // get port status so we can change only the signal we want
-        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue);
+        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue, transfer_time);
     }
 
     if (HASHOFF == (uiValue & HASHOFF)) {
@@ -213,19 +213,19 @@ int iGetHashClockEnable(uint8_t uiBoard, bool* pbEnable)
  * \param uiBoard sets which board to target; range 0 to MAX_NUMBER_OF_HASH_BOARDS-1
  * \return int error codes from err_codes.h
  */
-int iTogglePSEnable(uint8_t uiBoard)
+int iTogglePSEnable(uint8_t uiBoard, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     bool bValue;
 
     // Get the present value
-    iRetval = iGetPSEnable(uiBoard, &bValue);
+    iRetval = iGetPSEnable(uiBoard, &bValue, transfer_time);
 
     if (ERR_NONE == iRetval) {
         if (false == bValue) { // Set to the opposite value
-            iRetval = iSetPSEnable(uiBoard, true);
+            iRetval = iSetPSEnable(uiBoard, true, transfer_time);
         } else {
-            iRetval = iSetPSEnable(uiBoard, false);
+            iRetval = iSetPSEnable(uiBoard, false, transfer_time);
         }
     }
     return (iRetval);
@@ -239,7 +239,7 @@ int iTogglePSEnable(uint8_t uiBoard)
  * \param bEnable set true to enable power to asic string
  * \return int error codes from err_codes.h
  */
-int iSetPSEnable(uint8_t uiBoard, bool bEnable)
+int iSetPSEnable(uint8_t uiBoard, bool bEnable, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     uint16_t uiValue;
@@ -247,7 +247,7 @@ int iSetPSEnable(uint8_t uiBoard, bool bEnable)
     iRetval = iIsBoardValid(uiBoard, false);
     if (ERR_NONE == iRetval) {
         // get port status so we can change only the signal we want
-        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue);
+        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue, transfer_time);
         uiValue = uiValue & CTL_MASK;
     }
 
@@ -257,7 +257,7 @@ int iSetPSEnable(uint8_t uiBoard, bool bEnable)
         } else {
             uiValue &= ~PSENB; // clear PSENB bit to turn power supply off
         }
-        iRetval = iWritePexPins(uiBoard, PEX_MISC_ADR, uiValue);
+        iRetval = iWritePexPins(uiBoard, PEX_MISC_ADR, uiValue, transfer_time);
         delay_ms(400); // delay; allows write to complete and power supply to stabilize
     }
     return (iRetval);
@@ -271,7 +271,7 @@ int iSetPSEnable(uint8_t uiBoard, bool bEnable)
  * \param pbEnable is ptr to bool to return; true if power is enabled
  * \return int error codes from err_codes.h
  */
-int iGetPSEnable(uint8_t uiBoard, bool* pbEnable)
+int iGetPSEnable(uint8_t uiBoard, bool* pbEnable, clock_t* transfer_time)
 {
     int iRetval = ERR_NONE;
     uint16_t uiValue;
@@ -279,7 +279,7 @@ int iGetPSEnable(uint8_t uiBoard, bool* pbEnable)
     iRetval = iIsBoardValid(uiBoard, false);
     if (ERR_NONE == iRetval) {
         // get port status so we can change only the signal we want
-        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue);
+        iRetval = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue, transfer_time);
     }
 
     if (PSENB == (uiValue & PSENB)) {
@@ -314,6 +314,7 @@ int iGetPSEnable(uint8_t uiBoard, bool* pbEnable)
  */
 int iPexInit(uint8_t uiBoard)
 {
+    clock_t transfer_time = 0;
     int iRetval = ERR_NONE;
     //     bool bError = false;
 
@@ -329,14 +330,14 @@ int iPexInit(uint8_t uiBoard)
         sPexXferBuf.uiReg = E_S17_REG0_IOCONA;
         sPexXferBuf.uiData = DONE_IOCON_DEFAULT;
 
-        iRetval = iPexSpiTransfer(&sPexXferBuf); // should do all on POR or only DONE after that
+        iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time); // should do all on POR or only DONE after that
         if (ERR_NONE == iRetval) {
             sPexXferBuf.uiPexChip = PEX_NONCE_ADR;
-            iRetval = iPexSpiTransfer(&sPexXferBuf); // should do the NONCE input port; (same as DONE port)
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time); // should do the NONCE input port; (same as DONE port)
         }
         if (ERR_NONE == iRetval) {
             sPexXferBuf.uiPexChip = PEX_MISC_ADR; // misc expander has the PSENB and HASHENB lines
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
         if (ERR_NONE == iRetval) {
@@ -345,7 +346,7 @@ int iPexInit(uint8_t uiBoard)
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE1; // 1 byte to port A
             sPexXferBuf.uiReg = E_S17_REG0_OLATA;
             sPexXferBuf.uiData = MISC_OLAT_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
         if (ERR_NONE == iRetval) {
@@ -354,7 +355,7 @@ int iPexInit(uint8_t uiBoard)
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE1; // 1 byte to port A
             sPexXferBuf.uiReg = E_S17_REG0_IODIRA;
             sPexXferBuf.uiData = MISC_IODIR_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
         if (ERR_NONE == iRetval) {
@@ -363,7 +364,7 @@ int iPexInit(uint8_t uiBoard)
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE2; // 2 bytes; for both ports
             sPexXferBuf.uiReg = E_S17_REG0_GPPUA;
             sPexXferBuf.uiData = MISC_GPPU_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
         // DONE and NONCE ports are by default configured as inputs without pull-ups.
@@ -375,14 +376,14 @@ int iPexInit(uint8_t uiBoard)
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE2; // 2 byte; to port A and B
             sPexXferBuf.uiReg = E_S17_REG0_GPINTENA;
             sPexXferBuf.uiData = DONE_GPINTENB_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
         if (ERR_NONE == iRetval) { // Configure to compare with default value reg
             sPexXferBuf.uiPexChip = PEX_DONE_ADR;
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE2; // 2 byte; to port A and B
             sPexXferBuf.uiReg = E_S17_REG0_INTCONA;
             sPexXferBuf.uiData = DONE_INTCON_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
         if (ERR_NONE == iRetval) { // Configure what is used for combined NONCE output
@@ -390,14 +391,14 @@ int iPexInit(uint8_t uiBoard)
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE2; // 2 byte; to port A and B
             sPexXferBuf.uiReg = E_S17_REG0_GPINTENA;
             sPexXferBuf.uiData = DONE_GPINTENB_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
         if (ERR_NONE == iRetval) { // Configure to compare with default value reg
             sPexXferBuf.uiPexChip = PEX_NONCE_ADR;
             sPexXferBuf.eXferMode = E_GPIO_XP_WRITE2; // 2 byte; to port A and B
             sPexXferBuf.uiReg = E_S17_REG0_INTCONA;
             sPexXferBuf.uiData = DONE_INTCON_DEFAULT;
-            iRetval = iPexSpiTransfer(&sPexXferBuf);
+            iRetval = iPexSpiTransfer(&sPexXferBuf, &transfer_time);
         }
 
     } // if (ERR_NONE == iRetval)
@@ -412,12 +413,12 @@ int iPexInit(uint8_t uiBoard)
  * \param puiType ptr to return type of hash board code
  * \return int error codes from err_codes.h
  */
-int iReadBoardRevision(uint8_t uiBoard, uint8_t* puiRevision, E_ASIC_TYPE_T* puiType)
+int iReadBoardRevision(uint8_t uiBoard, uint8_t* puiRevision, E_ASIC_TYPE_T* puiType, clock_t* transfer_time)
 {
     int iRetVal;
     uint16_t uiValue;
 
-    iRetVal = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue);
+    iRetVal = iReadPexPins(uiBoard, PEX_MISC_ADR, &uiValue, transfer_time);
     if (ERR_NONE == iRetVal) {
         *puiRevision = (uint8_t)CONVERT_REV(uiValue); // convert to a number
         if (SC1_DCR1_MASK == (uiValue & SC1_DCR1_MASK)) {
@@ -439,11 +440,11 @@ int iReadBoardRevision(uint8_t uiBoard, uint8_t* puiRevision, E_ASIC_TYPE_T* pui
  * \param puiValue ptr to uint16_t to return values read back
  * \return int error codes from err_codes.h
  */
-int iReadBoardDoneInts(uint8_t uiBoard, uint16_t* puiValue)
+int iReadBoardDoneInts(uint8_t uiBoard, uint16_t* puiValue, clock_t* transfer_time)
 {
     int iRetVal = ERR_NONE;
 
-    iRetVal = iReadPexPins(uiBoard, PEX_DONE_ADR, puiValue);
+    iRetVal = iReadPexPins(uiBoard, PEX_DONE_ADR, puiValue, transfer_time);
     return (iRetVal);
 
 } // iReadBoardDoneInts()
@@ -455,11 +456,11 @@ int iReadBoardDoneInts(uint8_t uiBoard, uint16_t* puiValue)
  * \param puiValue ptr to uint16_t to return values read back
  * \return int error codes from err_codes.h
  */
-int iReadBoardNonceInts(uint8_t uiBoard, uint16_t* puiValue)
+int iReadBoardNonceInts(uint8_t uiBoard, uint16_t* puiValue, clock_t* transfer_time)
 {
     int iRetVal = ERR_NONE;
 
-    iRetVal = iReadPexPins(uiBoard, PEX_NONCE_ADR, puiValue);
+    iRetVal = iReadPexPins(uiBoard, PEX_NONCE_ADR, puiValue, transfer_time);
     return (iRetVal);
 
 } // iReadBoardNonceInts()
@@ -471,7 +472,7 @@ int iReadBoardNonceInts(uint8_t uiBoard, uint16_t* puiValue)
  * \param puiValue ptr to uint16_t to return values read back
  * \return int error codes from err_codes.h
  */
-int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t* puiValue)
+int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t* puiValue, clock_t* transfer_time)
 {
     int iRetVal;
 
@@ -481,7 +482,7 @@ int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t* puiValue)
         sPexXferBuf.eXferMode = E_GPIO_XP_READ2;
         sPexXferBuf.uiPexChip = uiChip;
         sPexXferBuf.uiReg = E_S17_REG0_GPIOA;
-        iRetVal = iPexSpiTransfer(&sPexXferBuf); // Read to the chip; should block until completed
+        iRetVal = iPexSpiTransfer(&sPexXferBuf, transfer_time); // Read to the chip; should block until completed
     }
     if (ERR_NONE != iRetVal) {
         sPexXferBuf.uiData = 0; // zero data if error returned
@@ -500,7 +501,7 @@ int iReadPexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t* puiValue)
  * \param uiValue uint16_t is value to set
  * \return int error codes from err_codes.h
  */
-int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue)
+int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue, clock_t* transfer_time)
 {
     int iRetVal = ERR_NONE;
 
@@ -511,7 +512,7 @@ int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue)
         sPexXferBuf.uiPexChip = uiChip;
         sPexXferBuf.uiReg = E_S17_REG0_OLATA; // output latch reg
         sPexXferBuf.uiData = uiValue;
-        iRetVal = iPexSpiTransfer(&sPexXferBuf); // Write to the chip
+        iRetVal = iPexSpiTransfer(&sPexXferBuf, transfer_time); // Write to the chip
     }
     return (iRetVal);
 
@@ -534,7 +535,7 @@ int iWritePexPins(uint8_t uiBoard, uint8_t uiChip, uint16_t uiValue)
  *  \retval ERR_BUSY SPI comms busy or timeout; try again later
  *  \retval ERR_INVALID_DATA invalid parameter?
  */
-static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf)
+static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf, clock_t* transfer_time)
 {
 #define PEX_READ_BIT 0x01
 #define PEX_WRITE_BIT 0x00
@@ -597,7 +598,7 @@ static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf)
         HBSetSpiSelects(psXferBuf->uiBoard, false);
 
         if (PEX_READ_BIT == uiRWnot) {
-            (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSPIOutBuf, ucaSPIInBuf, uiCount); // reading 8 bits per word
+            (void)bSPI5StartDataXfer(E_SPI_XFER8, ucaSPIOutBuf, ucaSPIInBuf, uiCount, transfer_time); // reading 8 bits per word
             HBSetSpiSelects(psXferBuf->uiBoard, true);
             // wait for the read transfer to complete; then the result should be in input buffer
             if (0 != iIsHBSpiBusy(true)) { // verify SPI is no longer busy
@@ -612,7 +613,7 @@ static int iPexSpiTransfer(S_MCP23S17_TRANSFER_T* psXferBuf)
             } // if (0 != iIsSC1SpiBusy(true))
         } else { // write transfer; start the transfer but don't wait
             // If we want to monitor then we can poll the callback flag or wait for SPI busy
-            (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSPIOutBuf, ucaSPIInBuf, uiCount);
+            (void)bSPI5StartDataXfer(E_SPI_XFER_WRITE, ucaSPIOutBuf, ucaSPIInBuf, uiCount, transfer_time);
             HBSetSpiSelects(psXferBuf->uiBoard, true);
         } // if (PEX_READ_BIT == uiRWnot)
 

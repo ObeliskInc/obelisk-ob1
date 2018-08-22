@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <time.h>
 #include <linux/spi/spidev.h>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -30,7 +31,7 @@ static uint16_t delay = 0;
 static uint8_t bits = 8;
 static uint32_t speed = 1000000;
 
-void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
+void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len, clock_t *transfer_time)
 {
     int ret;
 
@@ -42,11 +43,15 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
         .speed_hz = speed,
         .bits_per_word = bits,
     };
-
+    
+    clock_t before = clock();
     if((ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr)) < 1)
     {
         printf("Failed to send SPI message\n");
     }
+    clock_t after = clock();
+    clock_t cpus = CLOCKS_PER_SEC / 1000000;
+    *transfer_time = (after - before) / cpus;
 }
 
 int spi_setup(void)
@@ -125,7 +130,8 @@ int spi_main(void)
     printf("Bits per word: %d\n", bits);
     printf("Max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 
-    transfer(fd, default_tx, default_rx, sizeof(default_tx));
+    clock_t transfer_time;
+    transfer(fd, default_tx, default_rx, sizeof(default_tx), &transfer_time);
 
     close(fd);
 
