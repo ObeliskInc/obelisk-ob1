@@ -966,7 +966,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
-#define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
+#define HotChipTargetTemp 115.0 // Acceptable temp for hottest chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
