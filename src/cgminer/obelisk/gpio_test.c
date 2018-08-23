@@ -16,6 +16,10 @@
 #include <sys/ioctl.h>
 //#include <linux/gpio.h>
 
+
+// Keep track of all open file descriptors
+static int gpio_rw_fds[21];
+
 /* Fundamental functions */
 
 /* Initialize pins by exporting them to the /sys/class/gpio export file */
@@ -139,6 +143,86 @@ char* GPIO_PIN_TO_DIRECTION_STRING(gpio_pin_t gpio_pin_id)
     }
     return NULL;
 }
+
+int GPIO_PIN_TO_INDEX(gpio_pin_t gpio_pin_id)
+{
+    switch (gpio_pin_id) {
+    default:
+        exit(-1);
+        break;
+    case FAN_POWER_CONTROL:
+        return 0;
+    case FAN_PWM_CONTROL:
+        return 1;
+    case HASH_BOARD_ONE_PRESENT:
+        return 2;
+    case HASH_BOARD_TWO_PRESENT:
+        return 3;
+    case HASH_BOARD_THREE_PRESENT:
+        return 4;
+    case HASH_BOARD_ONE_DONE:
+        return 5;
+    case HASH_BOARD_TWO_DONE:
+        return 6;
+    case HASH_BOARD_THREE_DONE:
+        return 7;
+    case HASH_BOARD_ONE_NONCE:
+        return 8;
+    case HASH_BOARD_TWO_NONCE:
+        return 9;
+    case HASH_BOARD_THREE_NONCE:
+        return 10;
+    case CONTROLLER_USER_SWITCH:
+        return 11;
+    case CONTROLLER_POWER_SENSE:
+        return 12;
+    case CONTROLLER_GREEN_LED:
+        return 13;
+    case CONTROLLER_RED_LED:
+        return 14;
+    case CONTROLLER_SECOND_ETH:
+        return 15;
+    case SPI_ADDR0:
+        return 16;
+    case SPI_ADDR1:
+        return 17;
+    case SPI_SS1:
+        return 18;
+    case SPI_SS2:
+        return 19;
+    case SPI_SS3:
+        return 20;
+    }
+}
+
+
+gpio_pin_t GPIO_INDEX_TO_PIN(int index) {
+    gpio_pin_t pins[21] = {
+        FAN_POWER_CONTROL,
+        FAN_PWM_CONTROL,
+        HASH_BOARD_ONE_PRESENT,
+        HASH_BOARD_TWO_PRESENT,
+        HASH_BOARD_THREE_PRESENT,
+        HASH_BOARD_ONE_DONE,
+        HASH_BOARD_TWO_DONE,
+        HASH_BOARD_THREE_DONE,
+        HASH_BOARD_ONE_NONCE,
+        HASH_BOARD_TWO_NONCE,
+        HASH_BOARD_THREE_NONCE,
+        CONTROLLER_USER_SWITCH,
+        CONTROLLER_POWER_SENSE,
+        CONTROLLER_GREEN_LED,
+        CONTROLLER_RED_LED,
+        CONTROLLER_SECOND_ETH,
+        SPI_ADDR0,
+        SPI_ADDR1,
+        SPI_SS1,
+        SPI_SS2,
+        SPI_SS3,
+    };
+    return pins[index];
+}
+
 
 /* Set GPIO pin as input for reading */
 gpio_ret_t gpio_set_pin_as_input(gpio_pin_t gpio_pin_id)
@@ -329,55 +413,45 @@ int gpio_read_pin(gpio_pin_t gpio_pin_id)
 /* Set GPIO output pin value to LOW */
 gpio_ret_t gpio_set_output_pin_low(gpio_pin_t gpio_pin_id)
 {
-    int valuefd;
-    char t_str[16], *p_val_str = NULL;
+    int valuefd = gpio_rw_fds[GPIO_PIN_TO_INDEX(gpio_pin_id)];
 
-    if ((p_val_str = GPIO_PIN_TO_VALUE_STRING(gpio_pin_id)) == NULL) {
-        GPIO_LOG("Unable to derive value file name for pin %d\n", gpio_pin_id);
-        return GPIO_RET_ERROR;
-    }
-
-    if ((valuefd = open(p_val_str, O_WRONLY)) < 0) {
-        GPIO_LOG("Unable to open GPIO value file for pin %d. %d:%s\n", gpio_pin_id, errno, strerror(errno));
-        return GPIO_RET_ERROR;
-    }
-
-    sprintf(t_str, "0");
-    if (write(valuefd, t_str, (strlen(t_str) + 1)) < 0) {
+    if (write(valuefd, "0", 2) < 0) {
         GPIO_LOG("Unable to set gpio pin %d to LOW. %d:%s\n", gpio_pin_id, errno, strerror(errno));
-        close(valuefd);
         return GPIO_RET_ERROR;
     }
 
-    close(valuefd);
     return GPIO_RET_SUCCESS;
 }
 
 /* Set GPIO output pin value to HIGH */
 gpio_ret_t gpio_set_output_pin_high(gpio_pin_t gpio_pin_id)
 {
-    int valuefd;
-    char t_str[16], *p_val_str = NULL;
+    int valuefd = gpio_rw_fds[GPIO_PIN_TO_INDEX(gpio_pin_id)];
 
-    if ((p_val_str = GPIO_PIN_TO_VALUE_STRING(gpio_pin_id)) == NULL) {
-        GPIO_LOG("Unable to derive value file name for pin %d\n", gpio_pin_id);
-        return GPIO_RET_ERROR;
-    }
-
-    if ((valuefd = open(p_val_str, O_WRONLY)) < 0) {
-        GPIO_LOG("Unable to open GPIO value file for pin %d. %d:%s\n", gpio_pin_id, errno, strerror(errno));
-        return GPIO_RET_ERROR;
-    }
-
-    sprintf(t_str, "1");
-    if (write(valuefd, t_str, (strlen(t_str) + 1)) < 0) {
+    if (write(valuefd, "1", 2) < 0) {
         GPIO_LOG("Unable to set gpio pin %d to HIGH. %d:%s\n", gpio_pin_id, errno, strerror(errno));
-        close(valuefd);
         return GPIO_RET_ERROR;
     }
 
-    close(valuefd);
     return GPIO_RET_SUCCESS;
+}
+
+bool is_output_pin(gpio_pin_t pin) {
+    switch (pin) {
+        case FAN_POWER_CONTROL:
+        case CONTROLLER_RED_LED:
+        case CONTROLLER_GREEN_LED:
+        case CONTROLLER_SECOND_ETH:
+        case SPI_ADDR0:
+        case SPI_ADDR1:
+        case SPI_SS1:
+        case SPI_SS2:
+        case SPI_SS3:
+            return true;
+        default:
+            return false;
+    };
+
 }
 
 /* Initialize GPIO */
@@ -655,6 +729,30 @@ gpio_ret_t gpio_init(void)
             retval = GPIO_RET_ERROR;
         }
     }
+
+    
+
+
+    // Open all file handles once to save the cost of doing it on every read or write
+    for (int i=0; i < 21; i++) {
+        if (i == 1) continue;  // Skip the PWM (TODO: Remove the PWM entirely as it's not a gpio anymore)
+        gpio_pin_t pin = GPIO_INDEX_TO_PIN(i);
+        if (!is_output_pin(pin)) {
+            continue;
+        }
+        char* p_val_str;
+        if ((p_val_str = GPIO_PIN_TO_VALUE_STRING(pin)) == NULL) {
+            GPIO_LOG("Unable to derive value file name for pin %d\n", pin);
+            return (int)GPIO_RET_ERROR;
+        }
+
+        if ((gpio_rw_fds[i] = open(p_val_str, O_WRONLY)) < 0) {
+            GPIO_LOG("Unable to open GPIO value file for pin %d. %d:%s\n", pin, errno, strerror(errno));
+            return (int)GPIO_RET_ERROR;
+        }
+        GPIO_LOG("Pin %u = index %u: fd = %d\n", pin, i, gpio_rw_fds[i]);
+    }
+
 
     int value;
     if ((value = gpio_read_pin(HASH_BOARD_ONE_PRESENT)) != (int)GPIO_RET_ERROR) {
