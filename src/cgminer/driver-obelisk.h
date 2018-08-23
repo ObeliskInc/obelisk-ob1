@@ -28,8 +28,9 @@
 #define NUM_ENGINES_PER_CHIP 128U
 #define NONCE_RANGE_SIZE (0xFFFFFFFFULL / 128ULL)
 
-#define MAX_WQ_SIZE (NUM_CHIPS_PER_BOARD * 2)
-#define WQ_REFILL_SIZE (MAX_WQ_SIZE / 2)
+#define MAX_WQ_SIZE 2
+#define WQ_REFILL_SIZE 1
+
 #endif
 
 // Each engine can queue up another job
