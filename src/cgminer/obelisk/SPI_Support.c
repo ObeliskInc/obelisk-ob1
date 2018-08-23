@@ -206,13 +206,9 @@ void HBSetSpiSelectsFalse(uint8_t uiBoard)
 			break;
 	}
 
-    if ((valuefd = open(p_val_str, O_WRONLY)) < 0) {
-    }
-
+    valuefd = open(p_val_str, O_WRONLY);
     sprintf(t_str, "0");
-    if (write(valuefd, t_str, (strlen(t_str) + 1)) < 0) {
-    }
-
+    write(valuefd, t_str, (strlen(t_str) + 1));
     close(valuefd);
 }
 
