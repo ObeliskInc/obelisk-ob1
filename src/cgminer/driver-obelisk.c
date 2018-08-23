@@ -1434,6 +1434,23 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	xfer.uiCore = engineNum;
 	xfer.uiBoard = ob->staticBoardNumber;
 
+	// Set up code to work with the file descriptors.
+	int gpioSpiSelectFD;
+	char gpioSpiSelectBuf[16], *gpioSpiSelectFilename = NULL;
+	switch(ob->staticBoardNumber) {
+		case 0:
+			gpioSpiSelectFilename = "/sys/class/gpio/PA17/value"; // SPI_SS1
+			break;
+		case 1:
+			gpioSpiSelectFilename = "/sys/class/gpio/PA7/value"; // SPI_SS2
+			break;
+		case 2:
+			gpioSpiSelectFilename = "/sys/class/gpio/PA8/value"; // SPI_SS3
+			break;
+		default:
+			break;
+	}
+
 	// Perform all of the writes under a SPI lock.
 	LOCK(&spiLock);
 		// Do the first write.
@@ -1458,31 +1475,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
-					int valuefd;
-					char t_str[16], *gpioSpiSelectFilename = NULL;
-					switch(ob->staticBoardNumber) {
-						case 0:
-							gpioSpiSelectFilename = "/sys/class/gpio/PA17/value"; // SPI_SS1
-							break;
-						case 1:
-							gpioSpiSelectFilename = "/sys/class/gpio/PA7/value"; // SPI_SS2
-							break;
-						case 2:
-							gpioSpiSelectFilename = "/sys/class/gpio/PA8/value"; // SPI_SS3
-							break;
-						default:
-							break;
-					}
-					valuefd = open(gpioSpiSelectFilename, O_WRONLY);
-					sprintf(t_str, "0");
-					write(valuefd, t_str, (strlen(t_str) + 1));
-					close(valuefd);
-	cgtimer_time(&diveStart);
+			gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
+			sprintf(gpioSpiSelectBuf, "0");
+			write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
+			close(gpioSpiSelectFD);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-	cgtimer_time(&diveEnd);
-	cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
-	diveTotal += cgtimer_to_ms(&diveDuration);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
+		HBSetSpiSelects(xfer.uiBoard, true);
 
 		// Do the second write.
 		xfer.uiData = 0;
@@ -1492,11 +1490,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiSelects(xfer.uiBoard, false);
-	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-	cgtimer_time(&diveEnd);
-	cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
-	diveTotal += cgtimer_to_ms(&diveDuration);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
 		// Third write.
@@ -1522,11 +1516,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiSelects(xfer.uiBoard, false);
-	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-	cgtimer_time(&diveEnd);
-	cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
-	diveTotal += cgtimer_to_ms(&diveDuration);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
 		// Fourth write.
@@ -1551,11 +1541,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiSelects(xfer.uiBoard, false);
-	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-	cgtimer_time(&diveEnd);
-	cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
-	diveTotal += cgtimer_to_ms(&diveDuration);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
 		// Fifth write.
@@ -1579,11 +1565,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiSelects(xfer.uiBoard, false);
-	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-	cgtimer_time(&diveEnd);
-	cgtimer_sub(&diveEnd, &diveStart, &diveDuration);
-	diveTotal += cgtimer_to_ms(&diveDuration);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 	UNLOCK(&spiLock);
 
