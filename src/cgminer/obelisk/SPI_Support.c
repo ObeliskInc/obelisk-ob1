@@ -25,6 +25,7 @@
  */
 
 /***    INCLUDE FILES       ***/
+#include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -203,7 +204,21 @@ void HBSetSpiSelectsFalse(uint8_t uiBoard)
 		default:
 			break;
 	}
-	gpio_set_output_pin_low(pin);
+
+    int valuefd;
+    char t_str[16], *p_val_str = NULL;
+
+    if ((p_val_str = GPIO_PIN_TO_VALUE_STRING(pin)) == NULL) {
+    }
+
+    if ((valuefd = open(p_val_str, O_WRONLY)) < 0) {
+    }
+
+    sprintf(t_str, "0");
+    if (write(valuefd, t_str, (strlen(t_str) + 1)) < 0) {
+    }
+
+    close(valuefd);
 }
 
 /** *************************************************************

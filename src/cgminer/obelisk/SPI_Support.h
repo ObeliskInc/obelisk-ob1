@@ -60,6 +60,7 @@ extern void SPITimeOutError(void);
 //extern void HBSetSpiMux(void);
 void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX);
 
+extern void HBSetSpiSelectsFalse(uint8_t uiBoard);
 extern void HBSetSpiSelects(uint8_t uiBoard, bool bState);
 
 extern void DeassertSPISelects(void);
