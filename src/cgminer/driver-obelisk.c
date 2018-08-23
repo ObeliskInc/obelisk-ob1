@@ -93,32 +93,34 @@ static struct work* wq_dequeue(ob_chain* ob, bool sig)
         return NULL;
     }
 
-    /* Sleep only a small duration if there is no work queued in case it's
-	 * still refilling rather than we have no upstream work. */
-    if (unlikely(!wq->num_elems && sig)) {
-        cgsleep_ms(10);
-    }
+    bool retry;
+    do {
+        retry = false;
 
-    mutex_lock(&ob->lock);
-    if (likely(wq->num_elems > 0)) {
-        we = list_entry(wq->head.next, struct work_ent, head);
-        work = we->work;
+        mutex_lock(&ob->lock);
+        if (likely(wq->num_elems > 0)) {
+            we = list_entry(wq->head.next, struct work_ent, head);
+            work = we->work;
 
-        list_del(&we->head);
-        free(we);
-        wq->num_elems--;
-    }
-    if (sig) {
-        pthread_cond_signal(&ob->work_cond);
-    }
-    mutex_unlock(&ob->lock);
+            list_del(&we->head);
+            free(we);
+            wq->num_elems--;
+        }
+        if (sig) {
+            pthread_cond_signal(&ob->work_cond);
+        }
+        mutex_unlock(&ob->lock);
 
-    // Discard stale work
-    if (work->id < work->pool->stale_share_id) {
-        applog(LOG_ERR, "DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)", work->job_id, work->id, work->pool->stale_share_id);
-        free_work(work);
-        work = NULL;
-    }
+        // Discard stale work - this will cause us to loop around and dequeue work until
+        // we either run out of work or find non-stale work.
+        if (work && work->id < work->pool->stale_share_id) {
+            applog(LOG_ERR, "HB%u: DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)",
+                ob->chain_id, work->job_id, work->id, work->pool->stale_share_id);
+            free_work(work);
+            work = NULL;
+            retry = true;
+        }
+    } while (retry);
 
     return work;
 }
