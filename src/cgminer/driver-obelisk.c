@@ -1481,7 +1481,25 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		write(spiSelectFD, gpioBuf, (strlen(gpioBuf)+1));
 		close(spiSelectFD);
 		*/
-		HBSetSpiSelectsFalse(xfer.uiBoard);
+					int valuefd;
+					char t_str[16], *p_val_str = NULL;
+					switch(xfer.uiBoard) {
+						case 0:
+							p_val_str = "/sys/class/gpio/PA17/value"; // SPI_SS1
+							break;
+						case 1:
+							p_val_str = "/sys/class/gpio/PA7/value"; // SPI_SS2
+							break;
+						case 2:
+							p_val_str = "/sys/class/gpio/PA8/value"; // SPI_SS3
+							break;
+						default:
+							break;
+					}
+					valuefd = open(p_val_str, O_WRONLY);
+					sprintf(t_str, "0");
+					write(valuefd, t_str, (strlen(t_str) + 1));
+					close(valuefd);
 	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 	cgtimer_time(&diveEnd);
