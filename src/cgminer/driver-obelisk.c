@@ -31,10 +31,19 @@ DCR1:
 #include "config.h"
 #include "klist.h"
 #include "sha2.h"
+#include "obelisk/gpio_bsp.h"
+
 #include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include <linux/gpio.h>
+#include <sys/ioctl.h>
 
 // HACK:
 extern void dump(unsigned char* p, int len, char* label);
@@ -1421,9 +1430,26 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	uint8_t ucaDCR1OutBuf[bufSize]; // buffer for sending out
 	uint8_t ucaDCR1InBuf[bufSize]; // buffer for reading in
 	xfer.eMode = E_DCR1_MODE_REG_WRITE;
-	xfer.uiBoard = ob->staticBoardNumber;
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
+	xfer.uiBoard = ob->staticBoardNumber;
+	char gpioBuf[16];
+
+	// Determine which board we need to talk to when setting the gpio pins.
+	char* gpioSpiSelectFile;
+	switch(ob->staticBoardNumber) {
+		case 0:
+			gpioSpiSelectFile = "/sys/class/gpio/PA17/direction";
+			break;
+		case 1:
+			gpioSpiSelectFile = "/sys/class/gpio/PA7/direction";
+			break;
+		case 2:
+			gpioSpiSelectFile = "/sys/class/gpio/PA8/direction";
+			break;
+		default:
+			break;
+	}
 
 	// Perform all of the writes under a SPI lock.
 	LOCK(&spiLock);
@@ -1449,7 +1475,13 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
-		HBSetSpiSelects(xfer.uiBoard, false);
+		/*
+		int spiSelectFD = open(gpioSpiSelectFile, O_WRONLY);
+		sprintf(gpioBuf, "0");
+		write(spiSelectFD, gpioBuf, (strlen(gpioBuf)+1));
+		close(spiSelectFD);
+		*/
+		HBSetSpiSelects(xfer.uiBoard);
 	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 	cgtimer_time(&diveEnd);

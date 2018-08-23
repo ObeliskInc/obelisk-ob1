@@ -40,7 +40,7 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
         .speed_hz = speed,
         .bits_per_word = bits,
     };
-    ioctl(fd, SPI_IOC_MESSAGE(1), &tr)
+    ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
 }
 
 int spi_setup(void)

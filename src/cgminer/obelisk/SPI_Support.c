@@ -186,40 +186,6 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
 
 } // HBSetSpiMux()
 
-void HBSetSpiSelectsTrue(uint8_t uiBoard)
-{
-	switch(uiBoard) {
-		case 0:
-			gpio_set_pin_level(SPI_SS1, true);
-			break;
-		case 1:
-			gpio_set_pin_level(SPI_SS2, true);
-			break;
-		case 2:
-			gpio_set_pin_level(SPI_SS3, true);
-			break;
-		default:
-			break;
-	}
-}
-
-void HBSetSpiSelectsFalse(uint8_t uiBoard)
-{
-	switch(uiBoard) {
-		case 0:
-			gpio_set_pin_level(SPI_SS1, false);
-			break;
-		case 1:
-			gpio_set_pin_level(SPI_SS2, false);
-			break;
-		case 2:
-			gpio_set_pin_level(SPI_SS3, false);
-			break;
-		default:
-			break;
-	}
-}
-
 /** *************************************************************
  * \brief Function to control the SPI slave select control lines.  These are distinct
  * for the boards. This should be done before running a SPI communications transfer and AFTER
