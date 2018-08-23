@@ -1474,15 +1474,13 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-			gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
-			sprintf(gpioSpiSelectBuf, "0");
-			write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
-			close(gpioSpiSelectFD);
+		gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
+		sprintf(gpioSpiSelectBuf, "0");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-			gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
-			sprintf(gpioSpiSelectBuf, "1");
-			write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
-			close(gpioSpiSelectFD);
+		sprintf(gpioSpiSelectBuf, "1");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
+		close(gpioSpiSelectFD);
 
 		// Do the second write.
 		xfer.uiData = 0;
