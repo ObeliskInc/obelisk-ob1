@@ -1463,7 +1463,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
 		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
 		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
-
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
 			Uint32ToArray(xfer.uiData, &ucaDCR1OutBuf[xferControlBytes], true); // convert to array with endian swap to network order
@@ -1472,15 +1471,18 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
 			}
 		}
+		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 			gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
 			sprintf(gpioSpiSelectBuf, "0");
 			write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 			close(gpioSpiSelectFD);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true);
+			gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
+			sprintf(gpioSpiSelectBuf, "1");
+			write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
+			close(gpioSpiSelectFD);
 
 		// Do the second write.
 		xfer.uiData = 0;
