@@ -1348,15 +1348,16 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Check how long it has been since the last time this chip was started.
 		cgtimer_t lastChipStart;
+		cgtimer_time(&currentTime);
 		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
 		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
 		if (msLastChipStart < 2500) {
 			// It has been less than 7.5 seconds, assume that this chip is not
 			// finished. 7.5 seconds would imply a clock speed of 570 MHz, which
 			// we do not believe the chips are capable of. 
-		cgtimer_time(&lastEnd);
-		cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
-		lastTotal += cgtimer_to_ms(&lastDuration);
+			cgtimer_time(&lastEnd);
+			cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
+			lastTotal += cgtimer_to_ms(&lastDuration);
 			continue;
 		} else if (msLastChipStart > 120000) {
 			// It has been more than 120 seconds, assume that something went
@@ -1371,9 +1372,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			}
 			ob->chipWork[chipNum] = ob->bufferedWork;
 			cgtimer_time(&ob->chipStartTimes[chipNum]);
-		cgtimer_time(&lastEnd);
-		cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
-		lastTotal += cgtimer_to_ms(&lastDuration);
+			cgtimer_time(&lastEnd);
+			cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
+			lastTotal += cgtimer_to_ms(&lastDuration);
 			continue;
 		}
 
@@ -1390,21 +1391,23 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ApiError error = ob1GetDoneEngines(ob->chain_id, chipNum, (uint64_t*)doneBitmask);
 		if (error != SUCCESS) {
 			applog(LOG_ERR, "error from GetDoneEngines: %u.%u", ob->staticBoardNumber, chipNum);
-		cgtimer_time(&doneEnd);
-		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
-		doneTotal += cgtimer_to_ms(&doneDuration);
+			cgtimer_time(&doneEnd);
+			cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
+			doneTotal += cgtimer_to_ms(&doneDuration);
 			continue;
 		}
-		// Check the first 16 engines. If 16 engines are done, all engines
-		// should finish as we get to them.
-		if (doneBitmask[0] != 0xff || doneBitmask[1] != 0xff) {
+		// Check the first 16 engines. Do some bit twiddling to make it so that
+		// it's okay if a few engines are missing due to malfunction, but we
+		// need at least 4 engines in each of the first 2 octets to be finished.
+		if (doneBitmask[0] & doneBitmask[0] >> 4 & doneBitmask[0] << 4 != 0xff && doneBitmask[1] & doneBitmask[1] >> 4 & doneBitmask[1] << 4 != 0xff) {
 			cgtimer_time(&ob->chipCheckTimes[chipNum]);
-		cgtimer_time(&doneEnd);
-		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
-		doneTotal += cgtimer_to_ms(&doneDuration);
+			cgtimer_time(&doneEnd);
+			cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
+			doneTotal += cgtimer_to_ms(&doneDuration);
 			continue;
 		}
 		cgtimer_t lastCheck;
+		cgtimer_time(&currentTime);
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
 		applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
@@ -1416,6 +1419,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Reset the timer on this chip.
 		cgtimer_time(&ob->chipStartTimes[chipNum]);
+		cgtimer_time(&ob->chipCheckTimes[chipNum]);
 
 		// Check all the engines on the chip.
 		for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
@@ -1445,7 +1449,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				}
 			}
 
-		cgtimer_time(&loadStart);
+			cgtimer_time(&loadStart);
 
 			// Start the next job for this engine.
 			error = ob->startNextEngineJob(ob, chipNum, engineNum);
@@ -1453,9 +1457,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}
 
-		cgtimer_time(&loadEnd);
-		cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
-		loadTotal += cgtimer_to_ms(&loadDuration);
+			cgtimer_time(&loadEnd);
+			cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
+			loadTotal += cgtimer_to_ms(&loadDuration);
 
 		}
 
@@ -1464,7 +1468,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		readTotal += cgtimer_to_ms(&readDuration);
 
 		// Mark that we need a new global chip job buffered.
-		cgtimer_time(&ob->chipCheckTimes[chipNum]);
 		ob->chipWork[chipNum] = ob->bufferedWork;
 		ob->bufferWork = true;
 	}
