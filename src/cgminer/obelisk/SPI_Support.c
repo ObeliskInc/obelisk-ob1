@@ -151,7 +151,6 @@ int iIsHBSpiBusy(bool bWait)
  */
 void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
 {
-#define POST_ASSERT_DELAY_US  1  // short delay after setting the gpio for slave mux on hash board
     static E_SC1_SPISEL_T eSPIMUXMemory = E_SPI_INVALID;
 
     if (eSPIMUXMemory != eSPIMUX) { // change if needed
@@ -177,17 +176,49 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
                 default:
                     break;
             }
-            delay_us(POST_ASSERT_DELAY_US);
             eSPIMUXMemory = eSPIMUX;    // remember for next time
         }
 
     } else if (E_SPI_INVALID == eSPIMUXMemory) {
         gpio_set_pin_level(SPI_ADDR0,true);   // target nothing
         gpio_set_pin_level(SPI_ADDR1,true);
-        delay_us(POST_ASSERT_DELAY_US);
     }
 
 } // HBSetSpiMux()
+
+void HBSetSpiSelectsTrue(uint8_t uiBoard)
+{
+	switch(uiBoard) {
+		case 0:
+			gpio_set_pin_level(SPI_SS1, true);
+			break;
+		case 1:
+			gpio_set_pin_level(SPI_SS2, true);
+			break;
+		case 2:
+			gpio_set_pin_level(SPI_SS3, true);
+			break;
+		default:
+			break;
+	}
+}
+
+void HBSetSpiSelectsFalse(uint8_t uiBoard)
+{
+	switch(uiBoard) {
+		case 0:
+			gpio_set_pin_level(SPI_SS1, false);
+			break;
+		case 1:
+			gpio_set_pin_level(SPI_SS2, false);
+			break;
+		case 2:
+			gpio_set_pin_level(SPI_SS3, false);
+			break;
+		default:
+			break;
+	}
+}
 
 /** *************************************************************
  * \brief Function to control the SPI slave select control lines.  These are distinct

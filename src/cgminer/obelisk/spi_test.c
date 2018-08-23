@@ -32,8 +32,6 @@ static uint32_t speed = 1000000;
 
 void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
 {
-    int ret;
-
     struct spi_ioc_transfer tr = {
         .tx_buf = (unsigned long)tx,
         .rx_buf = (unsigned long)rx,
@@ -42,11 +40,7 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
         .speed_hz = speed,
         .bits_per_word = bits,
     };
-
-    if((ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr)) < 1)
-    {
-        printf("Failed to send SPI message\n");
-    }
+    ioctl(fd, SPI_IOC_MESSAGE(1), &tr)
 }
 
 int spi_setup(void)

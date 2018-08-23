@@ -1,6 +1,19 @@
 // Obelisk ASIC API
 #include "Ob1Defines.h"
 
+// Dragging things from .c
+#include "CSS_SC1_hal.h"
+#include "CSS_DCR1_hal.h"
+
+// Inlining stuff
+#include "spi.h"
+#include "MiscSupport.h" // endian and other stuff
+#include "SPI_Support.h"
+
+// Globals
+extern pthread_mutex_t spiLock;
+HashboardModel gBoardModel;
+
 //==================================================================================================
 // Chip-level API
 //==================================================================================================

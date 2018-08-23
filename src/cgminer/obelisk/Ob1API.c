@@ -3,8 +3,6 @@
 #include "Ob1Utils.h"
 #include "Ob1Hashboard.h"
 #include "Ob1FanCtrl.h"
-#include "CSS_SC1_hal.h"
-#include "CSS_DCR1_hal.h"
 #include "err_codes.h"
 #include "MCP9903_hal.h"
 #include "MCP23S17_hal.h"
@@ -12,15 +10,6 @@
 #include "miner.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-// Inlining stuff
-#include "spi.h"
-#include "MiscSupport.h" // endian and other stuff
-#include "SPI_Support.h"
-
-extern pthread_mutex_t spiLock;
-// Globals
-HashboardModel gBoardModel;
 
 // Last value written to the OCR register
 // We save the last clock divider and bias for each ASIC on each board
@@ -453,12 +442,6 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 // Start the job and wait for the engine(s) to indicate busy.
 ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 {
-	// Support for all chips is not available.
-	if (chipNum == ALL_CHIPS || engineNum == ALL_ENGINES) {
-		return GENERIC_ERROR;
-	}
-	ApiError error = SUCCESS;
-
 	// Establish the SPI baseline values.
 	S_DCR1_TRANSFER_T xfer;
 	int bufSize = 8;
@@ -502,11 +485,11 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 
 		// Do the second write.
 		xfer.uiData = 0;
+		// Set up the mode-address in bytes [2:0]; big-endian order
 		for (uint8_t ixI = 0; ixI < xferDataBytes; ixI++) { // data is zero so just clear it out
 			ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
 		}
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
@@ -515,7 +498,13 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		//
 		// Unmask bits that define the nonce fifo masks
 		xfer.uiReg = E_DCR1_REG_FCR;
+		// Set up the mode-address in bytes [2:0]; big-endian order
+		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
+		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
+		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
+		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
 		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
+		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
 
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
@@ -527,7 +516,6 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
@@ -535,7 +523,13 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		// Fourth write.
 		xfer.uiData = DCR1_ECR_VALID_DATA;
 		xfer.uiReg = E_DCR1_REG_ECR;
+		// Set up the mode-address in bytes [2:0]; big-endian order
+		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
+		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
+		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
+		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
 		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
+		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
 
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
@@ -547,13 +541,20 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 
 		// Fifth write.
 		xfer.uiData = 0;
+		// Set up the mode-address in bytes [2:0]; big-endian order
+		ucaDCR1OutBuf[0] = (uint8_t)((xfer.eMode << 6) & 0xC0); // 2-bit mode
+		ucaDCR1OutBuf[0] |= (uint8_t)((xfer.uiChip >> 1) & 0x3F); // 6-msb of 7-bit chip addr
+		ucaDCR1OutBuf[1] = (uint8_t)((xfer.uiChip << 7) & 0x80); // lsb of 7-bit chip addr
+		ucaDCR1OutBuf[1] |= (uint8_t)((xfer.uiCore >> 1) & 0x7F); // 7-msb of 8-bit core addr
+		ucaDCR1OutBuf[2] = (uint8_t)(xfer.uiReg & DCR1_ADR_REG_Bits); // 7-bit reg offset
+		ucaDCR1OutBuf[2] |= (uint8_t)((xfer.uiCore << 7) & 0x80); // lsb of 8-bit core addr
+
 		// Data is 32 bits written msb first; so we need to switch endianism
 		if (0 != xfer.uiData) {
 			Uint32ToArray(xfer.uiData, &ucaDCR1OutBuf[xferControlBytes], true); // convert to array with endian swap to network order
@@ -564,13 +565,10 @@ ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
 		HBSetSpiSelects(xfer.uiBoard, false);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
 	UNLOCK(&spiLock);
-
-    return SUCCESS;
 }
 
 // Stop the specified engine(s) from running (turns off the clock).
