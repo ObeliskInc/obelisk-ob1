@@ -1433,23 +1433,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	xfer.uiChip = chipNum;
 	xfer.uiCore = engineNum;
 	xfer.uiBoard = ob->staticBoardNumber;
-	char gpioBuf[16];
-
-	// Determine which board we need to talk to when setting the gpio pins.
-	char* gpioSpiSelectFile;
-	switch(ob->staticBoardNumber) {
-		case 0:
-			gpioSpiSelectFile = "/sys/class/gpio/PA17/direction";
-			break;
-		case 1:
-			gpioSpiSelectFile = "/sys/class/gpio/PA7/direction";
-			break;
-		case 2:
-			gpioSpiSelectFile = "/sys/class/gpio/PA8/direction";
-			break;
-		default:
-			break;
-	}
 
 	// Perform all of the writes under a SPI lock.
 	LOCK(&spiLock);
@@ -1475,28 +1458,22 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
-		/*
-		int spiSelectFD = open(gpioSpiSelectFile, O_WRONLY);
-		sprintf(gpioBuf, "0");
-		write(spiSelectFD, gpioBuf, (strlen(gpioBuf)+1));
-		close(spiSelectFD);
-		*/
 					int valuefd;
-					char t_str[16], *p_val_str = NULL;
-					switch(xfer.uiBoard) {
+					char t_str[16], *gpioSpiSelectFilename = NULL;
+					switch(ob->staticBoardNumber) {
 						case 0:
-							p_val_str = "/sys/class/gpio/PA17/value"; // SPI_SS1
+							gpioSpiSelectFilename = "/sys/class/gpio/PA17/value"; // SPI_SS1
 							break;
 						case 1:
-							p_val_str = "/sys/class/gpio/PA7/value"; // SPI_SS2
+							gpioSpiSelectFilename = "/sys/class/gpio/PA7/value"; // SPI_SS2
 							break;
 						case 2:
-							p_val_str = "/sys/class/gpio/PA8/value"; // SPI_SS3
+							gpioSpiSelectFilename = "/sys/class/gpio/PA8/value"; // SPI_SS3
 							break;
 						default:
 							break;
 					}
-					valuefd = open(p_val_str, O_WRONLY);
+					valuefd = open(gpioSpiSelectFilename, O_WRONLY);
 					sprintf(t_str, "0");
 					write(valuefd, t_str, (strlen(t_str) + 1));
 					close(valuefd);
