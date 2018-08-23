@@ -631,11 +631,6 @@ gpio_ret_t gpio_init(void)
     if (gpio_set_pin_as_output(FAN_POWER_CONTROL) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing FAN_POWER_CONTROL pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_high(FAN_POWER_CONTROL) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting FAN_POWER_CONTROL pin high\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     // The Fan PWM control is no longer handled through a GPIO
@@ -653,84 +648,42 @@ gpio_ret_t gpio_init(void)
     if (gpio_set_pin_as_output(CONTROLLER_RED_LED) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing CONTROLLER_RED_LED pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(CONTROLLER_RED_LED) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting CONTROLLER_RED_LED pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(CONTROLLER_GREEN_LED) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing CONTROLLER_GREEN_LED pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_high(CONTROLLER_GREEN_LED) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting CONTROLLER_GREEN_LED pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(CONTROLLER_SECOND_ETH) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing CONTROLLER_SECOND_ETH pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(CONTROLLER_SECOND_ETH) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting CONTROLLER_SECOND_ETH pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(SPI_ADDR0) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing SPI_ADDR0 pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(SPI_ADDR0) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting SPI_ADDR0 pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(SPI_ADDR1) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing SPI_ADDR1 pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(SPI_ADDR1) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting SPI_ADDR1 pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(SPI_SS1) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing SPI_SS1 pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(SPI_SS1) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting SPI_SS1 pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(SPI_SS2) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing SPI_SS2 pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(SPI_SS2) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting SPI_SS2 pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
 
     if (gpio_set_pin_as_output(SPI_SS3) != GPIO_RET_SUCCESS) {
         GPIO_LOG("Error initializing SPI_SS3 pin\n");
         retval = GPIO_RET_ERROR;
-    } else {
-        if (gpio_set_output_pin_low(SPI_SS3) != GPIO_RET_SUCCESS) {
-            GPIO_LOG("Error setting SPI_SS3 pin low\n");
-            retval = GPIO_RET_ERROR;
-        }
     }
-
-    
 
 
     // Open all file handles once to save the cost of doing it on every read or write
@@ -751,6 +704,60 @@ gpio_ret_t gpio_init(void)
             return (int)GPIO_RET_ERROR;
         }
         GPIO_LOG("Pin %u = index %u: fd = %d\n", pin, i, gpio_rw_fds[i]);
+    }
+
+
+    // Change this to have the default value in an array, and then write it right after we
+    // open the file handle above
+    if (gpio_set_output_pin_high(FAN_POWER_CONTROL) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting FAN_POWER_CONTROL pin high\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    // The Fan PWM control is no longer handled through a GPIO
+    //     if (gpio_set_output_pin_low(FAN_PWM_CONTROL) != GPIO_RET_SUCCESS) {
+    //         GPIO_LOG("Error setting FAN_PWM_CONTROL pin low\n");
+    //         retval = GPIO_RET_ERROR;
+    //     }
+
+    // Now that we've opened all the output files, initialize them
+    if (gpio_set_output_pin_low(CONTROLLER_RED_LED) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting CONTROLLER_RED_LED pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_high(CONTROLLER_GREEN_LED) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting CONTROLLER_GREEN_LED pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_low(CONTROLLER_SECOND_ETH) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting CONTROLLER_SECOND_ETH pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_low(SPI_ADDR0) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting SPI_ADDR0 pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_low(SPI_ADDR1) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting SPI_ADDR1 pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_low(SPI_SS1) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting SPI_SS1 pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+
+    if (gpio_set_output_pin_low(SPI_SS2) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting SPI_SS2 pin low\n");
+        retval = GPIO_RET_ERROR;
+    }
+    if (gpio_set_output_pin_low(SPI_SS3) != GPIO_RET_SUCCESS) {
+        GPIO_LOG("Error setting SPI_SS3 pin low\n");
+        retval = GPIO_RET_ERROR;
     }
 
 
