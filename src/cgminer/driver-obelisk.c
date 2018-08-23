@@ -1313,6 +1313,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Check how long it has been since the last time this chip was started.
 		cgtimer_t lastChipStart;
+		cgtimer_time(&currentTime);
 		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
 		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
 		if (msLastChipStart < 2500) {
@@ -1362,17 +1363,25 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 		// Check the first 16 engines. If 16 engines are done, all engines
 		// should finish as we get to them.
-		if (doneBitmask[0] != 0xff || doneBitmask[1] != 0xff) {
-			cgtimer_time(&ob->chipCheckTimes[chipNum]);
-		cgtimer_time(&doneEnd);
-		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
-		doneTotal += cgtimer_to_ms(&doneDuration);
+		bool chipNotDone = false;
+		for (int i = 0; i < ob->staticBoardModel.enginesPerChip/8; i++) {
+			if (doneBitmask[i] != 0xff) {
+				cgtimer_time(&ob->chipCheckTimes[chipNum]);
+				cgtimer_time(&doneEnd);
+				cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
+				doneTotal += cgtimer_to_ms(&doneDuration);
+				chipNotDone = true;
+				break;
+			}
+		}
+		if (chipNotDone) {
 			continue;
 		}
 		cgtimer_t lastCheck;
+		cgtimer_time(&currentTime);
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
-		// applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
+		applog(LOG_ERR, "a chip is reporting itself as done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
 
 		cgtimer_time(&doneEnd);
 		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
@@ -1471,16 +1480,17 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
 			}
 		}
+
+		// Only need to do these once before the string of writes.
 		HBSetSpiMux(E_SPI_ASIC); // set mux for SPI on the hash board
+		gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		gpioSpiSelectFD = open(gpioSpiSelectFilename, O_WRONLY);
 		sprintf(gpioSpiSelectBuf, "0");
 		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 		sprintf(gpioSpiSelectBuf, "1");
 		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
-		close(gpioSpiSelectFD);
 
 		// Do the second write.
 		xfer.uiData = 0;
@@ -1489,9 +1499,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			ucaDCR1OutBuf[xferControlBytes + ixI] = (uint8_t)0;
 		}
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiSelects(xfer.uiBoard, false);
+		sprintf(gpioSpiSelectBuf, "0");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
+		sprintf(gpioSpiSelectBuf, "1");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 
 		// Third write.
 		//
@@ -1515,9 +1527,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiSelects(xfer.uiBoard, false);
+		sprintf(gpioSpiSelectBuf, "0");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
+		sprintf(gpioSpiSelectBuf, "1");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 
 		// Fourth write.
 		xfer.uiData = DCR1_ECR_VALID_DATA;
@@ -1540,9 +1554,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiSelects(xfer.uiBoard, false);
+		sprintf(gpioSpiSelectBuf, "0");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
+		sprintf(gpioSpiSelectBuf, "1");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 
 		// Fifth write.
 		xfer.uiData = 0;
@@ -1564,9 +1580,13 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		}
 
 		// Set board SPI mux and SS for the hashBoard we are going to transfer with.
-		HBSetSpiSelects(xfer.uiBoard, false);
+		sprintf(gpioSpiSelectBuf, "0");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
-		HBSetSpiSelects(xfer.uiBoard, true); // SAMA5D27
+		sprintf(gpioSpiSelectBuf, "1");
+		write(gpioSpiSelectFD, gpioSpiSelectBuf, (strlen(gpioSpiSelectBuf) + 1));
+
+		close(gpioSpiSelectFD);
 	UNLOCK(&spiLock);
 
 		cgtimer_time(&loadEnd);
