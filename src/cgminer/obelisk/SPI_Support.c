@@ -189,20 +189,21 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
 
 void HBSetSpiSelectsFalse(uint8_t uiBoard)
 {
+	gpio_pin_t pin;
 	switch(uiBoard) {
 		case 0:
-			gpio_set_pin_level(SPI_SS1, false);
+			pin = SPI_SS1;
 			break;
 		case 1:
-			gpio_set_pin_level(SPI_SS2, false);
+			pin = SPI_SS2;
 			break;
 		case 2:
-			gpio_set_pin_level(SPI_SS3, false);
+			pin = SPI_SS3;
 			break;
 		default:
 			break;
 	}
-
+	gpio_set_output_pin_low(pin);
 }
 
 /** *************************************************************
