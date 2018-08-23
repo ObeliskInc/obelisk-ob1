@@ -190,26 +190,21 @@ void HBSetSpiMux(E_SC1_SPISEL_T eSPIMUX)
 
 void HBSetSpiSelectsFalse(uint8_t uiBoard)
 {
-	gpio_pin_t pin;
+    int valuefd;
+    char t_str[16], *p_val_str = NULL;
 	switch(uiBoard) {
 		case 0:
-			pin = SPI_SS1;
+			p_val_str = "/sys/class/gpio/PA17/value"; // SPI_SS1
 			break;
 		case 1:
-			pin = SPI_SS2;
+			p_val_str = "/sys/class/gpio/PA7/value"; // SPI_SS2
 			break;
 		case 2:
-			pin = SPI_SS3;
+			p_val_str = "/sys/class/gpio/PA8/value"; // SPI_SS3
 			break;
 		default:
 			break;
 	}
-
-    int valuefd;
-    char t_str[16], *p_val_str = NULL;
-
-    if ((p_val_str = GPIO_PIN_TO_VALUE_STRING(pin)) == NULL) {
-    }
 
     if ((valuefd = open(p_val_str, O_WRONLY)) < 0) {
     }
