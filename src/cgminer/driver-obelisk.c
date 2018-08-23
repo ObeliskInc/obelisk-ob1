@@ -1481,7 +1481,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		write(spiSelectFD, gpioBuf, (strlen(gpioBuf)+1));
 		close(spiSelectFD);
 		*/
-		HBSetSpiSelects(xfer.uiBoard);
+		HBSetSpiSelectsFalse(xfer.uiBoard);
 	cgtimer_time(&diveStart);
 		transfer(fileSPI, ucaDCR1OutBuf, ucaDCR1InBuf, xferByteCount);
 	cgtimer_time(&diveEnd);
