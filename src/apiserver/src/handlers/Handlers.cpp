@@ -14,6 +14,11 @@
 using namespace std;
 using namespace crow;
 
+#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ "/tmp/upgrade/firmware-upgrade.tar.gz"
+#define FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_TAR "/tmp/upgrade/firmware-upgrade.tar"
+#define FIRMWARE_UPGRADE_SCRIPT_FILE_PATH "/tmp/upgrade/upgrade.sh"
+#define FIRMWARE_UPGRADE_MESSAGE_FILE_PATH "/tmp/upgrade/upgrade-message.txt"
+
 // This is the queue we use to send cgminer requests
 extern SafeQueue<CgMiner::Request> gRequestQueue;
 
@@ -656,13 +661,6 @@ void actionEnableAsic(string path, json::rvalue &args, const crow::request &req,
   }
 }
 
-#ifdef __APPLE__
-#define FIRMWARE_FILE_PATH "./firmware_upgrade.tar.gz"
-#else
-#define FIRMWARE_ARCHIVE_FILE_PATH "/tmp/firmware_upgrade.tar.gz"
-#define FIRMWARE_SCRIPT_FILE_PATH "/tmp/firmware_upgrade.sh"
-#endif
-
 /* File Upload:
  *   filename: string
  *   offset: number of bytes into the file that this chunk starts
@@ -687,13 +685,16 @@ void actionUploadFirmwareFileFragment(string path, json::rvalue &args, const cro
     return;
   }
 
+  // Ensure that the /tmp/upgrade dir exists
+  runCmd("mkdir -p /tmp/upgrade");
+
   // Open file for output
   std::ofstream outfile;
   try {
     if (offset == 0) {
-      outfile.open(FIRMWARE_ARCHIVE_FILE_PATH, std::ofstream::trunc | std::ofstream::binary);
+      outfile.open(FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ, std::ofstream::trunc | std::ofstream::binary);
     } else {
-      outfile.open(FIRMWARE_ARCHIVE_FILE_PATH, std::ofstream::app | std::ofstream::binary);
+      outfile.open(FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ, std::ofstream::app | std::ofstream::binary);
     }
   } catch (...) {
     // Catch exceptions and return an error
@@ -723,7 +724,21 @@ void actionRunUpgrade(string path, json::rvalue &args, const crow::request &req,
                             crow::response &resp) {
   CROW_LOG_DEBUG << "********** actionRunUpgrade()";
 
-  uncompressUpgradeArchive(FIRMWARE_SCRIPT_FILE_PATH);
+  uncompressUpgradeArchive(
+    FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_GZ,
+    FIRMWARE_UPGRADE_ARCHIVE_FILE_PATH_TAR);
+
+  // Read the upgrade_message.txt file and send its contents as the result
+  string message = readFile(FIRMWARE_UPGRADE_MESSAGE_FILE_PATH);
+
+  json::wvalue jsonResp = json::load("{}");
+  jsonResp["message"] = message;
+  sendJson(json::dump(jsonResp), resp);
+
+  // The watchdog will now see that the upgrade.sh file exists and will kill apiserver and cgminer
+  // and start the upgrade by running upgrade.sh.
+  
+  CROW_LOG_DEBUG << "********** actionRunUpgrade() DONE";
 }
 
 // inventory/ - things about the miner that "just are" and cannot be modified by set requests

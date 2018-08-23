@@ -333,7 +333,6 @@ uint32_t ob1GetFanRPM(uint8_t fanNum) {
     return 0;
   }
 
-
   char fanValue[128];  // The string value we read from the fan fd
 
   char* path = fanNum == 0 ? "/proc/irq/117/spurious" : "/proc/irq/104/spurious";

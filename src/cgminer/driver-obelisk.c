@@ -27,6 +27,8 @@ DCR1:
 
 #include "miner.h"
 #include "driver-obelisk.h"
+#include "obelisk/gpio_bsp.h"
+#include "obelisk/multicast.h"
 #include "compat.h"
 #include "config.h"
 #include "klist.h"
@@ -153,15 +155,57 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
+#define MAX_IP_ADDR_LENGTH (15 + 1)
+
 // Simple thread to update the fan RPMS once a second
 static void* ob_fan_thread(void* arg)
 {
+    uint32_t fanCheckTicks = 0;
+    bool isButtonPressed = false;
+    uint32_t buttonPressedTicks = 0;
+    bool ismDNSSent = false;
     while(true) {
-        for (int i=0; i<NUM_FANS; i++) {
-            uint32_t rpm = ob1GetFanRPM(i);
-            set_fan_rpms(i, rpm);
+        int button = gpio_read_pin(CONTROLLER_USER_SWITCH);
+        isButtonPressed = button == 0; // Pressed is 0, and not pressed is 1.  Of course!
+
+        // TODO: Should change this to perform the action on button release, so
+        // we can check how long it was held and do something different based on
+        // that duration (e.g., 1 second = mdns, 5 seconds = reset all settings, etc.)
+
+        // See if the button has been pressed long enough to send the mDNS
+        if (isButtonPressed && buttonPressedTicks >= 10 && !ismDNSSent) {
+
+            char name[80];
+            sprintf(name, "Obelisk %s", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1");
+            char ipAddress[MAX_IP_ADDR_LENGTH];
+            memset(ipAddress, 0, MAX_IP_ADDR_LENGTH );
+            getIpV4("eth0", ipAddress, MAX_IP_ADDR_LENGTH);
+
+            applog(LOG_ERR, "===============================================");
+            applog(LOG_ERR, "SENDING mDNS: IP = %s", ipAddress);
+            applog(LOG_ERR, "===============================================");
+
+            send_mDNS_response(name, ipAddress, 10);
+            ismDNSSent = true;
         }
-        cgsleep_ms(500);
+
+        if (!isButtonPressed) {
+            buttonPressedTicks = 0;
+            ismDNSSent = false;
+        } else {
+            buttonPressedTicks++;
+        }
+
+        if (fanCheckTicks == 5) {
+            for (int i=0; i<NUM_FANS; i++) {
+                uint32_t rpm = ob1GetFanRPM(i);
+                set_fan_rpms(i, rpm);
+            }
+            fanCheckTicks = 0;
+        }
+
+        fanCheckTicks++;
+        cgsleep_ms(100);
     }
     return NULL;
 }
