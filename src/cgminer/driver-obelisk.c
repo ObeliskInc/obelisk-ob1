@@ -972,7 +972,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Status display variables.
 #define ChipCount 15
-#define StatusOutputFrequency 60 
+#define StatusOutputFrequency 20 
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
@@ -1269,7 +1269,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
+	if (msSinceLastIter > 200) {
+		applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
+	}
 	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
 		// If there is a request to get work buffered into a chip, send out a
 		// global message to add a new job to all chips. Then clear the flag
@@ -1443,7 +1445,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ob->bufferWork = true;
 	}
 
-	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	if (msSinceLastIter > 200) {
+		applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	}
 
 	// See if the pool asked us to start clean on new work
 	if (ob->curr_work && ob->curr_work->pool->swork.clean) {
