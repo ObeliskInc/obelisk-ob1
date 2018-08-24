@@ -71,11 +71,11 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
 {
     ApiError error = GENERIC_ERROR;
     int writesAvoided = 0;
-
     switch (gBoardModel) {
     case MODEL_SC1: {
         // Loop over M regs and write them to the engine
         Blake2BJob* pBlake2BJob = &(pJob->blake2b);
+        ob1LockSPI();
         for (int i = 0; i < E_SC1_NUM_MREGS; i++) {
             // Skip M4 (the nonce)
             if (i != E_SC1_REG_M4_RSV) {
@@ -85,6 +85,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                     // applog(LOG_ERR, "    M%d: 0x%016llX", i, pBlake2BJob->m[i]);
                     error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_M0 + i, &data);
                     if (error != SUCCESS) {
+                        ob1UnlockSPI();
                         return error;
                     }
                     // Update the shadow register(s)
@@ -94,6 +95,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                 }
             }
         }
+        ob1UnlockSPI();
         break;
     }
     case MODEL_DCR1: {
@@ -101,6 +103,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
         // Loop over M regs and write them to the engine
         Blake256Job* pBlake256Job = &(pJob->blake256);
 
+        ob1LockSPI();
         // The Match register has the same value as V7
         // We handle this first so that the check of the shadow register works correctly.  If we did the check after
         // setting the V registers, then V7 would have already been updated.
@@ -116,6 +119,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
             cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
             *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
             if (error != SUCCESS) {
+                ob1UnlockSPI();
                 return error;
             }
             // V7 will be updated in the shadow registers below, so no need to do anything here
@@ -136,6 +140,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                     cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
                     *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
+                        ob1UnlockSPI();
                         return error;
                     }
                     // Update the shadow register(s)
@@ -147,7 +152,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
             }
         }
 
-        // The header tail is in the M regsiters
+        // The header tail is in the M registers
         for (int i = 0; i < E_DCR1_NUM_MREGS; i++) {
             if (i != 3) {
                 uint32_t data = pBlake256Job->m[i];
@@ -165,6 +170,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                     cgtimer_sub(&end_WriteReg, &start_WriteReg, &duration_WriteReg);
                     *spiLoadJobTime += cgtimer_to_ms(&duration_WriteReg);
                     if (error != SUCCESS) {
+                        ob1UnlockSPI();
                         return error;
                     }
 
@@ -176,6 +182,7 @@ ApiError ob1LoadJob(int* spiLoadJobTime, uint8_t boardNum, uint8_t chipNum, uint
                 }
             }
         }
+        ob1UnlockSPI();
         break;
     }
     }
@@ -355,17 +362,20 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         break;
 
     case MODEL_DCR1: {
+        ob1LockSPI();
         uint32_t dataLow = 0;
         uint32_t dataHigh = 0;
         // applog(LOG_ERR, "Reading EDR registers for %u.%u", boardNum, chipNum);
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR0, &dataLow);
         if (error != SUCCESS) {
+            ob1UnlockSPI();
             return error;
         }
         // applog(LOG_ERR, "gdr: low1=0x%04lX", dataLow);
 
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR1, &dataHigh);
         if (error != SUCCESS) {
+            ob1UnlockSPI();
             return error;
         }
         // applog(LOG_ERR, "gdr: high1=0x%04lX", dataHigh);
@@ -379,12 +389,14 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         dataHigh = 0;
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR2, &dataLow);
         if (error != SUCCESS) {
+            ob1UnlockSPI();
             return error;
         }
         // applog(LOG_ERR, "gdr: low2=0x%04lX", dataLow);
 
         error = ob1SpiReadChipReg(boardNum, chipNum, E_DCR1_REG_EDR3, &dataHigh);
         if (error != SUCCESS) {
+            ob1UnlockSPI();
             return error;
         }
         dataLow64 = dataLow;
@@ -392,6 +404,7 @@ ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
         dataHigh64 = dataHigh64 << 32;
         *(&pData[0]) = dataHigh64 | dataLow64;
         // *(&pData[0]) = (((uint64_t)dataHigh) << 32) | (uint64_t)dataLow;
+        ob1UnlockSPI();
         break;
     }
     }

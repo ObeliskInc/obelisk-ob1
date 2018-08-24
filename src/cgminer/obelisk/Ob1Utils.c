@@ -14,6 +14,7 @@
 
 // Locks for thread safety of the API
 pthread_mutex_t spiLock;
+pthread_mutexattr_t spiAttrs;
 pthread_mutex_t statusLock; // Lock temperature & voltage device access
 
 void ob1SetRedLEDOff()
@@ -49,7 +50,10 @@ void ob1ToggleGreenLED()
 ApiError ob1InitializeControlBoard()
 {
     // Initialize locks
-    INIT_LOCK(&spiLock);
+    pthread_mutexattr_init(&spiAttrs);
+    pthread_mutexattr_settype(&spiAttrs, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&spiLock, &spiAttrs);
+
     INIT_LOCK(&statusLock);
 
     int iResult = gpio_init();
@@ -67,6 +71,14 @@ ApiError ob1InitializeControlBoard()
         return GENERIC_ERROR;
     }
     return SUCCESS;
+}
+
+void ob1LockSPI() {
+    LOCK(&spiLock);
+}
+
+void ob1UnlockSPI() {
+    UNLOCK(&spiLock);
 }
 
 ApiError ob1InitializeHashBoards()
