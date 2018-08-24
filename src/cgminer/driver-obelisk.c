@@ -1445,15 +1445,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticBoardModel.chipDifficulty;
 				}
 				if (nonceResult == 2) {
-                    // TODO: Should turn these into separate functions with ptrs
-                    if (gBoardModel == MODEL_SC1) {
-                        applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
-                        submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
-                    } else {
-                        applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
-                        // NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
-                        submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
-                    }
+					// TODO: Should turn these into separate functions with ptrs
+					if (gBoardModel == MODEL_SC1) {
+						applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+					} else {
+						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
+						// NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
+					}
                 }
 			}
 
