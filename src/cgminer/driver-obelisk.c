@@ -191,18 +191,20 @@ int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
 	// Create the header with the nonce and en2 set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
-    uint8_t header[ob->staticBoardModel.headerSize];
-    memcpy(header, engine_work->midstate, ob->staticBoardModel.midstateSize);
-    memcpy(header + ob->staticBoardModel.headerSize, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
-	// Replace the calculated/rolled fields
-    memcpy(header + ob->staticBoardModel.nonceOffset, &nonce, sizeof(Nonce));
-    memcpy(header + ob->staticBoardModel.extranonce2Offset, &ob->decredEN2[chipNum][engineNum], sizeof(uint32_t));
+
+    uint8_t midstate[ob->staticBoardModel.midstateSize];
+    memcpy(midstate, engine_work->midstate, ob->staticBoardModel.midstateSize);
+
+    uint8_t header_tail[ob->staticBoardModel.headerTailSize];
+    memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
+    memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, &ob->decredEN2[chipNum][engineNum], sizeof(uint32_t));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
-		return dcrMidstateMeetsProvidedTarget(header, header + ob->staticBoardModel.headerSize, ob->staticChipTarget) ? 1 : 0;
+		return dcrMidstateMeetsProvidedTarget(midstate, header_tail, ob->staticChipTarget) ? 1 : 0;
 	}
-	return dcrHeaderMeetsChipTargetAndPoolDifficulty(header, header + ob->staticBoardModel.headerSize, ob->staticChipTarget, engine_work->pool->sdiff);
+	return dcrHeaderMeetsChipTargetAndPoolDifficulty(midstate, header_tail, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
 // biasToLevel converts the bias and divider fields into a smooth level that
