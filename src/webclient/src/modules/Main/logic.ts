@@ -34,6 +34,7 @@ import {
   setUploadProgress,
   uploadFirmwareFile,
   resetConfig,
+  runUpgrade,
 } from './actions'
 import { State } from './types'
 
@@ -339,6 +340,7 @@ export const uploadFirmwareFileLogic = createLogic({
           reader.readAsBinaryString(blob2)
         } else {
           // Nothing else to send
+          dispatch(runUpgrade.started({}))
           done()
         }
       }
@@ -353,20 +355,20 @@ export const uploadFirmwareFileLogic = createLogic({
   },
 })
 
-// export const uploadFirmwareFileFragmentLogic = createLogic({
-//   type: uploadFirmwareFileFragment.started.type,
+export const runUpgradeLogic = createLogic({
+  type: runUpgrade.started.type,
 
-//   processOptions: {
-//     dispatchReturn: true,
-//     successType: uploadFirmwareFileFragment.done,
-//     failType: uploadFirmwareFileFragment.failed,
-//   },
+  processOptions: {
+    dispatchReturn: true,
+    successType: runUpgrade.done,
+    failType: runUpgrade.failed,
+  },
 
-//   async process(deps: LogicDeps, dispatch: any, done: () => void) {
-//     const { action, axios } = deps
-//     return axios.post(`/api/action/uploadFirmwareFile`, action.payload)
-//   },
-// })
+  async process(deps: LogicDeps, dispatch: any, done: () => void) {
+    const { action, axios } = deps
+    return axios.post(`/api/action/runUpgrade`)
+  },
+})
 
 export const changePasswordLogic = createLogic({
   type: changePassword.started.type,
@@ -507,4 +509,5 @@ export default [
   requestDoneLogic,
   requestFailLogic,
   requestStartedLogic,
+  runUpgradeLogic,
 ]

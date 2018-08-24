@@ -101,82 +101,90 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
         lastBoard = boardNum;
     }
 
-    for (int i = firstBoard; i <= lastBoard; i++) {
-        switch (gBoardModel) {
-        case MODEL_SC1: {
-            S_SC1_TRANSFER_T xfer;
-            xfer.uiBoard = i;
-            xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        S_SC1_TRANSFER_T xfer;
+        xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
 
-            // Set address/mode
-            if (chipNum == ALL_CHIPS) {
-                xfer.uiChip = 0; // Don't care - set to zero
-                if (engineNum == ALL_ENGINES) {
-                    xfer.eMode = E_SC1_MODE_MULTICAST;
-                    xfer.uiCore = 0; // Don't care - set to zero
-                } else {
-                    // Not possible to write to a specific engine on all chips in one write
-                    return GENERIC_ERROR;
-                }
-            } else if (engineNum == ALL_ENGINES) {
-                xfer.eMode = E_SC1_MODE_CHIP_WRITE;
-                xfer.uiChip = chipNum;
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_SC1_MODE_MULTICAST;
                 xfer.uiCore = 0; // Don't care - set to zero
             } else {
-                // Single chip, single engine
-                xfer.eMode = E_SC1_MODE_REG_WRITE;
-                xfer.uiChip = chipNum;
-                xfer.uiCore = engineNum;
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
             }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_SC1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_SC1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint64_t*)pData);
+
+        LOCK(&spiLock);
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
 
             // Do the write
-            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
-            LOCK(&spiLock);
             int result = iSC1SpiTransfer(&xfer);
-            UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
             }
-            break;
         }
+        UNLOCK(&spiLock);
+        break;
+    }
 
-        case MODEL_DCR1: {
-            S_DCR1_TRANSFER_T xfer;
-            xfer.uiBoard = i;
-            xfer.uiReg = registerId;
+    case MODEL_DCR1: {
+        S_DCR1_TRANSFER_T xfer;
+        xfer.uiReg = registerId;
 
-            // Set address/mode
-            if (chipNum == ALL_CHIPS) {
-                xfer.uiChip = 0; // Don't care - set to zero
-                if (engineNum == ALL_ENGINES) {
-                    xfer.eMode = E_DCR1_MODE_MULTICAST;
-                    xfer.uiCore = 0; // Don't care - set to zero
-                } else {
-                    // Not possible to write to a specific engine on all chips in one write
-                    return GENERIC_ERROR;
-                }
-            } else if (engineNum == ALL_ENGINES) {
-                xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
-                xfer.uiChip = chipNum;
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_DCR1_MODE_MULTICAST;
                 xfer.uiCore = 0; // Don't care - set to zero
             } else {
-                // Single chip, single engine
-                xfer.eMode = E_DCR1_MODE_REG_WRITE;
-                xfer.uiChip = chipNum;
-                xfer.uiCore = engineNum;
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
             }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_DCR1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint32_t*)pData);
+
+        LOCK(&spiLock);
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
 
             // Do the write
-            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
-            LOCK(&spiLock);
             int result = iDCR1SpiTransfer(&xfer);
-            UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
             }
-            break;
         }
-        }
+        UNLOCK(&spiLock);
+        break;
+    }
     }
 
     return SUCCESS;
@@ -206,7 +214,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
         }
-        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        *((uint64_t*)pData) = xfer.uiData;
         break;
     }
 
@@ -224,7 +232,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
         }
-        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        *((uint32_t*)pData) = xfer.uiData;
         break;
     }
     }
@@ -733,4 +741,40 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
         return GENERIC_ERROR;
     }
     return SUCCESS;
+}
+
+// Run a command line command.
+// Result: true if command was run, false if not
+//         Note that true does not mean the command succeeded.
+//         Check output for that.
+bool runCmd(char* cmd, char* output, int outputSize) {
+    FILE *fp = popen(cmd, "r");
+    if (fp == NULL) {
+        return false;
+    }
+    char buffer[100];
+
+    int outputSizeRemaining = outputSize;
+    int outputOffset = 0;
+
+    while (fgets(buffer, 100 - 1, fp) != NULL) {
+        int bufferLen = strlen(buffer);
+        if (bufferLen < outputSizeRemaining) {
+            strncpy(output + outputOffset, buffer, outputSizeRemaining);
+            outputOffset += bufferLen;
+            outputSize -= bufferLen;
+        } else {
+            break;
+        }
+    }
+
+    return true;
+}
+
+void getIpV4(char* intfName, char* ipBuffer, int bufferSize) {
+    #define CMD_BUF_LEN 100
+    char cmdBuf[CMD_BUF_LEN];
+    snprintf(cmdBuf, CMD_BUF_LEN, "ifconfig %s | awk '/inet addr:/{split($2,a,\":\"); print a[2]}' | head -1", intfName);
+
+    runCmd(cmdBuf, ipBuffer, bufferSize);
 }
