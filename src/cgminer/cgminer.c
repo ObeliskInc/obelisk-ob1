@@ -7297,7 +7297,7 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 
 
     // Update nonce2
-    work->nonce2 = pool->nonce2++;
+    work->nonce2 = pool->nonce2 += 10000;
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
