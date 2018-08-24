@@ -765,21 +765,16 @@ ApiError dcrSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 	}
 }
 
-ApiError siaStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
-	return ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+ApiError siaPrepareNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+	return SUCCESS;
 }
 
 // For Decred, we need to set the M5 register and save it somewhere that it can
 // be recovered during validNonce.
-ApiError dcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+ApiError dcrPrepareNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
 	uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
 	ob->decredEN2[chipNum][engineNum] = extraNonce2;
-	ApiError error = ob1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
-	if (error != SUCCESS) {
-		return error;
-	}
-	error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
-	return error;
+	return ob1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
 }
 
 static void obelisk_detect(bool hotplug)
@@ -838,7 +833,7 @@ static void obelisk_detect(bool hotplug)
 			// Functions.
 			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->setChipNonceRange = siaSetChipNonceRange;
-			ob->startNextEngineJob = siaStartNextEngineJob;
+			ob->prepareNextEngineJob = siaPrepareNextEngineJob;
 			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
@@ -850,7 +845,7 @@ static void obelisk_detect(bool hotplug)
 			// Functions.
 			ob->prepareNextChipJob = dcrPrepareNextChipJob;
 			ob->setChipNonceRange = dcrSetChipNonceRange;
-			ob->startNextEngineJob = dcrStartNextEngineJob;
+			ob->prepareNextEngineJob = dcrPrepareNextEngineJob;
 			ob->validNonce = dcrValidNonce;
 		}
 
@@ -1365,7 +1360,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			applog(LOG_ERR, "Doing a chip reset due to time out: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastChipStart);
 			ob->setChipNonceRange(ob, chipNum, 1);
 			for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
-				ApiError error = ob->startNextEngineJob(ob, chipNum, engineNum);
+				ApiError error = ob->prepareNextEngineJob(ob, chipNum, engineNum);
+				if (error != SUCCESS) {
+					applog(LOG_ERR, "Error loading engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
+				}
+				error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
 				if (error != SUCCESS) {
 					applog(LOG_ERR, "Error loading engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 				}
@@ -1432,7 +1431,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			}
 
 			// Start the next job for this engine.
-			error = ob->startNextEngineJob(ob, chipNum, engineNum);
+			error = ob->prepareNextEngineJob(ob, chipNum, engineNum);
+			if (error != SUCCESS) {
+				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
+			}
+			error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}

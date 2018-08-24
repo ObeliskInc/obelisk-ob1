@@ -44,7 +44,7 @@ void dcrMidstateChecksum(uint8_t* checksum, uint8_t midstate[64], uint8_t header
 	m[13] = 0x80000001U;
 	m[15] = 0x000005A0U;
 
-	dcrBlake256CompressBlock(checksum, m, 0x5A0);
+	dcrBlake256CompressBlock((uint32_t*)checksum, m, 0x5A0);
 }
 
 // dcrMidstateMeetsMinimumTarget will take a midstate and a headerTail as input,
