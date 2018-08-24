@@ -637,10 +637,18 @@ void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
 }
 
 ApiError bufferGlobalChipJob(ob_chain* ob) {
+	// Get the next work item.
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
 	if (ob->bufferedWork == NULL) {
 		applog(LOG_ERR, "bufferedWork is NULL: %u", ob->staticBoardNumber);
+		return GENERIC_ERROR;
+	}
+
+	// Check if the work is stale, discard it if so.
+	if (nextWork->id < nextWork->pool->stale_share_id) {
+		ob->bufferedWork = NULL;
+		applog(LOG_ERR, "bufferedWork is STALE: %u", ob->staticBoardNumber);
 		return GENERIC_ERROR;
 	}
 
@@ -651,45 +659,6 @@ ApiError bufferGlobalChipJob(ob_chain* ob) {
 		return error;
 	}
 }
-
-/*
-ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
-	struct work* nextWork = wq_dequeue(ob, true);
-	ob->chipWork[chipNum] = nextWork;
-	if (ob->chipWork[chipNum] == NULL) {
-		applog(LOG_ERR, "chipWork is null");
-		return GENERIC_ERROR;
-	}
-
-      // Prepare the job to load on the chip.
-    Job job = ob->prepareNextChipJob(ob, chipNum);
-
-    // Load job
-    cgtimer_t start_ob1LoadJob, end_ob1LoadJob, duration_ob1LoadJob;
-    cgtimer_time(&start_ob1LoadJob);
-    ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, chipNum, ALL_ENGINES, &job);
-    cgtimer_time(&end_ob1LoadJob);
-    cgtimer_sub(&end_ob1LoadJob, &start_ob1LoadJob, &duration_ob1LoadJob);
-    ob->obLoadJobTime += cgtimer_to_ms(&duration_ob1LoadJob);
-    //applog(LOG_NOTICE, "ob1LoadJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1LoadJob), chipNum);
-    if (error != SUCCESS) {
-        return error;
-    }
-
-    // Start job
-    cgtimer_t start_ob1StartJob, end_ob1StartJob, duration_ob1StartJob;
-    cgtimer_time(&start_ob1StartJob);
-    error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-    cgtimer_time(&end_ob1StartJob);
-    cgtimer_sub(&end_ob1StartJob, &start_ob1StartJob, &duration_ob1StartJob);
-    //applog(LOG_NOTICE, "ob1StartJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1StartJob), chipNum);
-    if (error != SUCCESS) {
-    	return error;
-    }
-
-	return SUCCESS;
-}
-*/
 
 // siaPrepareNextChipJob will prepare the next job for a sia chip.
 Job siaPrepareNextChipJob(ob_chain* ob) {
@@ -1427,7 +1396,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSets[engineNum]);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
-				continue;
 			}
 
 			// Start the next job for this engine.
@@ -1435,7 +1403,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}
-			error = ob1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+			error = ob1StartJobOptimized(ob->staticBoardNumber, chipNum, engineNum);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}

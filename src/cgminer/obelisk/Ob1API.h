@@ -32,6 +32,7 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);
 
 // Start the job and wait for the engine(s) to indicate busy.
 ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
+ApiError ob1StartJobOptimized(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum);
 
 // Stop the specified engine(s) from running (turns off the clock).
 ApiError ob1StopChip(uint8_t boardNum, uint8_t chipNum);
