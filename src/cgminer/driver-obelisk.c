@@ -46,8 +46,6 @@ extern void dump(unsigned char* p, int len, char* label);
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
-static uint32_t fan_rpms[NUM_FANS];
-pthread_mutex_t fan_lock;
 
 #if (MODEL == SC1)
 Nonce SiaNonceLowerBound = 0;
@@ -157,60 +155,6 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
-#define MAX_IP_ADDR_LENGTH (15 + 1)
-
-// Simple thread to update the fan RPMS once a second
-static void* ob_fan_thread(void* arg)
-{
-    uint32_t fanCheckTicks = 0;
-    bool isButtonPressed = false;
-    uint32_t buttonPressedTicks = 0;
-    bool ismDNSSent = false;
-    while(true) {
-        int button = gpio_read_pin(CONTROLLER_USER_SWITCH);
-        isButtonPressed = button == 0; // Pressed is 0, and not pressed is 1.  Of course!
-
-        // TODO: Should change this to perform the action on button release, so
-        // we can check how long it was held and do something different based on
-        // that duration (e.g., 1 second = mdns, 5 seconds = reset all settings, etc.)
-
-        // See if the button has been pressed long enough to send the mDNS
-        if (isButtonPressed && buttonPressedTicks >= 10 && !ismDNSSent) {
-
-            char name[80];
-            sprintf(name, "Obelisk %s", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1");
-            char ipAddress[MAX_IP_ADDR_LENGTH];
-            memset(ipAddress, 0, MAX_IP_ADDR_LENGTH );
-            getIpV4("eth0", ipAddress, MAX_IP_ADDR_LENGTH);
-
-            applog(LOG_ERR, "===============================================");
-            applog(LOG_ERR, "SENDING mDNS: IP = %s", ipAddress);
-            applog(LOG_ERR, "===============================================");
-
-            send_mDNS_response(name, ipAddress, 10);
-            ismDNSSent = true;
-        }
-
-        if (!isButtonPressed) {
-            buttonPressedTicks = 0;
-            ismDNSSent = false;
-        } else {
-            buttonPressedTicks++;
-        }
-
-        if (fanCheckTicks == 5) {
-            for (int i=0; i<NUM_FANS; i++) {
-                uint32_t rpm = ob1GetFanRPM(i);
-                set_fan_rpms(i, rpm);
-            }
-            fanCheckTicks = 0;
-        }
-
-        fanCheckTicks++;
-        cgsleep_ms(100);
-    }
-    return NULL;
-}
 
 // siaValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
@@ -620,22 +564,6 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-uint32_t get_fan_rpms(uint8_t fan_num)
-{
-    uint32_t rpm;
-    mutex_lock(&fan_lock);
-    rpm = fan_rpms[fan_num];
-    mutex_unlock(&fan_lock);
-    return rpm;
-}
-
-void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
-{
-    mutex_lock(&fan_lock);
-    fan_rpms[fan_num] = rpm;
-    mutex_unlock(&fan_lock);
-}
-
 ApiError bufferGlobalChipJob(ob_chain* ob) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
@@ -790,10 +718,6 @@ static void obelisk_detect(bool hotplug)
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 	gBoardModel = eGetBoardType(0);
-
-    // Start the fan monitor thread
-    mutex_init(&fan_lock);
-    pthread_create(&pth, NULL, ob_fan_thread, NULL);
 
     // Set the initial fan speed - control loop will take over shortly
     ob1SetFanSpeeds(100);
