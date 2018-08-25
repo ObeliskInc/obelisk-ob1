@@ -22,7 +22,7 @@ ApiError ob1SetNonceRange(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, 
 ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound, Nonce subrangeSize, Nonce* pNextNonce);
 
 // Read all the nonces for a given engine (up to 8)
-ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet);
+ApiError managedOB1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet);
 
 // Get the bits corresponding to each engine's DONE status
 ApiError ob1GetDoneEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData);

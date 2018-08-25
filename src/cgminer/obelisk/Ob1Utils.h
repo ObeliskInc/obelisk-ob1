@@ -9,6 +9,7 @@
 #define UNLOCK(m) (pthread_mutex_unlock(m))
 
 // Main API needs access too
+pthread_mutex_t spiLock;
 extern pthread_mutex_t statusLock;
 
 void ob1SetRedLEDOff();
@@ -22,8 +23,10 @@ ApiError ob1InitializeControlBoard();
 ApiError ob1InitializeHashBoards();
 
 ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
+ApiError managedOB1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
 
 ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
+ApiError managedOB1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData);
 
 ApiError ob1SpiReadChipReg(uint8_t boardNum, uint8_t chipNum, uint8_t registerId, void* pData);
 

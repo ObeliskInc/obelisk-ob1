@@ -29,6 +29,7 @@ DCR1:
 #include "driver-obelisk.h"
 #include "obelisk/gpio_bsp.h"
 #include "obelisk/multicast.h"
+#include "obelisk/Ob1Utils.h"
 #include "compat.h"
 #include "config.h"
 #include "klist.h"
@@ -1423,10 +1424,11 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			NonceSet nonceSet;
 			nonceSet.count = 0;
 			nonceSet.extraNonce2 = ob->decredEN2[chipNum][engineNum]; // This is a decred only line, but it doesn't hurt to always call it.
-			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
+			LOCK(&spiLock);
+			error = managedOB1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
+			UNLOCK(&spiLock);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
-				continue;
 			}
 			// Start the next job for this engine.
 			error = ob->startNextEngineJob(ob, chipNum, engineNum);

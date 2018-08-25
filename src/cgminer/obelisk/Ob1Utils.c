@@ -13,7 +13,6 @@
 #include <pthread.h>
 
 // Locks for thread safety of the API
-pthread_mutex_t spiLock;
 pthread_mutex_t statusLock; // Lock temperature & voltage device access
 
 void ob1SetRedLEDOff()
@@ -86,6 +85,103 @@ ApiError ob1InitializeHashBoards()
 // NOTE: We will be running one thread per hashboard, so these SPI functions need to be thread-safe
 //       Add a mutex around all low-level functions that access shared hardware.
 //========================================================================================================
+//
+ApiError managedOB1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData)
+{
+    int firstBoard;
+    int lastBoard;
+    if (boardNum == ALL_BOARDS) {
+        firstBoard = 0;
+        lastBoard = MAX_NUMBER_OF_HASH_BOARDS - 1;
+    } else {
+        firstBoard = boardNum;
+        lastBoard = boardNum;
+    }
+
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        S_SC1_TRANSFER_T xfer;
+        xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_SC1_MODE_MULTICAST;
+                xfer.uiCore = 0; // Don't care - set to zero
+            } else {
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
+            }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_SC1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_SC1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint64_t*)pData);
+
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
+
+            // Do the write
+            int result = iSC1SpiTransfer(&xfer);
+            if (result != ERR_NONE) {
+                return GENERIC_ERROR;
+            }
+        }
+        break;
+    }
+
+    case MODEL_DCR1: {
+        S_DCR1_TRANSFER_T xfer;
+        xfer.uiReg = registerId;
+
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_DCR1_MODE_MULTICAST;
+                xfer.uiCore = 0; // Don't care - set to zero
+            } else {
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
+            }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_DCR1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint32_t*)pData);
+
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
+
+            // Do the write
+            int result = iDCR1SpiTransfer(&xfer);
+            if (result != ERR_NONE) {
+                return GENERIC_ERROR;
+            }
+        }
+        break;
+    }
+    }
+
+    return SUCCESS;
+}
 
 // Write the specified data
 // Supports writing to ALL_BOARDS, ALL_CHIPS and ALL_ENGINES.
@@ -183,6 +279,50 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
             }
         }
         UNLOCK(&spiLock);
+        break;
+    }
+    }
+
+    return SUCCESS;
+}
+
+ApiError managedOB1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uint8_t registerId, void* pData)
+{
+    // Can only read from a specific board on a specific chip on a specific engine
+    if (boardNum == ALL_BOARDS || chipNum == ALL_CHIPS || engineNum == ALL_ENGINES) {
+        return GENERIC_ERROR;
+    }
+
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        S_SC1_TRANSFER_T xfer;
+        xfer.eMode = E_DCR1_MODE_REG_READ;
+        xfer.uiBoard = boardNum;
+        xfer.uiChip = chipNum;
+        xfer.uiCore = engineNum;
+        xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+
+        int result = iSC1SpiTransfer(&xfer);
+        if (result != ERR_NONE) {
+            return GENERIC_ERROR;
+        }
+        *((uint64_t*)pData) = xfer.uiData;
+        break;
+    }
+
+    case MODEL_DCR1: {
+        S_DCR1_TRANSFER_T xfer;
+        xfer.eMode = E_DCR1_MODE_REG_READ;
+        xfer.uiBoard = boardNum;
+        xfer.uiChip = chipNum;
+        xfer.uiCore = engineNum;
+        xfer.uiReg = registerId;
+
+        int result = iDCR1SpiTransfer(&xfer);
+        if (result != ERR_NONE) {
+            return GENERIC_ERROR;
+        }
+        *((uint32_t*)pData) = xfer.uiData;
         break;
     }
     }

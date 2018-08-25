@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern pthread_mutex_t spiLock;
 // Globals
 HashboardModel gBoardModel;
 
@@ -272,13 +271,13 @@ ApiError ob1SpreadNonceRange(uint8_t boardNum, uint8_t chipNum, Nonce lowerBound
 }
 
 // Read the nonces of the specified engine
-ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet)
+ApiError managedOB1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, NonceSet* nonceSet)
 {
     Nonce nonce;
     switch (gBoardModel) {
     case MODEL_SC1: {
         uint64_t fsr;
-        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr);
+        ApiError error = managedOB1SpiReadReg(boardNum, chipNum, engineNum, E_SC1_REG_FSR, &fsr);
         if (error != SUCCESS) {
             return error;
         }
@@ -291,7 +290,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
             for (uint8_t i = 0; i < MAX_NONCE_FIFO_LENGTH; i++) {
                 // See which bits are set and extract the nonces for them
                 if ((1 << i) & fsr_mask) {
-                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]));
+                    error = managedOB1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &(nonceSet->nonces[n]));
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -302,13 +301,13 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         nonceSet->count = n;
 
 		uint64_t data = E_SC1_ECR_READ_COMPLETE;
-		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
 		if (error != SUCCESS) {
 			return error;
 		}
 
 		data = 0;
-		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
 		if (error != SUCCESS) {
 			return error;
 		}
@@ -317,7 +316,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
     }
     case MODEL_DCR1: {
         uint32_t fsr;
-        ApiError error = ob1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
+        ApiError error = managedOB1SpiReadReg(boardNum, chipNum, engineNum, E_DCR1_REG_FSR, &fsr);
         if (error != SUCCESS) {
             return error;
         }
@@ -331,7 +330,7 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
                 // See which bits are set and extract the nonces for them
                 if ((1 << i) & fsr_mask) {
                     Nonce nonce;
-                    error = ob1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce);
+                    error = managedOB1SpiReadReg(boardNum, chipNum, engineNum, fifoDataReg + i, &nonce);
                     if (error != SUCCESS) {
                         return error;
                     }
@@ -346,13 +345,13 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         nonceSet->count = n;
 
 		uint64_t data = DCR1_ECR_READ_COMPLETE;
-		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
 		if (error != SUCCESS) {
 			return error;
 		}
 
 		data = 0;
-		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
 		if (error != SUCCESS) {
 			return error;
 		}
