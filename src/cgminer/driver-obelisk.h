@@ -113,7 +113,7 @@ typedef struct stringSettings stringSettings;
 typedef Job      (*prepareNextChipJobFn)(ob_chain* ob);
 typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
 typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum);
-typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce);
+typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce, uint32_t extraNonce2);
 
 // stringSettings contains a list of settings for the string.
 //

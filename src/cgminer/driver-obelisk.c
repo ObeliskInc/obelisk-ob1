@@ -216,7 +216,7 @@ static void* ob_fan_thread(void* arg)
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
 // pool difficulty but is valid under the chip difficutly, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
-int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
+int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce, uint32_t extraNonce2) {
 	// Create the header with the nonce set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
     uint8_t header[ob->staticBoardModel.headerSize];
@@ -234,10 +234,10 @@ int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
 // pool difficulty but is valid under the chip difficutly, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
-int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
+int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce, uint32_t extraNonce2) {
     // Create the midstate + tail with the nonce set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
-	memcpy(&engine_work->header_tail[20], &ob->decredEN2[chipNum][engineNum], 4);
+	memcpy(&engine_work->header_tail[20], &extraNonce2, 4);
     uint8_t headerTail[ob->staticBoardModel.headerTailSize];
     memcpy(headerTail, &engine_work->header_tail, ob->staticBoardModel.headerTailSize);
     memcpy(headerTail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
@@ -1422,7 +1422,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Read any nonces that the engine found.
 			NonceSet nonceSet;
 			nonceSet.count = 0;
-			nonceSet.dcrEN2 = ob->decredEN2[chipNum][engineNum];
+			nonceSet.extraNonce2 = ob->decredEN2[chipNum][engineNum]; // This is a decred only line, but it doesn't hurt to always call it.
 			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
@@ -1440,7 +1440,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Check the nonces and submit them to a pool if valid.
 			for (uint8_t i = 0; i < nonceSet.count; i++) {
 				// Check that the nonce is valid
-				int nonceResult = ob->validNonce(ob, chipNum, engineNum, nonceSet.nonces[i]);
+				int nonceResult = ob->validNonce(ob, chipNum, engineNum, nonceSet.nonces[i], nonceSet.extraNonce2);
 				if (nonceResult == 0) {
 					ob->chipBadNonces[chipNum]++;
 				}
