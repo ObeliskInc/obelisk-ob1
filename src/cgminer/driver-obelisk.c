@@ -1423,6 +1423,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			// Read any nonces that the engine found.
 			NonceSet nonceSet;
 			nonceSet.count = 0;
+			nonceSet.dcrEN2 = ob->decredEN2[chipNum][engineNum];
 			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
