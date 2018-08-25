@@ -1419,6 +1419,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 		// Check all the engines on the chip.
 		for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+		cgtimer_time(&loadStart);
 			// Read any nonces that the engine found.
 			NonceSet nonceSet;
 			nonceSet.count = 0;
@@ -1427,6 +1428,14 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 				continue;
 			}
+			// Start the next job for this engine.
+			error = ob->startNextEngineJob(ob, chipNum, engineNum);
+			if (error != SUCCESS) {
+				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
+			}
+		cgtimer_time(&loadEnd);
+		cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
+		loadTotal += cgtimer_to_ms(&loadDuration);
 
 			// Check the nonces and submit them to a pool if valid.
 			for (uint8_t i = 0; i < nonceSet.count; i++) {
@@ -1444,18 +1453,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i]);
 				}
 			}
-
-		cgtimer_time(&loadStart);
-
-			// Start the next job for this engine.
-			error = ob->startNextEngineJob(ob, chipNum, engineNum);
-			if (error != SUCCESS) {
-				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
-			}
-
-		cgtimer_time(&loadEnd);
-		cgtimer_sub(&loadEnd, &loadStart, &loadDuration);
-		loadTotal += cgtimer_to_ms(&loadDuration);
 
 		}
 
