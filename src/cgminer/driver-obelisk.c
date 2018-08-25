@@ -783,6 +783,23 @@ ApiError dcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNu
 	return error;
 }
 
+ApiError managedSiaStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+	return managedOB1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+}
+
+// For Decred, we need to set the M5 register and save it somewhere that it can
+// be recovered during validNonce.
+ApiError managedDcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNum) {
+	uint32_t extraNonce2 = (ob->staticBoardModel.enginesPerChip * chipNum) + engineNum + ob->bufferedWork->nonce2;
+	ob->decredEN2[chipNum][engineNum] = extraNonce2;
+	ApiError error = managedOB1SpiWriteReg(ob->staticBoardNumber, chipNum, engineNum, E_DCR1_REG_M5, &extraNonce2);
+	if (error != SUCCESS) {
+		return error;
+	}
+	error = managedOB1StartJob(ob->staticBoardNumber, chipNum, engineNum);
+	return error;
+}
+
 static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
@@ -840,6 +857,7 @@ static void obelisk_detect(bool hotplug)
 			ob->prepareNextChipJob = siaPrepareNextChipJob;
 			ob->setChipNonceRange = siaSetChipNonceRange;
 			ob->startNextEngineJob = siaStartNextEngineJob;
+			ob->managedStartNextEngineJob = managedSiaStartNextEngineJob;
 			ob->validNonce = siaValidNonce;
 		} else if (boardType == MODEL_DCR1) {
 			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
@@ -852,6 +870,7 @@ static void obelisk_detect(bool hotplug)
 			ob->prepareNextChipJob = dcrPrepareNextChipJob;
 			ob->setChipNonceRange = dcrSetChipNonceRange;
 			ob->startNextEngineJob = dcrStartNextEngineJob;
+			ob->managedStartNextEngineJob = managedDcrStartNextEngineJob;
 			ob->validNonce = dcrValidNonce;
 		}
 
@@ -1301,7 +1320,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	// Check against the global timer to see if 100ms has passed since we
 	// started the previous iteration.
-	int minMSPerIter = 500;
+	int minMSPerIter = 50;
 	cgtimer_t currentTime, timeSinceLastIter;
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
@@ -1318,7 +1337,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 				// It is critical to the program that bufferedWork is not NULL.
 				// Sleep for a bit to give some time to reset, and try again.
 				applog(LOG_ERR, "error buffering a global chip job: %u", ob->staticBoardNumber);
-				cgsleep_ms(25);
+				cgsleep_ms(50);
 				return 0;
 			}
 		}
@@ -1350,7 +1369,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastChipStart;
 		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
 		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
-		if (msLastChipStart < 2500) {
+		if (msLastChipStart < 5000) {
 			// It has been less than 7.5 seconds, assume that this chip is not
 			// finished. 7.5 seconds would imply a clock speed of 570 MHz, which
 			// we do not believe the chips are capable of. 
@@ -1426,12 +1445,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 			nonceSet.extraNonce2 = ob->decredEN2[chipNum][engineNum]; // This is a decred only line, but it doesn't hurt to always call it.
 			LOCK(&spiLock);
 			error = managedOB1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
-			UNLOCK(&spiLock);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}
 			// Start the next job for this engine.
-			error = ob->startNextEngineJob(ob, chipNum, engineNum);
+			error = ob->managedStartNextEngineJob(ob, chipNum, engineNum);
+			UNLOCK(&spiLock);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error starting engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 			}

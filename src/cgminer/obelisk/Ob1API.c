@@ -466,6 +466,86 @@ ApiError ob1GetBusyEngines(uint8_t boardNum, uint8_t chipNum, uint64_t* pData)
 }
 
 // Start the job and wait for the engine(s) to indicate busy.
+ApiError managedOB1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
+{
+    ApiError error = GENERIC_ERROR;
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        // Need to set these bits high, then clear them to signal the start
+        uint64_t data = E_SC1_ECR_RESET_SPI_FSM | E_SC1_ECR_RESET_CORE;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        data = 0;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        // Unmask bits that define the nonce fifo masks
+        data = 0;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_FCR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+		data = E_SC1_ECR_VALID_DATA;
+		ApiError error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+		data = 0;
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+        break;
+    }
+    case MODEL_DCR1: {
+        // Need to set these bits high, then clear them to signal the start
+        uint32_t data = DCR1_ECR_RESET_SPI_FSM | DCR1_ECR_RESET_CORE;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        data = 0;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+        // Unmask bits that define the nonce fifo masks
+        data = 0;
+        error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_FCR, &data);
+        if (error != SUCCESS) {
+            return error;
+        }
+
+		data = DCR1_ECR_VALID_DATA;
+		ApiError error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+		data = 0;
+		error = managedOB1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+        break;
+    }
+    }
+
+    return error;
+}
+
+// Start the job and wait for the engine(s) to indicate busy.
 ApiError ob1StartJob(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum)
 {
     ApiError error = GENERIC_ERROR;
