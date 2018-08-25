@@ -300,9 +300,19 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
             }
         }
         nonceSet->count = n;
-        // applog(LOG_ERR, "nonceSet->count=%u", nonceSet->count);
 
-        pulseSC1ReadComplete(boardNum, chipNum, engineNum);
+		uint64_t data = E_SC1_ECR_READ_COMPLETE;
+		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+		data = 0;
+		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_SC1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
         break;
     }
     case MODEL_DCR1: {
@@ -335,7 +345,18 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
         }
         nonceSet->count = n;
 
-        pulseDCR1ReadComplete(boardNum, chipNum, engineNum);
+		uint64_t data = DCR1_ECR_READ_COMPLETE;
+		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
+		data = 0;
+		error = ob1SpiWriteReg(boardNum, chipNum, engineNum, E_DCR1_REG_ECR, &data);
+		if (error != SUCCESS) {
+			return error;
+		}
+
         break;
     }
     }
