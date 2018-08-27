@@ -264,7 +264,7 @@ extern char* curly;
 #define SIA_HEADER_SIZE 80 // bytes
 #define NTIME_SIZE 8 // bytes
 #define NTIME_STR_SIZE 16
-#define MAX_COINBASE_SIZE 128 // bytes
+#define MAX_COINBASE_SIZE 256 // bytes
 
 #elif (ALGO == BLAKE256)
 
@@ -277,7 +277,7 @@ extern char* curly;
 #define DECRED_HEADER_TAIL_NONCE_OFFSET 12 // bytes
 #define NTIME_STR_SIZE 8
 #define NTIME_SIZE 8 // bytes
-#define MAX_COINBASE_SIZE 128 // bytes
+#define MAX_COINBASE_SIZE 256 // bytes
 
 #else
 
