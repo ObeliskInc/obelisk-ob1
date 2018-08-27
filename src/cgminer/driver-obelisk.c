@@ -232,21 +232,25 @@ int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 
 // dcrValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
-// pool difficulty but is valid under the chip difficutly, and '2' if the nonce
+// pool difficulty but is valid under the chip difficulty, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
 int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
-    // Create the midstate + tail with the nonce set up correctly.
+	// Create the header with the nonce and en2 set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
-	memcpy(&engine_work->header_tail[20], &ob->decredEN2[chipNum][engineNum], 4);
-    uint8_t headerTail[ob->staticBoardModel.headerTailSize];
-    memcpy(headerTail, &engine_work->header_tail, ob->staticBoardModel.headerTailSize);
-    memcpy(headerTail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+
+    uint8_t midstate[ob->staticBoardModel.midstateSize];
+    memcpy(midstate, engine_work->midstate, ob->staticBoardModel.midstateSize);
+
+    uint8_t header_tail[ob->staticBoardModel.headerTailSize];
+    memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
+    memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, &ob->decredEN2[chipNum][engineNum], sizeof(uint32_t));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
-		return dcrMidstateMeetsProvidedTarget(engine_work->midstate, headerTail, ob->staticChipTarget) ? 1 : 0;
+		return dcrMidstateMeetsProvidedTarget(midstate, header_tail, ob->staticChipTarget) ? 1 : 0;
 	}
-	return dcrHeaderMeetsChipTargetAndPoolDifficulty(engine_work->midstate, headerTail, ob->staticChipTarget, engine_work->pool->sdiff);
+	return dcrHeaderMeetsChipTargetAndPoolDifficulty(midstate, header_tail, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
 // biasToLevel converts the bias and divider fields into a smooth level that
@@ -1441,8 +1445,16 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticBoardModel.chipDifficulty;
 				}
 				if (nonceResult == 2) {
-					submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i]);
-				}
+					// TODO: Should turn these into separate functions with ptrs
+					if (gBoardModel == MODEL_SC1) {
+						applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+					} else {
+						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
+						// NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
+					}
+                }
 			}
 
 		cgtimer_time(&loadStart);

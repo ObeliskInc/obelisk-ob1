@@ -1487,8 +1487,9 @@ struct work {
     struct timeval tv_work_found;
     char getwork_mode;
 
-    // Field used to pass the nonce in the copied work struct when submitting a nonce
+    // Fields used to pass the nonce in the copied work struct when submitting a nonce
     Nonce nonce_to_submit;
+    uint32_t extranonce2_to_submit;
 };
 
 #ifdef USE_MODMINER
@@ -1536,8 +1537,8 @@ extern void get_datestamp(char*, size_t, struct timeval*);
 extern void inc_hw_errors(struct thr_info* thr);
 extern bool test_nonce(struct work* work, Nonce nonce);
 extern bool test_nonce_diff(struct work* work, Nonce nonce, double diff);
-extern bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce);
-extern bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce);
+extern bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2);
+extern bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2);
 extern bool submit_noffset_nonce(struct thr_info* thr, struct work* work, Nonce nonce,
     int noffset);
 extern int share_work_tdiff(struct cgpu_info* cgpu);

@@ -16,6 +16,8 @@ typedef struct hashBoardModel {
 	uint64_t midstateSize;
 	uint64_t nonceOffset;
 	uint64_t nonceOffsetInTail;
+	uint64_t extranonce2Offset;
+	uint64_t extranonce2OffsetInTail;
 
 	// Suggested parameters to use when operating the chips.
 	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
@@ -38,6 +40,8 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.midstateSize      = 0,  // no midstate
 	.nonceOffset       = 32,
 	.nonceOffsetInTail = 0,  // no tail
+	.extranonce2Offset = 0,  // Not used
+	.extranonce2OffsetInTail = 0, // no tail
 
 	.chipSpeed               = 100000000ULL, // 100 MHz
 	.defaultMaxBiasLevel     = 22,           // Corresponds to a /2.-4
@@ -59,6 +63,8 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.midstateSize      = 32,
 	.nonceOffset       = 140,
 	.nonceOffsetInTail = 12,
+	.extranonce2Offset = 148,
+	.extranonce2OffsetInTail = 20,
 
 	.chipSpeed               = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
 	.defaultMaxBiasLevel     = 22,         // Corresponds to a /2.-4
