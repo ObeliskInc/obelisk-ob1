@@ -271,8 +271,3 @@ uint64_t get_num_hashes(ob_chain* ob);
 uint64_t get_good_nonces(ob_chain* ob);
 
 uint64_t get_bad_nonces(ob_chain* ob);
-
-uint32_t get_fan_rpms(uint8_t fanNum);
-
-void set_fan_rpms(uint8_t fan_num, uint32_t rpm);
-

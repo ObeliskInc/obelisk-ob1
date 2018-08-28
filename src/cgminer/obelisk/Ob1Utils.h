@@ -116,4 +116,8 @@ ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state);
 bool runCmd(char* cmd, char* output, int outputSize);
 void getIpV4(char* intfName, char* ipBuffer, int bufferSize);
 
+void sendMDNSResponse();
+void resetAllUserConfig();
+void doReboot();
+
 #endif

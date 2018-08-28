@@ -47,8 +47,6 @@ extern void dump(unsigned char* p, int len, char* label);
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
-static uint32_t fan_rpms[NUM_FANS];
-pthread_mutex_t fan_lock;
 
 #if (MODEL == SC1)
 Nonce SiaNonceLowerBound = 0;
@@ -158,60 +156,6 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
-#define MAX_IP_ADDR_LENGTH (15 + 1)
-
-// Simple thread to update the fan RPMS once a second
-static void* ob_fan_thread(void* arg)
-{
-    uint32_t fanCheckTicks = 0;
-    bool isButtonPressed = false;
-    uint32_t buttonPressedTicks = 0;
-    bool ismDNSSent = false;
-    while(true) {
-        int button = gpio_read_pin(CONTROLLER_USER_SWITCH);
-        isButtonPressed = button == 0; // Pressed is 0, and not pressed is 1.  Of course!
-
-        // TODO: Should change this to perform the action on button release, so
-        // we can check how long it was held and do something different based on
-        // that duration (e.g., 1 second = mdns, 5 seconds = reset all settings, etc.)
-
-        // See if the button has been pressed long enough to send the mDNS
-        if (isButtonPressed && buttonPressedTicks >= 10 && !ismDNSSent) {
-
-            char name[80];
-            sprintf(name, "Obelisk %s", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1");
-            char ipAddress[MAX_IP_ADDR_LENGTH];
-            memset(ipAddress, 0, MAX_IP_ADDR_LENGTH );
-            getIpV4("eth0", ipAddress, MAX_IP_ADDR_LENGTH);
-
-            applog(LOG_ERR, "===============================================");
-            applog(LOG_ERR, "SENDING mDNS: IP = %s", ipAddress);
-            applog(LOG_ERR, "===============================================");
-
-            send_mDNS_response(name, ipAddress, 10);
-            ismDNSSent = true;
-        }
-
-        if (!isButtonPressed) {
-            buttonPressedTicks = 0;
-            ismDNSSent = false;
-        } else {
-            buttonPressedTicks++;
-        }
-
-        if (fanCheckTicks == 5) {
-            for (int i=0; i<NUM_FANS; i++) {
-                uint32_t rpm = ob1GetFanRPM(i);
-                set_fan_rpms(i, rpm);
-            }
-            fanCheckTicks = 0;
-        }
-
-        fanCheckTicks++;
-        cgsleep_ms(100);
-    }
-    return NULL;
-}
 
 // siaValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
@@ -233,21 +177,25 @@ int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 
 // dcrValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
-// pool difficulty but is valid under the chip difficutly, and '2' if the nonce
+// pool difficulty but is valid under the chip difficulty, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
 int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce, uint32_t extraNonce2) {
-    // Create the midstate + tail with the nonce set up correctly.
+	// Create the header with the nonce and en2 set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
-	memcpy(&engine_work->header_tail[20], &extraNonce2, 4);
-    uint8_t headerTail[ob->staticBoardModel.headerTailSize];
-    memcpy(headerTail, &engine_work->header_tail, ob->staticBoardModel.headerTailSize);
-    memcpy(headerTail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+
+    uint8_t midstate[ob->staticBoardModel.midstateSize];
+    memcpy(midstate, engine_work->midstate, ob->staticBoardModel.midstateSize);
+
+    uint8_t header_tail[ob->staticBoardModel.headerTailSize];
+    memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
+    memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, extraNonce2, sizeof(uint32_t));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
-		return dcrMidstateMeetsProvidedTarget(engine_work->midstate, headerTail, ob->staticChipTarget) ? 1 : 0;
+		return dcrMidstateMeetsProvidedTarget(midstate, header_tail, ob->staticChipTarget) ? 1 : 0;
 	}
-	return dcrHeaderMeetsChipTargetAndPoolDifficulty(engine_work->midstate, headerTail, ob->staticChipTarget, engine_work->pool->sdiff);
+	return dcrHeaderMeetsChipTargetAndPoolDifficulty(midstate, header_tail, ob->staticChipTarget, engine_work->pool->sdiff);
 }
 
 // biasToLevel converts the bias and divider fields into a smooth level that
@@ -621,22 +569,6 @@ uint64_t get_bad_nonces(ob_chain* ob)
     return n;
 }
 
-uint32_t get_fan_rpms(uint8_t fan_num)
-{
-    uint32_t rpm;
-    mutex_lock(&fan_lock);
-    rpm = fan_rpms[fan_num];
-    mutex_unlock(&fan_lock);
-    return rpm;
-}
-
-void set_fan_rpms(uint8_t fan_num, uint32_t rpm)
-{
-    mutex_lock(&fan_lock);
-    fan_rpms[fan_num] = rpm;
-    mutex_unlock(&fan_lock);
-}
-
 ApiError bufferGlobalChipJob(ob_chain* ob) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
@@ -808,10 +740,6 @@ static void obelisk_detect(bool hotplug)
     applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
 	gBoardModel = eGetBoardType(0);
-
-    // Start the fan monitor thread
-    mutex_init(&fan_lock);
-    pthread_create(&pth, NULL, ob_fan_thread, NULL);
 
     // Set the initial fan speed - control loop will take over shortly
     ob1SetFanSpeeds(100);
@@ -1471,8 +1399,16 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 					hashesConfirmed += ob->staticBoardModel.chipDifficulty;
 				}
 				if (nonceResult == 2) {
-					submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i]);
-				}
+					// TODO: Should turn these into separate functions with ptrs
+					if (gBoardModel == MODEL_SC1) {
+						applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+					} else {
+						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
+						// NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
+					}
+                }
 			}
 
 		}
