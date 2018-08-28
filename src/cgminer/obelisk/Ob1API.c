@@ -801,6 +801,18 @@ uint8_t ob1GetNumEnginesPerChip()
     }
 }
 
+// Return a pointer to a C-string name
+const char* ob1GetModelName() {
+    switch (gBoardModel) {
+        case MODEL_SC1:
+            return "SC1";
+        case MODEL_DCR1:
+            return "DCR1";
+        default:
+            return "Obelisk";
+    }
+}
+
 //==================================================================================================
 // Diagnostics API
 //==================================================================================================

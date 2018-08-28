@@ -792,7 +792,7 @@ void copyFile(char* fromPath, char* toPath) {
 
 void sendMDNSResponse() {
     char name[80];
-    sprintf(name, "Obelisk %s", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1");
+    sprintf(name, "Obelisk %s", ob1GetModelName());
     char ipAddress[MAX_IP_ADDR_LENGTH];
     memset(ipAddress, 0, MAX_IP_ADDR_LENGTH );
     getIpV4("eth0", ipAddress, MAX_IP_ADDR_LENGTH);

@@ -36,6 +36,8 @@ void handleSet(string &path, const crow::request &req, crow::response &resp);
 
 void handleAction(string &path, const crow::request &req, crow::response &resp);
 
+void handleInfo(const crow::request &req, crow::response &resp);
+
 void sendError(string error, int code, crow::response &resp);
 
 void sendJson(string json, crow::response &resp);

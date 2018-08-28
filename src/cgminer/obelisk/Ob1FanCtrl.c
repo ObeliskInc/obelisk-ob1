@@ -415,7 +415,8 @@ void checkForButtonPresses() {
         if (buttonPressedTicks >= 95) {  // Tell user 10 seconds - people count fast
             resetAllUserConfig();
             doReboot();
-        } else if (buttonPressedTicks >= 9) {
+        } else {
+            // Just a quick press-release will send the mDNS packet
             sendMDNSResponse();
         }
         buttonPressedTicks = 0;
