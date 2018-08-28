@@ -114,6 +114,8 @@ uint8_t ob1GetNumEnginesPerChip();
 
 HashboardModel ob1GetHashboardModel();
 
+const char* ob1GetModelName();
+
 // Return the number of fans in the units
 uint8_t ob1GetNumFans();
 
