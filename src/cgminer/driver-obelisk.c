@@ -189,7 +189,7 @@ int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
     uint8_t header_tail[ob->staticBoardModel.headerTailSize];
     memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
     memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
-    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, extraNonce2, sizeof(uint32_t));
+    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, &extraNonce2, sizeof(uint32_t));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
@@ -960,7 +960,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 
 // Temperature measurement variables.
 #define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
-#define HotChipTargetTemp 115.0 // Acceptable temp for hottest chip.
+#define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
