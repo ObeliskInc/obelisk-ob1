@@ -204,7 +204,8 @@ struct ob_chain {
     pthread_cond_t nonce_cond;
 
 	// Hot temp and fan speed.
-	double hotChipTemp;
+	double  hotChipTemp;
+	uint8_t fanSpeed;
 
     struct work_queue active_wq;
 

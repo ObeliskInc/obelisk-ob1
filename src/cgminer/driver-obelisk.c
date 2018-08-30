@@ -744,6 +744,7 @@ static void obelisk_detect(bool hotplug)
 		// Set the board number.
 		ob->staticBoardNumber = i;
 		ob->staticTotalBoards = numHashboards;
+		ob->fanSpeed = 100;
         cgtimer_time(&ob->startTime);
 
 		// Determine the type of board.
@@ -1171,11 +1172,13 @@ static void handleFanChange(ob_chain* ob, double targetTemp) {
 		}
 	}
 
-	if (allOver98) {
-		// TODO: Increase fan speed.
+	if (allOver98 && ob->fanSpeed != 100) {
+		ob->fanSpeed = 100;
+		ob1SetFanSpeeds(ob->fanSpeed);
 	}
-	if (allUnder95 || anyUnder90) {
-		// TODO: Decrease fan speed.
+	if ((allUnder95 || anyUnder90) && ob->fanSpeed > 10) {
+		ob->fanSpeed = ob->fanSpeed - 5;
+		ob1SetFanSpeeds(ob->fanSpeed);
 	}
 }
 
