@@ -11,7 +11,6 @@
 #include "obelisk/err_codes.h"
 
 #define MAX_CHAIN_NUM 3
-#define NUM_CHIPS_PER_BOARD 15
 #define NUM_FANS 2
 
 #if (MODEL == SC1)
@@ -37,36 +36,6 @@
 #define MAX_JOBS 2
 
 #define NUM_HASH_JOBS 1000
-
-/*
-Sia: Initial state
-- All chips and engines are available to accept work.
-- The same work can be split across all chips and engines
-- chip_info for Sia will keep track of start_of_next_nonce_range, which starts at 0
-- Load same job into all engines, then load individual ranges to engines one
-  at a time
-
-Interrupt handler for "done" will mark the chip as ready for work and then clear
-the interrupt.  The engine should then start on the internally queued job if one
-was setup already.
-
-Need to lock access to the SPI if we have three cgpu threads.
-
-Q: How will the interrupt know which card it is for?
-*/
-
-typedef struct chip_info {
-#if (MODEL == SC1)
-    // Keep track of busy engines manually, because reading the EBR doesn't seem to work
-    uint64_t busy_engines;
-#elif (MODEL == DCR1)
-    // Keep track of busy engines manually, because reading the EBR doesn't seem to work
-    uint64_t busy_engines[2];
-#endif
-    // Dynamically allocated array of work pointers (64 for sia, 128 for decred)
-    struct work** engines_curr_work;
-
-} chip_info;
 
 // Structs to keep track of actual hashrate based on start/end times of
 // jobs and nonce_range_size.
@@ -181,7 +150,6 @@ struct ob_chain {
     uint16_t num_chips;
     uint16_t num_cores;
     struct cgpu_info* cgpu;
-    struct chip_info chips[NUM_CHIPS_PER_BOARD];
 
     // Locking/Notification
     pthread_mutex_t lock;
@@ -224,7 +192,4 @@ struct ob_chain {
 
     // Voltage control
     uint32_t string_voltage;
-
-    // Configs for individual ASICs on the board
-    chip_config_t chip_config[NUM_CHIPS_PER_BOARD];
 };

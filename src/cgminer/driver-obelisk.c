@@ -453,12 +453,6 @@ static void obelisk_detect(bool hotplug)
 
         cgtime(&cgpu->dev_start_tv);
 
-        // Initialize the ob chip fields
-        for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-            struct chip_info* chip = &ob->chips[i];
-            chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob->staticBoardModel.enginesPerChip);
-        }
-
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
