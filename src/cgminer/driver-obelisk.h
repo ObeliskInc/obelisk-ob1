@@ -91,21 +91,6 @@ struct work_queue {
     struct list_head head;
 };
 
-#define MAX_PENDING_NONCES (8 * NUM_ENGINES_PER_CHIP)
-
-typedef struct nonce_info {
-    Nonce nonce;
-    int chip_num;
-    int engine_num;
-    bool nonce_limit_reached;
-} nonce_info;
-
-typedef struct nonce_fifo {
-    int head; // Read from the head
-    int tail; // Write to the tail
-    nonce_info nonces[MAX_PENDING_NONCES];
-} nonce_fifo;
-
 // Forward declare the ob_chain
 typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
@@ -220,9 +205,6 @@ struct ob_chain {
     uint64_t good_nonces_found;
     uint64_t bad_nonces_found;
 
-    // Pending nonces
-    nonce_fifo pending_nonces;
-
     ControlLoopState control_loop_state;
 
     // Stats
@@ -246,7 +228,3 @@ struct ob_chain {
     // Configs for individual ASICs on the board
     chip_config_t chip_config[NUM_CHIPS_PER_BOARD];
 };
-
-ApiError push_pending_nonce(ob_chain* ob, int chip_num, int engine_num, Nonce nonce, bool nonce_limit_reached);
-ApiError pop_pending_nonce(ob_chain* ob, nonce_info* info);
-int num_pending_nonces(ob_chain* ob);

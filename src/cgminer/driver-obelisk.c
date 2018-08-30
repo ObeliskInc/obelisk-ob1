@@ -267,62 +267,6 @@ static void* ob_control_thread(void* arg)
     return NULL;
 }
 
-#define QDX(i) (i % MAX_PENDING_NONCES)
-
-ApiError push_pending_nonce(ob_chain* ob, int chip_num, int engine_num, Nonce nonce, bool nonce_limit_reached)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    mutex_lock(&ob->lock);
-    // Ensure not full
-    if (fifo->head != QDX(fifo->tail + 1)) {
-        // Add to the queue
-        fifo->nonces[fifo->head].nonce = nonce;
-        fifo->nonces[fifo->head].chip_num = chip_num;
-        fifo->nonces[fifo->head].engine_num = engine_num;
-        fifo->nonces[fifo->head].nonce_limit_reached = nonce_limit_reached;
-
-        fifo->tail = QDX(fifo->tail + 1);
-
-        pthread_cond_signal(&ob->nonce_cond);
-
-        mutex_unlock(&ob->lock);
-        return SUCCESS;
-    } else {
-        // Full!  Just log the fact that we dropped a nonce, but keep running.
-        applog(LOG_ERR, "Can't push!  pending_nonces queue is full!");
-        mutex_unlock(&ob->lock);
-        return GENERIC_ERROR;
-    }
-}
-
-ApiError pop_pending_nonce(ob_chain* ob, nonce_info* info)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    mutex_lock(&ob->lock);
-    // If not empty
-    if (fifo->head != fifo->tail) {
-        memcpy(info, &fifo->nonces[fifo->head], sizeof(nonce_info));
-        fifo->head = QDX(fifo->head + 1);
-        mutex_unlock(&ob->lock);
-        return SUCCESS;
-    } else {
-        // Queue is empty
-        applog(LOG_ERR, "Can't pop!  pending_nonces queue is empty!");
-        mutex_unlock(&ob->lock);
-        return GENERIC_ERROR;
-    }
-}
-
-int num_pending_nonces(ob_chain* ob)
-{
-    nonce_fifo* fifo = &ob->pending_nonces;
-    int num;
-    mutex_lock(&ob->lock);
-    num = fifo->head > fifo->tail ? (MAX_PENDING_NONCES - fifo->head + fifo->tail + 1) : (fifo->tail - fifo->head + 1);
-    mutex_unlock(&ob->lock);
-    return num;
-}
-
 ApiError bufferGlobalChipJob(ob_chain* ob) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
@@ -338,45 +282,6 @@ ApiError bufferGlobalChipJob(ob_chain* ob) {
 		return error;
 	}
 }
-
-/*
-ApiError loadNextChipJob(ob_chain* ob, uint8_t chipNum){
-	struct work* nextWork = wq_dequeue(ob, true);
-	ob->chipWork[chipNum] = nextWork;
-	if (ob->chipWork[chipNum] == NULL) {
-		applog(LOG_ERR, "chipWork is null");
-		return GENERIC_ERROR;
-	}
-
-      // Prepare the job to load on the chip.
-    Job job = ob->prepareNextChipJob(ob, chipNum);
-
-    // Load job
-    cgtimer_t start_ob1LoadJob, end_ob1LoadJob, duration_ob1LoadJob;
-    cgtimer_time(&start_ob1LoadJob);
-    ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, chipNum, ALL_ENGINES, &job);
-    cgtimer_time(&end_ob1LoadJob);
-    cgtimer_sub(&end_ob1LoadJob, &start_ob1LoadJob, &duration_ob1LoadJob);
-    ob->obLoadJobTime += cgtimer_to_ms(&duration_ob1LoadJob);
-    //applog(LOG_NOTICE, "ob1LoadJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1LoadJob), chipNum);
-    if (error != SUCCESS) {
-        return error;
-    }
-
-    // Start job
-    cgtimer_t start_ob1StartJob, end_ob1StartJob, duration_ob1StartJob;
-    cgtimer_time(&start_ob1StartJob);
-    error = ob1StartJob(ob->chain_id, chipNum, ALL_ENGINES);
-    cgtimer_time(&end_ob1StartJob);
-    cgtimer_sub(&end_ob1StartJob, &start_ob1StartJob, &duration_ob1StartJob);
-    //applog(LOG_NOTICE, "ob1StartJob took %d ms for chip %u", cgtimer_to_ms(&duration_ob1StartJob), chipNum);
-    if (error != SUCCESS) {
-    	return error;
-    }
-
-	return SUCCESS;
-}
-*/
 
 // siaPrepareNextChipJob will prepare the next job for a sia chip.
 Job siaPrepareNextChipJob(ob_chain* ob) {
