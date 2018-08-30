@@ -415,159 +415,6 @@ int num_pending_nonces(ob_chain* ob)
     return num;
 }
 
-// void mark_engine_ready(ob_chain* ob, int chip_num, int engine_num)
-// {
-//     mutex_lock(&ob->lock);
-//     ob->chips[chip_num].ready_engines[engine_num] = 1;
-//     mutex_unlock(&ob->lock);
-// }
-
-#if (MODEL == SC1)
-void set_engine_busy(ob_chain* ob, int chip_num, int engine_num, bool isBusy)
-{
-    mutex_lock(&ob->lock);
-    uint64_t engine_bit = 1ULL << engine_num;
-    if (isBusy) {
-        // Set the corresponding bit
-        ob->chips[chip_num].busy_engines = ob->chips[chip_num].busy_engines | engine_bit;
-    } else {
-        // Clear the corresponding bit
-        ob->chips[chip_num].busy_engines = ob->chips[chip_num].busy_engines & ~engine_bit;
-    }
-    // applog(LOG_ERR, "set_engine_busy(%d): 0x%016llX", isBusy, ob->chips[chip_num].busy_engines);
-    mutex_unlock(&ob->lock);
-}
-
-bool is_engine_busy(ob_chain* ob, int chip_num, int engine_num)
-{
-    mutex_lock(&ob->lock);
-    uint64_t engine_bit = 1ULL << engine_num;
-    bool isBusy = ob->chips[chip_num].busy_engines & engine_bit;
-    mutex_unlock(&ob->lock);
-    return isBusy;
-}
-#elif (MODEL == DCR1)
-void set_engine_busy(ob_chain* ob, int chip_num, int engine_num, bool is_busy)
-{
-    mutex_lock(&ob->lock);
-
-    uint64_t* pbusy_engines;
-    if (engine_num < 64) {
-        pbusy_engines = &ob->chips[chip_num].busy_engines[1];
-    } else {
-        pbusy_engines = &ob->chips[chip_num].busy_engines[0];
-        engine_num -= 64;
-    }
-
-    uint64_t engine_bitmask = 1ULL << engine_num;
-    if (is_busy) {
-        // Set the corresponding bit
-        *pbusy_engines = *pbusy_engines | engine_bitmask;
-    } else {
-        // Clear the corresponding bit
-        *pbusy_engines = *pbusy_engines & ~engine_bitmask;
-    }
-    // applog(LOG_ERR, "set_engine_busy(%d): 0x%016llX", isBusy, ob->chips[chip_num].busy_engines);
-    mutex_unlock(&ob->lock);
-}
-
-bool is_engine_busy(ob_chain* ob, int chip_num, int engine_num)
-{
-    mutex_lock(&ob->lock);
-    uint64_t* pbusy_engines;
-    if (engine_num < 64) {
-        pbusy_engines = &ob->chips[chip_num].busy_engines[1];
-    } else {
-        pbusy_engines = &ob->chips[chip_num].busy_engines[0];
-        engine_num -= 64;
-    }
-
-    uint64_t engine_bitmask = 1ULL << engine_num;
-    bool isBusy = (*pbusy_engines) & engine_bitmask;
-    mutex_unlock(&ob->lock);
-    return isBusy;
-}
-#endif
-
-void add_hashes(ob_chain* ob, uint64_t num_hashes)
-{
-    mutex_lock(&ob->lock);
-    ob->num_hashes += num_hashes;
-    mutex_unlock(&ob->lock);
-}
-
-void add_good_nonces(ob_chain* ob, uint64_t amt)
-{
-    mutex_lock(&ob->lock);
-    ob->good_nonces_found += amt;
-    mutex_unlock(&ob->lock);
-}
-
-void add_bad_nonces(ob_chain* ob, uint64_t amt)
-{
-    mutex_lock(&ob->lock);
-    ob->bad_nonces_found += amt;
-    mutex_unlock(&ob->lock);
-}
-
-// Get the number of hashes since we last checked, then reset to zero
-uint64_t get_and_reset_hashes(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->num_hashes;
-    ob->num_hashes = 0;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
-uint64_t get_and_reset_good_nonces(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->good_nonces_found;
-    ob->good_nonces_found = 0;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
-uint64_t get_and_reset_bad_nonces(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->bad_nonces_found;
-    ob->bad_nonces_found = 0;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
-uint64_t get_num_hashes(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->num_hashes;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
-uint64_t get_good_nonces(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->good_nonces_found;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
-uint64_t get_bad_nonces(ob_chain* ob)
-{
-    uint64_t n;
-    mutex_lock(&ob->lock);
-    n = ob->bad_nonces_found;
-    mutex_unlock(&ob->lock);
-    return n;
-}
-
 ApiError bufferGlobalChipJob(ob_chain* ob) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
@@ -888,10 +735,6 @@ static void obelisk_detect(bool hotplug)
         pthread_cond_init(&ob->nonce_cond, NULL);
         //pthread_create(&pth, NULL, ob_nonce_thread, cgpu);
         pthread_create(&pth, NULL, ob_control_thread, cgpu);
-
-        applog(LOG_ERR, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-        applog(LOG_ERR, "good = %llu", get_good_nonces(ob));
-        applog(LOG_ERR, "bad  = %llu", get_bad_nonces(ob));
     }
 
     applog(LOG_ERR, "***** obelisk_detect() DONE\n");
@@ -1282,12 +1125,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 
 	// Check against the global timer to see if 100ms has passed since we
 	// started the previous iteration.
-	int minMSPerIter = 500;
+	int minMSPerIter = 100;
 	cgtimer_t currentTime, timeSinceLastIter;
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	if (msSinceLastIter > 50) {
+	if (msSinceLastIter > 500) {
 		applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
 	}
 	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
@@ -1334,7 +1177,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastChipStart;
 		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
 		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
-		if (msLastChipStart < 2500) {
+		if (msLastChipStart < 5000) {
 			// It has been less than 7.5 seconds, assume that this chip is not
 			// finished. 7.5 seconds would imply a clock speed of 570 MHz, which
 			// we do not believe the chips are capable of. 
@@ -1391,7 +1234,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastCheck;
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
-		if (msLastCheck > 100) {
+		if (msLastCheck > 500) {
 			applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
 		}
 
@@ -1463,7 +1306,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ob->bufferWork = true;
 	}
 
-	if (loadTotal > 50) {
+	if (loadTotal > 500) {
 		applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
 	}
 
