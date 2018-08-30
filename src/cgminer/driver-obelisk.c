@@ -952,102 +952,8 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define TempRiseSpeedHot 1
 #define UndertempCheckFrequency 1
 
-// updateControlState will update fields that depend on external factors.
-// Things like the time and string temperature.
-static void updateControlState(ob_chain* ob)
-{
-    // Fetch some status variables about the hashing board.
-    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
-
-	// TODO: Update some API level stuffs. This may not be the best place for
-	// these.
-	//
-    // Update the min/max/curr temps for reporting via the API
-    update_temp(&ob->board_temp, hbStatus.boardTemp);
-    update_temp(&ob->chip_temp, hbStatus.chipTemp);
-    update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
-    // TODO: Implement these fields for realz: TEMP HACK
-    ob->fan_speed[0] = 2400;
-    ob->fan_speed[1] = 2500;
-    ob->num_chips = 15;
-    ob->num_cores = 15 * 64;
-
-    // Update status values.
-    ob->control_loop_state.currentTime = time(0);
-    ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
-    ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
-
-    // Fetch nonce count updates.
-    mutex_lock(&ob->lock);
-    ob->control_loop_state.currentGoodNonces = ob->goodNoncesFound;
-    mutex_unlock(&ob->lock);
-    ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
-    ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
-
-	// Sanity check - exit with error if the voltage is at unsafe levels.
-	if (ob->control_loop_state.currentStringVoltage < 6) {
-		exit(-1);
-	}
-}
-
-static uint64_t computeHashRate(ob_chain *ob)
-{
-    uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
-    time_t secondsElapsed = (ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime) + 1;
-    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
-}
-
-// displayControlState will check if enough time has passed, and then display
-// the current state of the hashing board to the user.
-static void displayControlState(ob_chain* ob)
-{
-    time_t lastStatus = ob->control_loop_state.lastStatusOutput;
-    time_t currentTime = ob->control_loop_state.currentTime;
-	time_t totalTime = (ob->control_loop_state.currentTime - ob->control_loop_state.initTime) + 1;
-    uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
-    if (currentTime - lastStatus > StatusOutputFrequency) {
-        // Currently only displays the bias of the first chip.
-		applog(LOG_ERR, "");
-        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
-            ob->control_loop_state.boardNumber,
-            ob->control_loop_state.currentStringTemp,
-            ob->control_loop_state.currentStringVoltage,
-			ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
-			totalTime,
-            computeHashRate(ob) / 1000000000,
-			ob->staticBoardModel.chipDifficulty * goodNonces / totalTime / 1000000000,
-            ob->control_loop_state.currentVoltageLevel);
-		applog(LOG_ERR, "");
-        
-		/*
-        cgtimer_t currTime, totalTime;
-        cgtimer_time(&currTime);
-        cgtimer_sub(&currTime, &ob->startTime, &totalTime);
-        applog(LOG_NOTICE, "totalTime: %d ms, totalScanWorkTime: %d ms, doneNoncetime: %d ms, chipScanTime %d ms, loadJobTime: %d ms, submitNonceTime: %d ms, readNonceTime: %d ms, statsTime: %d ms",
-            cgtimer_to_ms(&totalTime),
-            ob->totalScanWorkTime, 
-			ob->doneNonceTime,
-			ob->chipScanTime,
-            ob->loadJobTime, 
-            ob->obLoadJobTime, 
-            ob->submitNonceTime,
-            ob->readNonceTime,
-			ob->statsTime);
-		*/
-		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
-			uint64_t badNonces = ob->chipBadNonces[chipNum];
-			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
-			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
-			applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
-		}
-
-        ob->control_loop_state.lastStatusOutput = currentTime;
-    }
-}
-
 // targetTemp returns the target temperature for the chip we want.
-static double getTargetTemp(ob_chain* ob)
+static double getHottestDelta(ob_chain* ob)
 {
 	// To get the hottest delta, iterate through the 14 chips that don't have a
 	// temperature senosr, use the thermal model plus their bias difference to
@@ -1089,8 +995,106 @@ static double getTargetTemp(ob_chain* ob)
 			hottestDelta = fullDelta;
 		}
 	}
+	return hottestDelta;
+}
 
-	return HotChipTargetTemp - ChipTempVariance - hottestDelta;
+// updateControlState will update fields that depend on external factors.
+// Things like the time and string temperature.
+static void updateControlState(ob_chain* ob)
+{
+    // Fetch some status variables about the hashing board.
+    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
+
+	// TODO: Update some API level stuffs. This may not be the best place for
+	// these.
+	//
+    // Update the min/max/curr temps for reporting via the API
+    update_temp(&ob->board_temp, hbStatus.boardTemp);
+    update_temp(&ob->chip_temp, hbStatus.chipTemp);
+    update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
+    // TODO: Implement these fields for realz: TEMP HACK
+    ob->fan_speed[0] = 2400;
+    ob->fan_speed[1] = 2500;
+    ob->num_chips = 15;
+    ob->num_cores = 15 * 64;
+
+	// Update the current hotChipTemp for this board, under lock.
+	double hottestDelta = getHottestDelta(ob);
+	double hotChipTemp = hottestDelta + ob->control_loop_state.currentStringTemp;
+	ob->hotChipTemp = hotChipTemp;
+
+    // Update status values.
+    ob->control_loop_state.currentTime = time(0);
+    ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
+    ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
+
+    // Fetch nonce count updates.
+    mutex_lock(&ob->lock);
+    ob->control_loop_state.currentGoodNonces = ob->goodNoncesFound;
+    mutex_unlock(&ob->lock);
+    ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
+    ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
+
+	// Sanity check - exit with error if the voltage is at unsafe levels.
+	if (ob->control_loop_state.currentStringVoltage < 6) {
+		exit(-1);
+	}
+}
+
+static uint64_t computeHashRate(ob_chain *ob)
+{
+    uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
+    time_t secondsElapsed = (ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime) + 1;
+    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
+}
+
+// displayControlState will check if enough time has passed, and then display
+// the current state of the hashing board to the user.
+static void displayControlState(ob_chain* ob)
+{
+    time_t lastStatus = ob->control_loop_state.lastStatusOutput;
+    time_t currentTime = ob->control_loop_state.currentTime;
+	time_t totalTime = (ob->control_loop_state.currentTime - ob->control_loop_state.initTime) + 1;
+    uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
+    if (currentTime - lastStatus > StatusOutputFrequency) {
+        // Currently only displays the bias of the first chip.
+		applog(LOG_ERR, "");
+        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
+            ob->control_loop_state.boardNumber,
+            ob->hotChipTemp,
+            ob->control_loop_state.currentStringVoltage,
+			ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
+			totalTime,
+            computeHashRate(ob) / 1000000000,
+			ob->staticBoardModel.chipDifficulty * goodNonces / totalTime / 1000000000,
+            ob->control_loop_state.currentVoltageLevel);
+		applog(LOG_ERR, "");
+        
+		/*
+        cgtimer_t currTime, totalTime;
+        cgtimer_time(&currTime);
+        cgtimer_sub(&currTime, &ob->startTime, &totalTime);
+        applog(LOG_NOTICE, "totalTime: %d ms, totalScanWorkTime: %d ms, doneNoncetime: %d ms, chipScanTime %d ms, loadJobTime: %d ms, submitNonceTime: %d ms, readNonceTime: %d ms, statsTime: %d ms",
+            cgtimer_to_ms(&totalTime),
+            ob->totalScanWorkTime, 
+			ob->doneNonceTime,
+			ob->chipScanTime,
+            ob->loadJobTime, 
+            ob->obLoadJobTime, 
+            ob->submitNonceTime,
+            ob->readNonceTime,
+			ob->statsTime);
+		*/
+		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
+			uint64_t badNonces = ob->chipBadNonces[chipNum];
+			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
+			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
+			applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
+		}
+
+        ob->control_loop_state.lastStatusOutput = currentTime;
+    }
 }
 
 // handleOvertemps will clock down the string if the string is overheating.
@@ -1132,12 +1136,7 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
 
 // handleFanChange will adjust the fans based on the current temperatures of all
 // the boards.
-static void handleFanChange(ob_chain* ob, double targetTemp) {
-	// Update the current hotChipTemp for this board, under lock.
-	double hotChipTemp = targetTemp + ChipTempVariance + hottestDelta;
-	mutex_lock(&ob->lock);
-	ob->hotChipTemp = hotChipTemp;
-	mutex_unlock(&ob->lock);
+static void handleFanChange(ob_chain* ob) {
 
 	// Only board 0 manipulates the fans.
 	//
@@ -1260,10 +1259,11 @@ static void control_loop(ob_chain* ob)
     displayControlState(ob);
 
     // Determine the target temperature for the temperature chip.
-    double targetTemp = getTargetTemp(ob);
+    double hottestDelta = getHottestDelta(ob);
+	double targetTemp = HotChipTargetTemp - ChipTempVariance - hottestDelta;
     handleOvertemps(ob, targetTemp);
     handleUndertemps(ob, targetTemp);
-	handleFanChange(ob, targetTemp);
+	handleFanChange(ob);
 
 	// Perform any adjustments to the voltage and bias that may be required.
 	handleVoltageAndBiasTuning(ob);
@@ -1287,7 +1287,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
+	if (msSinceLastIter > 50) {
+		applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
+	}
 	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
 		// If there is a request to get work buffered into a chip, send out a
 		// global message to add a new job to all chips. Then clear the flag
@@ -1389,7 +1391,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_t lastCheck;
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
-		applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
+		if (msLastCheck > 100) {
+			applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
+		}
 
 		cgtimer_time(&doneEnd);
 		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
@@ -1459,7 +1463,9 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		ob->bufferWork = true;
 	}
 
-	applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	if (loadTotal > 50) {
+		applog(LOG_ERR, "Iter timers: %u.%i.%i.%i.%i", ob->staticBoardNumber, lastTotal, doneTotal, readTotal, loadTotal);
+	}
 
 	// See if the pool asked us to start clean on new work
 	if (ob->curr_work && ob->curr_work->pool->swork.clean) {
