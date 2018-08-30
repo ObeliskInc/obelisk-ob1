@@ -1,0 +1,120 @@
+:local {
+  .container {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-column-gap: 30px;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  .subheading {
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .button {
+    padding: 15px 40px;
+    border: none;
+    font-size: 14px;
+    background: #680b22;
+    cursor: pointer;
+    color: #ffffff;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    &:hover {
+      background: lighten(#680b22, 10%);
+    }
+  }
+
+  .input {
+    height: 0;
+    overflow: hidden;
+    padding-top: 15px;
+    input {
+      border: none;
+      margin-right: 10px;
+      padding: 5px 10px;
+      &:active,
+      &:focus {
+        outline: 0;
+      }
+    }
+    &.active {
+      height: auto;
+    }
+  }
+
+  .button2 {
+    padding: 15px 40px;
+    border: none;
+    font-size: 14px;
+    background: #940d21;
+    cursor: pointer;
+    color: #ffffff;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    margin-left: 20px;
+    &:hover {
+      background: lighten(#940d21, 10%);
+    }
+  }
+
+  .terminal {
+    margin-top: 30px;
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .terminalbox {
+      height: 250px;
+      overflow-y: scroll;
+    }
+  }
+
+  .container h2 {
+    color: #b50e24;
+    font-size: 3rem;
+  }
+
+  .container a {
+    font-size: 1.4rem;
+  }
+
+  .card {
+    background: #ffffff;
+    color: #000000;
+    height: 500px;
+    width: 100%;
+    border-radius: 5px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+  }
+
+  .table {
+    padding-top: 30px;
+    padding-bottom: 30px;
+    table-layout: fixed;
+    width: 100%;
+    text-align: center;
+    th {
+      padding-bottom: 20px;
+      font-weight: bold;
+    }
+    td {
+      padding-top: 10px;
+      font-size: 18px;
+    }
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
