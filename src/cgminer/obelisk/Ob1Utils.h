@@ -38,11 +38,12 @@ ApiError pulseDCR1ReadComplete(uint8_t boardNum, uint8_t chipNum, uint8_t engine
 
 void logNonceSet(NonceSet* pNonceSet, char* prefix);
 
-#define POPULATION_SIZE 2
+#define POPULATION_SIZE 4
 
 typedef struct GenChild {
 	double fitness; // hashes / second
 	uint8_t maxBiasLevel;
+	uint8_t initStringIncrements;
 	uint8_t voltageLevel;
 	// TODO: these don't necessarily match model.chipsPerBoard
 	int8_t chipBiases[15];
@@ -109,5 +110,12 @@ void formatDividerAndBias(char* buffer, ControlLoopState* clState);
 void geneticAlgoIter(ControlLoopState *state);
 ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state);
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state);
+
+bool runCmd(char* cmd, char* output, int outputSize);
+void getIpV4(char* intfName, char* ipBuffer, int bufferSize);
+
+void sendMDNSResponse();
+void resetAllUserConfig();
+void doReboot();
 
 #endif

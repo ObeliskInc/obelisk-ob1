@@ -7,6 +7,7 @@
 #include "obelisk/Ob1API.h"
 #include "obelisk/Ob1Models.h"
 #include "obelisk/Ob1Utils.h"
+#include "obelisk/Ob1FanCtrl.h"
 #include "obelisk/err_codes.h"
 
 #define MAX_CHAIN_NUM 3
@@ -27,8 +28,9 @@
 #define NUM_ENGINES_PER_CHIP 128U
 #define NONCE_RANGE_SIZE (0xFFFFFFFFULL / 128ULL)
 
-#define MAX_WQ_SIZE (NUM_CHIPS_PER_BOARD * 2)
-#define WQ_REFILL_SIZE (MAX_WQ_SIZE / 2)
+#define MAX_WQ_SIZE 2
+#define WQ_REFILL_SIZE 1
+
 #endif
 
 // Each engine can queue up another job
@@ -108,8 +110,10 @@ typedef struct nonce_fifo {
 typedef struct ob_chain ob_chain;
 typedef struct stringSettings stringSettings;
 
-typedef Job (*prepareNextChipJobFn)(ob_chain* ob, uint8_t chipIndex);
-typedef ApiError (*validNonceFn)(ob_chain* ob, struct work* engine_work, Nonce nonce);
+typedef Job      (*prepareNextChipJobFn)(ob_chain* ob);
+typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
+typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum);
+typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce);
 
 // stringSettings contains a list of settings for the string.
 //
@@ -150,13 +154,20 @@ struct ob_chain {
 	// writing to it, the others are reading. And the ones that are reading are
 	// only displaying output to a user, so if it's occasionally corrupted,
 	// that's not so bad.
-	uint64_t  goodNoncesFound; // Total number of good nonces found.
-	struct    work** chipWork; // The work structures for each chip.
-	struct    work** nextChipWork; // The next work structures for each chip.
-	uint64_t* chipGoodNonces;  // The good nonce counts for each chip.
-	uint64_t* chipBadNonces;   // The bad nonce counts for each chip.
+	struct work*  bufferedWork;
+	bool          bufferWork;
+	uint64_t      goodNoncesFound;    // Total number of good nonces found.
+	struct work** chipWork;           // The work structures for each chip.
+	uint64_t*     chipGoodNonces;     // The good nonce counts for each chip.
+	uint64_t*     chipBadNonces;      // The bad nonce counts for each chip.
+	uint32_t      decredEN2[15][128]; // ExtraNonce2 for decred chips.
 
-    // Timers
+	// Work spacing timers.
+	cgtimer_t  iterationStartTime;
+	cgtimer_t* chipStartTimes;
+	cgtimer_t* chipCheckTimes;
+
+    // Performance timers.
     cgtimer_t startTime;
     int totalScanWorkTime;
     int loadJobTime;
@@ -176,7 +187,9 @@ struct ob_chain {
 
 	// Chip specific function pointers.
 	prepareNextChipJobFn prepareNextChipJob;
-	validNonceFn      validNonce;
+	setChipNonceRangeFn  setChipNonceRange;
+	startNextEngineJobFn startNextEngineJob;
+	validNonceFn         validNonce;
 
 	// Control loop information.
     int chain_id;

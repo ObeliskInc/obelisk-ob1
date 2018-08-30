@@ -8,6 +8,7 @@
 #include "spi.h"
 #include "SPI_Support.h"
 #include "MiscSupport.h"
+#include "multicast.h"
 #include "miner.h"
 #include <string.h>
 #include <pthread.h>
@@ -101,82 +102,90 @@ ApiError ob1SpiWriteReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, ui
         lastBoard = boardNum;
     }
 
-    for (int i = firstBoard; i <= lastBoard; i++) {
-        switch (gBoardModel) {
-        case MODEL_SC1: {
-            S_SC1_TRANSFER_T xfer;
-            xfer.uiBoard = i;
-            xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
+    switch (gBoardModel) {
+    case MODEL_SC1: {
+        S_SC1_TRANSFER_T xfer;
+        xfer.eRegister = (E_SC1_CORE_REG_T)registerId;
 
-            // Set address/mode
-            if (chipNum == ALL_CHIPS) {
-                xfer.uiChip = 0; // Don't care - set to zero
-                if (engineNum == ALL_ENGINES) {
-                    xfer.eMode = E_SC1_MODE_MULTICAST;
-                    xfer.uiCore = 0; // Don't care - set to zero
-                } else {
-                    // Not possible to write to a specific engine on all chips in one write
-                    return GENERIC_ERROR;
-                }
-            } else if (engineNum == ALL_ENGINES) {
-                xfer.eMode = E_SC1_MODE_CHIP_WRITE;
-                xfer.uiChip = chipNum;
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_SC1_MODE_MULTICAST;
                 xfer.uiCore = 0; // Don't care - set to zero
             } else {
-                // Single chip, single engine
-                xfer.eMode = E_SC1_MODE_REG_WRITE;
-                xfer.uiChip = chipNum;
-                xfer.uiCore = engineNum;
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
             }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_SC1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_SC1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint64_t*)pData);
+
+        LOCK(&spiLock);
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
 
             // Do the write
-            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
-            LOCK(&spiLock);
             int result = iSC1SpiTransfer(&xfer);
-            UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
             }
-            break;
         }
+        UNLOCK(&spiLock);
+        break;
+    }
 
-        case MODEL_DCR1: {
-            S_DCR1_TRANSFER_T xfer;
-            xfer.uiBoard = i;
-            xfer.uiReg = registerId;
+    case MODEL_DCR1: {
+        S_DCR1_TRANSFER_T xfer;
+        xfer.uiReg = registerId;
 
-            // Set address/mode
-            if (chipNum == ALL_CHIPS) {
-                xfer.uiChip = 0; // Don't care - set to zero
-                if (engineNum == ALL_ENGINES) {
-                    xfer.eMode = E_DCR1_MODE_MULTICAST;
-                    xfer.uiCore = 0; // Don't care - set to zero
-                } else {
-                    // Not possible to write to a specific engine on all chips in one write
-                    return GENERIC_ERROR;
-                }
-            } else if (engineNum == ALL_ENGINES) {
-                xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
-                xfer.uiChip = chipNum;
+        // Set address/mode
+        if (chipNum == ALL_CHIPS) {
+            xfer.uiChip = 0; // Don't care - set to zero
+            if (engineNum == ALL_ENGINES) {
+                xfer.eMode = E_DCR1_MODE_MULTICAST;
                 xfer.uiCore = 0; // Don't care - set to zero
             } else {
-                // Single chip, single engine
-                xfer.eMode = E_DCR1_MODE_REG_WRITE;
-                xfer.uiChip = chipNum;
-                xfer.uiCore = engineNum;
+                // Not possible to write to a specific engine on all chips in one write
+                return GENERIC_ERROR;
             }
+        } else if (engineNum == ALL_ENGINES) {
+            xfer.eMode = E_DCR1_MODE_CHIP_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = 0; // Don't care - set to zero
+        } else {
+            // Single chip, single engine
+            xfer.eMode = E_DCR1_MODE_REG_WRITE;
+            xfer.uiChip = chipNum;
+            xfer.uiCore = engineNum;
+        }
+
+        // Copy the data into the buffer
+        xfer.uiData = *((uint32_t*)pData);
+
+        LOCK(&spiLock);
+        for (int i = firstBoard; i <= lastBoard; i++) {
+            xfer.uiBoard = i;
 
             // Do the write
-            memcpy(&xfer.uiData, pData, sizeof(xfer.uiData));
-            LOCK(&spiLock);
             int result = iDCR1SpiTransfer(&xfer);
-            UNLOCK(&spiLock);
             if (result != ERR_NONE) {
                 return GENERIC_ERROR;
             }
-            break;
         }
-        }
+        UNLOCK(&spiLock);
+        break;
+    }
     }
 
     return SUCCESS;
@@ -206,7 +215,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
         }
-        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        *((uint64_t*)pData) = xfer.uiData;
         break;
     }
 
@@ -224,7 +233,7 @@ ApiError ob1SpiReadReg(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, uin
         if (result != ERR_NONE) {
             return GENERIC_ERROR;
         }
-        memcpy(pData, &xfer.uiData, sizeof(xfer.uiData));
+        *((uint32_t*)pData) = xfer.uiData;
         break;
     }
     }
@@ -558,6 +567,7 @@ static GenChild breedChild(ControlLoopState *state)
     // from parent1 or parent2
     GenChild child;
     child.maxBiasLevel = ((*randByte++) & 1) ? parent1->maxBiasLevel : parent2->maxBiasLevel;
+    child.initStringIncrements = ((*randByte++) & 1) ? parent1->initStringIncrements : parent2->initStringIncrements;
     child.voltageLevel = ((*randByte++) & 1) ? parent1->voltageLevel : parent2->voltageLevel;
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         uint8_t r = *randByte++;
@@ -573,27 +583,45 @@ static GenChild breedChild(ControlLoopState *state)
     // state->currentVoltageLevel with the minimum or maximum, so we have to
     // update child.voltageLevel to reflect that.
     uint8_t r = *randByte++;
-    if (r % 16 == 0) {
+	uint8_t mutationFrequency = 8; // Lower number means more frequent mutations, keep to power of 2.
+    if (mutationFrequency == 0) {
         if (child.maxBiasLevel < 43) {
             child.maxBiasLevel++;
         }
-    } else if (r % 16 == 1) {
+    } else if (mutationFrequency == 1) {
         if (child.maxBiasLevel > 0) {
             child.maxBiasLevel--;
         }
     }
     r = *randByte++;
-    if (r % 16 == 0) {
+    if (mutationFrequency == 0) {
+        if (child.initStringIncrements < 43) {
+            child.initStringIncrements++;
+        }
+    } else if (mutationFrequency == 1) {
+        if (child.initStringIncrements > 0) {
+            child.initStringIncrements--;
+        }
+    }
+    r = *randByte++;
+    if (mutationFrequency == 0) {
         child.voltageLevel++;
-    } else if (r % 16 == 1) {
+    } else if (mutationFrequency == 1) {
         child.voltageLevel--;
     }
     for (uint8_t i = 0; i < sizeof(child.chipBiases); i++) {
         r = *randByte++;
-        if (r % 16 == 0) {
+        if (mutationFrequency == 0) {
             increaseBias(&child.chipBiases[i], &child.chipDividers[i]);
-        } else if (r % 16 == 1) {
+        } else if (mutationFrequency == 1) {
             decreaseBias(&child.chipBiases[i], &child.chipDividers[i]);
+        }
+    }
+
+    // apply initStringIncrements, denormalizing the biases
+    for (uint8_t i = 0; i < child.initStringIncrements; i++) {
+        for (uint8_t j = 0; j < sizeof(child.chipBiases); j++) {
+            increaseBias(&child.chipBiases[j], &child.chipDividers[j]);
         }
     }
 
@@ -658,23 +686,29 @@ void geneticAlgoIter(ControlLoopState *state)
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.6_%s_%d.bin", name, boardID);
+	applog(LOG_ERR, "Loading: %s", path);
     FILE *file = fopen(path, "r");
     if (file == NULL) {
+		applog(LOG_ERR, "load file err");
         return GENERIC_ERROR;
     }
     fread(&state->populationSize, sizeof(uint8_t), 1, file);
-    if (state->populationSize >= POPULATION_SIZE) {
+    if (state->populationSize > POPULATION_SIZE) {
+		applog(LOG_ERR, "read file error - read1");
         return GENERIC_ERROR;
     }
     if (fread(state->population, sizeof(GenChild), state->populationSize, file) != state->populationSize) {
+		applog(LOG_ERR, "read file error - read2");
         return GENERIC_ERROR;
     }
     if (fread(&state->curChild, sizeof(GenChild), 1, file) != 1) {
+		applog(LOG_ERR, "read file error - read3");
         return GENERIC_ERROR;
     }
     fclose(file);
     if (ferror(file) != 0) {
+		applog(LOG_ERR, "read file error - fclose");
         return GENERIC_ERROR;
     }
 
@@ -690,8 +724,8 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
 {
     char path[64];
     char tmppath[64];
-    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.4_%s_%d.bin", name, boardID);
-    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.4_%s_%d.bin_tmp", name, boardID);
+    snprintf(path, sizeof(path), "/root/.cgminer/settings_v1.6_%s_%d.bin", name, boardID);
+    snprintf(tmppath, sizeof(tmppath), "/root/.cgminer/settings_v1.6_%s_%d.bin_tmp", name, boardID);
     FILE *file = fopen(tmppath, "wb");
     if (file == NULL) {
         return GENERIC_ERROR;
@@ -708,4 +742,120 @@ ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state)
         return GENERIC_ERROR;
     }
     return SUCCESS;
+}
+
+// Run a command line command.
+// Result: true if command was run, false if not
+//         Note that true does not mean the command succeeded.
+//         Check output for that.
+bool runCmd(char* cmd, char* output, int outputSize) {
+    FILE *fp = popen(cmd, "r");
+    if (fp == NULL) {
+        return false;
+    }
+    char buffer[100];
+
+    int outputSizeRemaining = outputSize;
+    int outputOffset = 0;
+
+    while (fgets(buffer, 100 - 1, fp) != NULL) {
+        int bufferLen = strlen(buffer);
+        if (bufferLen < outputSizeRemaining) {
+            strncpy(output + outputOffset, buffer, outputSizeRemaining);
+            outputOffset += bufferLen;
+            outputSize -= bufferLen;
+        } else {
+            break;
+        }
+    }
+
+    return true;
+}
+
+#define CMD_BUF_LEN 256
+
+void getIpV4(char* intfName, char* ipBuffer, int bufferSize) {
+    char cmdBuf[CMD_BUF_LEN];
+    snprintf(cmdBuf, CMD_BUF_LEN, "ifconfig %s | awk '/inet addr:/{split($2,a,\":\"); print a[2]}' | head -1", intfName);
+
+    runCmd(cmdBuf, ipBuffer, bufferSize);
+}
+
+void copyFile(char* fromPath, char* toPath) {
+    char cmdBuf[CMD_BUF_LEN];
+    snprintf(cmdBuf, CMD_BUF_LEN, "cp %s %s", fromPath, toPath);
+
+    runCmd(cmdBuf, NULL, 0);
+}
+
+#define MAX_IP_ADDR_LENGTH (15 + 1)
+
+void sendMDNSResponse() {
+    char name[80];
+    sprintf(name, "Obelisk %s", gBoardModel == MODEL_SC1 ? "SC1" : "DCR1");
+    char ipAddress[MAX_IP_ADDR_LENGTH];
+    memset(ipAddress, 0, MAX_IP_ADDR_LENGTH );
+    getIpV4("eth0", ipAddress, MAX_IP_ADDR_LENGTH);
+
+    applog(LOG_ERR, "===============================================");
+    applog(LOG_ERR, "SENDING mDNS: IP = %s", ipAddress);
+    applog(LOG_ERR, "===============================================");
+
+    send_mDNS_response(name, ipAddress, 10);
+}
+
+void resetNetworking() {
+    char cmdBuf[CMD_BUF_LEN];
+
+    // Reset to use DHCP - very helpful if user has misconfigured the network
+    char* netConf = "# interface file auto-generated by buildroot\n"
+                    "\n"
+                    "auto lo\n"
+                    "auto eth0\n"
+                    "iface lo inet loopback\n"
+                    "iface eth0 inet dhcp\n";
+
+    snprintf(cmdBuf, CMD_BUF_LEN, "echo $'%s' > /root/config/interfaces", netConf);
+    runCmd(cmdBuf, NULL, 0);
+}
+
+void resetTimezone() {
+    runCmd("echo America/New_York > /root/config/timezone &&", NULL, 0);
+    runCmd("ln -s -f /usr/share/zoneinfo/America/New_York /root/config/localtime", NULL, 0);
+}
+
+void resetHostname() {
+    runCmd("echo Obelisk > /root/config/hostname", NULL, 0);
+}
+
+void resetApiLogin() {
+    runCmd("echo '{\"admin\":{\"hash\":\"$6$b4dnFz8g$I79z107jIm3MHqmZbWicWgUSzV3dyetPF6rSMBvX4QxAGkR345CqH8ltrl0agt1QtCtKIbiqeOPNYZj.fno7y.\""
+           ",\"salt\":\"$6$b4dnFz8g\"}}' > /root/auth.json", NULL, 0);
+}
+
+void resetAllUserConfig() {
+    applog(LOG_ERR, "===============================================");
+    applog(LOG_ERR, "RESETTING ALL USER CONFIG TO FACTORY DEFAULTS");
+    applog(LOG_ERR, "===============================================");
+
+    // Reset CG miner config
+    copyFile("/root/.cgminer/default_cgminer.conf", "/root/.cgminer/cgminer.conf");
+
+    // Reset IP to use DHCP
+    resetNetworking();
+
+    // Reset timezone to America/New_York
+    resetTimezone();
+
+    // Reset hostname to Obelisk
+    resetHostname();
+
+    // Reset login to admin/admin
+    resetApiLogin();
+
+    cgsleep_ms(100);
+}
+
+void doReboot() {
+    runCmd("reboot", NULL, 0);
 }

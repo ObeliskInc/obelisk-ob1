@@ -6692,6 +6692,7 @@ static void* stratum_sthread(void* userdata)
         struct stratum_share* sshare;
         uint32_t* hash32;
         Nonce nonce;
+        uint32_t extranonce2;
 
         unsigned char nonce2[EXTRANONCE_SIZE];
         struct work* work;
@@ -6714,9 +6715,12 @@ static void* stratum_sthread(void* userdata)
         }
 
         nonce = work->nonce_to_submit;
+        extranonce2 = work->extranonce2_to_submit;
+
         /* Filter out duplicate shares */
 
-        // TODO: Add this back in once the rest of pool code is working
+        // TODO: Add this back in once the rest of pool code is working - should check the combination of
+        //       nonce, ntime, extranonce2, jobid
 
         // if (unlikely(nonce == last_nonce && pool->nonce2 == last_nonce2)) {
         //     applog(LOG_ERR, "Filtering duplicate share to pool %d",
@@ -6726,9 +6730,9 @@ static void* stratum_sthread(void* userdata)
         // }
 
         last_nonce = nonce;
-        last_nonce2 = pool->nonce2;
+        last_nonce2 = extranonce2;
         __bin2hex(noncehex, (const unsigned char*)&nonce, NONCE_SIZE);
-        __bin2hex(nonce2hex, (const unsigned char*)&(work->nonce2), work->nonce2_len);
+        __bin2hex(nonce2hex, (const unsigned char*)&(extranonce2), work->nonce2_len);
 
         // applog(LOG_ERR, "pool->nonce2=0x%08lX  nonce2hex=%s  nonce2_len=%d", pool->nonce2, nonce2hex, work->nonce2_len);
 
@@ -6752,7 +6756,7 @@ static void* stratum_sthread(void* userdata)
 
         // applog(LOG_ERR, "Submitting share %08lx to pool %d",
         //    (long unsigned int)htole32(hash32[6]), pool->pool_no);
-        // applog(LOG_ERR, "JSON=%s", s);
+        applog(LOG_ERR, "JSON=%s", s);
 
         /* Try resubmitting for up to 2 minutes if we fail to submit
 		 * once and the stratum pool nonce1 still matches suggesting
@@ -7297,7 +7301,7 @@ static void gen_stratum_work(struct pool* pool, struct work* work)
 
 
     // Update nonce2
-    work->nonce2 = pool->nonce2++;
+    work->nonce2 = pool->nonce2 += 10000;
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
@@ -7791,7 +7795,7 @@ static void update_work_stats(struct thr_info* thr, struct work* work)
 
 /* To be used once the work has been tested to be meet diff1 and has had its
  * nonce adjusted. Returns true if the work target is met. */
-bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce)
+bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2)
 {
     struct work* work_out;
     update_work_stats(thr, work);
@@ -7806,6 +7810,7 @@ bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce)
     // This field is only used here and on the other side of the queue.  This is
     // yet another hack to work around cgminer's insane code.
     work_out->nonce_to_submit = nonce;
+    work_out->extranonce2_to_submit = extranonce2;
     submit_work_async(work_out);
     return true;
 }
@@ -7827,10 +7832,10 @@ static bool new_nonce(struct thr_info* thr, Nonce nonce)
 
 /* Returns true if nonce for work was a valid share and not a dupe of the very last
  * nonce submitted by this device. */
-bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce)
+bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2)
 {
     if (new_nonce(thr, nonce)) { // && test_nonce(work, nonce))
-        submit_tested_work(thr, work, nonce);
+        submit_tested_work(thr, work, nonce, extranonce2);
     } else {
         inc_hw_errors(thr);
         return false;

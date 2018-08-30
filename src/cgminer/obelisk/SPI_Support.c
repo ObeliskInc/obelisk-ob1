@@ -114,31 +114,32 @@ bool bSPI5StartDataXfer(E_SPI_XFER_TYPE eSPIXferType, uint8_t const *pucaTxBuf, 
  */
 int iIsHBSpiBusy(bool bWait)
 {
-    #define SC1_WAIT_TIMEOUT  100000    // 100ms for 1us delay primitive below
+    // #define SC1_WAIT_TIMEOUT  100000    // 100ms for 1us delay primitive below
 
-    int  iRetval = 0;
-    uint32_t  uiTimeOut;
+    // int  iRetval = 0;
+    // uint32_t  uiTimeOut;
 
-    // Uses the SPI slave select as indication of active transfer. This works on the test SPI board
-    // since we only have one slave select.  On the real controller/hash boards we will need to check
-    // multiple slave selects or use a semaphore flag to do the same.
-    if (true == bWait) {
-        uiTimeOut = SC1_WAIT_TIMEOUT;   // wait until idle or timeout
-        while (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {
-            delay_us(1);
-            //usleep(1);
-            if (0 == --uiTimeOut) {
-                iRetval = -1;   // timeout
-                break;  // while
-            }
-        }  // while
-    } else {
-        if (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {  // not waiting; just return the status
-            iRetval = 1;    // busy
-        }
-    }  // if (true == bWait)
+    // // Uses the SPI slave select as indication of active transfer. This works on the test SPI board
+    // // since we only have one slave select.  On the real controller/hash boards we will need to check
+    // // multiple slave selects or use a semaphore flag to do the same.
+    // if (true == bWait) {
+    //     uiTimeOut = SC1_WAIT_TIMEOUT;   // wait until idle or timeout
+    //     while (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {
+    //         delay_us(1);
+    //         //usleep(1);
+    //         if (0 == --uiTimeOut) {
+    //             iRetval = -1;   // timeout
+    //             break;  // while
+    //         }
+    //     }  // while
+    // } else {
+    //     if (false == bHBGetSpiSelects(MAX_NUMBER_OF_HASH_BOARDS)) {  // not waiting; just return the status
+    //         iRetval = 1;    // busy
+    //     }
+    // }  // if (true == bWait)
 
-    return(iRetval);
+    // return(iRetval);
+    return 0;
 }  // iIsHBSpiBusy
 
 /** *************************************************************
