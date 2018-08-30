@@ -20,9 +20,6 @@ SC1:
 
 DCR1:
 ./cgminer --url us-west.luxor.tech:4445 --user DsViAH5o1dUUe1SjjxpNK9m7g8KrqWeAYW5.obelisk --pass x --api-listen --api-allow W:127.0.0.1 --log 4 --protocol-dump --syslog
-
-
-
 */
 
 #include "miner.h"
@@ -46,17 +43,7 @@ extern void dump(unsigned char* p, int len, char* label);
 
 static int num_chains = 0;
 static ob_chain chains[MAX_CHAIN_NUM];
-
-#if (MODEL == SC1)
-Nonce SiaNonceLowerBound = 0;
-Nonce SigNonceUpperBound = 0xFFFFFFFF;
-#endif
-
 static void control_loop(ob_chain* ob);
-
-void add_good_nonces(ob_chain* ob, uint64_t amt);
-void add_bad_nonces(ob_chain* ob, uint64_t amt);
-
 
 static void wq_enqueue(struct thr_info* thr, ob_chain* ob)
 {
@@ -155,7 +142,6 @@ static void* ob_gen_work_thread(void* arg)
     return NULL;
 }
 
-
 // siaValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
 // pool difficulty but is valid under the chip difficutly, and '2' if the nonce
@@ -195,84 +181,6 @@ int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 		return dcrMidstateMeetsProvidedTarget(midstate, header_tail, ob->staticChipTarget) ? 1 : 0;
 	}
 	return dcrHeaderMeetsChipTargetAndPoolDifficulty(midstate, header_tail, ob->staticChipTarget, engine_work->pool->sdiff);
-}
-
-// biasToLevel converts the bias and divider fields into a smooth level that
-// goes from 0 to 43, with each step represeting a step up in clock speed.
-int biasToLevel(int8_t bias, uint8_t divider) {
-	if (divider == 8) {
-		return 5 + bias;
-	}
-	if (divider == 4) {
-		return 16 + bias;
-	}
-	if (divider == 2) {
-		return 27 + bias;
-	}
-	if (divider == 1) {
-		return 38 + bias;
-	}
-}
-
-// increaseDivider will increase the clock divider, resulting in a slower chip.
-static void increaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 1:
-        *divider *= 2;
-        break;
-    case 2:
-        *divider *= 2;
-        break;
-    case 4:
-        *divider *= 2;
-        break;
-    default:
-        // 8 or any other value means no change
-        break;
-    }
-}
-
-static void decreaseDivider(uint8_t* divider)
-{
-    switch (*divider) {
-    case 2:
-        *divider /= 2;
-        break;
-    case 4:
-        *divider /= 2;
-        break;
-    case 8:
-        *divider /= 2;
-        break;
-    default:
-        // 1 or any other value means no change
-        break;
-    }
-}
-
-static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
-{
-    if (*currentBias == MAX_BIAS) {
-        if (*currentDivider > 1) {
-            decreaseDivider(currentDivider);
-            *currentBias = MIN_BIAS;
-        }
-    } else {
-        *currentBias += 1;
-    }
-}
-
-static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
-{
-    if (*currentBias == MIN_BIAS) {
-        if (*currentDivider < 8) {
-            increaseDivider(currentDivider);
-            *currentBias = MAX_BIAS;
-        }
-    } else {
-        *currentBias -= 1;
-    }
 }
 
 // commitBoardBias will take all of the current chip biases and commit them to the
@@ -1131,7 +1039,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	if (msSinceLastIter > 500) {
+	if (msSinceLastIter > minMSPerIter) {
 		applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
 	}
 	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
