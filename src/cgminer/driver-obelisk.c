@@ -282,7 +282,7 @@ static void commitBoardBias(ob_chain* ob)
     ControlLoopState *state = &ob->control_loop_state;
     hashBoardModel *model = &ob->staticBoardModel;
     for (int i = 0; i < model->chipsPerBoard; i++) {
-        ob1SetClockDividerAndBias(state->boardNumber, i, state->chipDividers[i], state->chipBiases[i]);
+        ob1SetClockDividerAndBias(ob->staticBoardNumber, i, state->chipDividers[i], state->chipBiases[i]);
     }
     state->prevBiasChangeTime = state->currentTime;
     state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
@@ -327,7 +327,7 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
 		level = model->maxStringVoltageLevel;
 	}
 
-    ob1SetStringVoltage(state->boardNumber, level);
+    ob1SetStringVoltage(ob->staticBoardNumber, level);
     state->currentVoltageLevel = level;
     state->goodNoncesUponLastVoltageChange = state->currentGoodNonces;
     state->prevVoltageChangeTime = state->currentTime;
@@ -561,6 +561,38 @@ ApiError dcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNu
 	return error;
 }
 
+// SC1A specific initialization.
+void initSC1ABoard(ob_chain* ob) {
+	ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
+
+	// Employ memcpy because we can't set the target directly.
+	uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+	memcpy(ob->staticChipTarget, chipTarget, 32);
+
+	// Functions.
+	ob->prepareNextChipJob = siaPrepareNextChipJob;
+	ob->setChipNonceRange = siaSetChipNonceRange;
+	ob->startNextEngineJob = siaStartNextEngineJob;
+	ob->validNonce = siaValidNonce;
+}
+
+// DCR1A specific initialization.
+void initDCR1ABoard(ob_chain* ob) {
+	ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
+
+	// Employ memcpy because we can't set the target directly.
+	uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+	memcpy(ob->staticChipTarget, chipTarget, 32);
+
+	// Functions.
+	ob->prepareNextChipJob = dcrPrepareNextChipJob;
+	ob->setChipNonceRange = dcrSetChipNonceRange;
+	ob->startNextEngineJob = dcrStartNextEngineJob;
+	ob->validNonce = dcrValidNonce;
+}
+
 static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
@@ -597,43 +629,16 @@ static void obelisk_detect(bool hotplug)
 		// Determine the type of board.
 		//
 		// TODO: The E_ASIC_TYPE_T is a misnomer, it actually returns the board
-		// type.
-		//
-		// TODO: The tag 'MODEL_SC1' is correct for the chip type, but not the
-		// board type.
-		//
-		// TODO: Switch to a case statement.
+		// type and the tag 'MODEL_SC1' is correct for the chip type, but not
+		// the board type.
 		E_ASIC_TYPE_T boardType = eGetBoardType(i);
 		if (boardType == MODEL_SC1) {
-			ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
-
-			// Employ memcpy because we can't set the target directly.
-			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-			memcpy(ob->staticChipTarget, chipTarget, 32);
-
-			// Functions.
-			ob->prepareNextChipJob = siaPrepareNextChipJob;
-			ob->setChipNonceRange = siaSetChipNonceRange;
-			ob->startNextEngineJob = siaStartNextEngineJob;
-			ob->validNonce = siaValidNonce;
+			initSC1ABoard(ob);
 		} else if (boardType == MODEL_DCR1) {
-			ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
-
-			// Employ memcpy because we can't set the target directly.
-			uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-			memcpy(ob->staticChipTarget, chipTarget, 32);
-
-			// Functions.
-			ob->prepareNextChipJob = dcrPrepareNextChipJob;
-			ob->setChipNonceRange = dcrSetChipNonceRange;
-			ob->startNextEngineJob = dcrStartNextEngineJob;
-			ob->validNonce = dcrValidNonce;
+			initDCR1ABoard(ob);
 		}
 
         cgtime(&cgpu->dev_start_tv);
-
-        // TODO: Add this if necessary later
-        //ob->lastshare = cgpu->dev_start_tv.tv_sec;
 
         // Initialize the ob chip fields
         for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
@@ -641,7 +646,6 @@ static void obelisk_detect(bool hotplug)
             chip->engines_curr_work = cgcalloc(sizeof(struct work*), ob->staticBoardModel.enginesPerChip);
         }
 
-		ob->control_loop_state.boardNumber = ob->chain_id;
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
@@ -651,9 +655,7 @@ static void obelisk_detect(bool hotplug)
 		// Load the thermal configuration for this machine. If that fails (no
 		// configuration file, or boards changed), fallback to default values
 		// based on our thermal models.
-		//
-		// TODO: use actual boardID in addition to chain_id
-		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->chain_id, &ob->control_loop_state);
+		ApiError error = loadThermalConfig(ob->staticBoardModel.name, ob->staticBoardNumber, &ob->control_loop_state);
 		if (error != SUCCESS) {
 			// Start the chip biases at 3 levels above minimum, so there is room to
 			// decrease them via the startup logic.
@@ -711,7 +713,7 @@ static void obelisk_detect(bool hotplug)
 
 		// Set the nonce ranges for this chip.
 		for (uint16_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			ob->setChipNonceRange(ob, chipNum, 3);
+			ob->setChipNonceRange(ob, chipNum, 2);
 		}
 		ob->bufferWork = true;
 
@@ -846,7 +848,7 @@ static double getHottestDelta(ob_chain* ob)
 static void updateControlState(ob_chain* ob)
 {
     // Fetch some status variables about the hashing board.
-    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->control_loop_state.boardNumber);
+    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->staticBoardNumber);
 
 	// TODO: Update some API level stuffs. This may not be the best place for
 	// these.
@@ -903,7 +905,7 @@ static void displayControlState(ob_chain* ob)
         // Currently only displays the bias of the first chip.
 		applog(LOG_ERR, "");
         applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
-            ob->control_loop_state.boardNumber,
+            ob->staticBoardNumber,
             ob->hotChipTemp,
             ob->control_loop_state.currentStringVoltage,
 			ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
@@ -980,7 +982,6 @@ static void handleUndertemps(ob_chain* ob, double targetTemp)
 // handleFanChange will adjust the fans based on the current temperatures of all
 // the boards.
 static void handleFanChange(ob_chain* ob) {
-
 	// Only board 0 manipulates the fans.
 	//
 	// NOTE: This means that fan control is not in place if there is no board in

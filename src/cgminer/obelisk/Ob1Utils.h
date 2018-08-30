@@ -55,7 +55,6 @@ typedef struct ControlLoopState {
 	bool initialized;
 
 	// General status variables.
-	uint8_t boardNumber;
 	time_t currentTime;
 	double currentStringVoltage;
 	uint8_t currentVoltageLevel;
