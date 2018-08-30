@@ -488,17 +488,68 @@ void logNonceSet(NonceSet* pNonceSet, char* prefix)
     }
 }
 
-// TODO: avoid redefining these functions
-
 #define MIN_BIAS -5
 #define MAX_BIAS 5
 
-static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
+// biasToLevel converts the bias and divider fields into a smooth level that
+// goes from 0 to 43, with each step represeting a step up in clock speed.
+int biasToLevel(int8_t bias, uint8_t divider) {
+	if (divider == 8) {
+		return 5 + bias;
+	}
+	if (divider == 4) {
+		return 16 + bias;
+	}
+	if (divider == 2) {
+		return 27 + bias;
+	}
+	if (divider == 1) {
+		return 38 + bias;
+	}
+}
+
+// increaseDivider will increase the clock divider, resulting in a slower chip.
+static void increaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 1:
+        *divider *= 2;
+        break;
+    case 2:
+        *divider *= 2;
+        break;
+    case 4:
+        *divider *= 2;
+        break;
+    default:
+        // 8 or any other value means no change
+        break;
+    }
+}
+
+static void decreaseDivider(uint8_t* divider)
+{
+    switch (*divider) {
+    case 2:
+        *divider /= 2;
+        break;
+    case 4:
+        *divider /= 2;
+        break;
+    case 8:
+        *divider /= 2;
+        break;
+    default:
+        // 1 or any other value means no change
+        break;
+    }
+}
+
+void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
 {
     if (*currentBias == MAX_BIAS) {
-        switch (*currentDivider) {
-        case 2: case 4: case 8:
-            *currentDivider /= 2;
+        if (*currentDivider > 1) {
+            decreaseDivider(currentDivider);
             *currentBias = MIN_BIAS;
         }
     } else {
@@ -506,12 +557,11 @@ static void increaseBias(int8_t* currentBias, uint8_t* currentDivider)
     }
 }
 
-static void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
+void decreaseBias(int8_t* currentBias, uint8_t* currentDivider)
 {
     if (*currentBias == MIN_BIAS) {
-        switch (*currentDivider) {
-        case 1: case 2: case 4:
-            *currentDivider *= 2;
+        if (*currentDivider < 8) {
+            increaseDivider(currentDivider);
             *currentBias = MAX_BIAS;
         }
     } else {

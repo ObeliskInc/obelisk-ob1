@@ -498,11 +498,6 @@ typedef struct temp_stats_t {
     double high;
 } temp_stats_t;
 
-typedef struct chip_config_t {
-    uint8_t voltage_bias;
-    uint8_t clock_divider;
-} chip_config_t;
-
 struct cgpu_info {
     int cgminer_id;
     struct device_drv* drv;
