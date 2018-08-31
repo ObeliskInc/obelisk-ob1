@@ -267,6 +267,7 @@ static void* ob_control_thread(void* arg)
     return NULL;
 }
 
+// bufferGlobalChipJob will send a job to all chips for work.
 ApiError bufferGlobalChipJob(ob_chain* ob) {
 	struct work* nextWork = wq_dequeue(ob, true);
 	ob->bufferedWork = nextWork;
@@ -277,10 +278,7 @@ ApiError bufferGlobalChipJob(ob_chain* ob) {
 
 	// Prepare a job and load it onto the chip.
 	Job job = ob->prepareNextChipJob(ob);
-	ApiError error = ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
-	if (error != SUCCESS) {
-		return error;
-	}
+	return ob1LoadJob(&(ob->spiLoadJobTime), ob->chain_id, ALL_CHIPS, ALL_ENGINES, &job);
 }
 
 // siaPrepareNextChipJob will prepare the next job for a sia chip.
@@ -913,7 +911,7 @@ static bool bufferedWorkReady(ob_chain* ob) {
 
 	// Buffer a new job.
 	ApiError error = bufferGlobalChipJob(ob);
-	if (error != SUCCESS || ob->bufferedWork != NULL) {
+	if (error != SUCCESS || ob->bufferedWork == NULL) {
 		applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
 		cgsleep_ms(25);
 		return false;
