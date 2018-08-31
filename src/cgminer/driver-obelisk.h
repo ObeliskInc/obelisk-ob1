@@ -111,6 +111,7 @@ struct ob_chain {
 	// that's not so bad.
 	struct work*  bufferedWork;
 	bool          bufferWork;
+	bool          chipsStarted;
 	uint64_t      goodNoncesFound;    // Total number of good nonces found.
 	struct work** chipWork;           // The work structures for each chip.
 	uint64_t*     chipGoodNonces;     // The good nonce counts for each chip.
@@ -120,6 +121,7 @@ struct ob_chain {
 	// Work spacing timers.
 	cgtimer_t  iterationStartTime;
 	cgtimer_t* chipStartTimes;
+	cgtimer_t* chipResetTimes;
 	cgtimer_t* chipCheckTimes;
 
     // Performance timers.

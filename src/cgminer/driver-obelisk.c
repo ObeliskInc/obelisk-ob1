@@ -149,11 +149,11 @@ static void* ob_gen_work_thread(void* arg)
 int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
 	// Create the header with the nonce set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
-    uint8_t header[ob->staticBoardModel.headerSize];
-    memcpy(header, engine_work->midstate, ob->staticBoardModel.headerSize);
-    memcpy(header + ob->staticBoardModel.nonceOffset, &nonce, sizeof(Nonce));
+	uint8_t header[ob->staticBoardModel.headerSize];
+	memcpy(header, engine_work->midstate, ob->staticBoardModel.headerSize);
+	memcpy(header + ob->staticBoardModel.nonceOffset, &nonce, sizeof(Nonce));
 
-    // Check if it meets the pool's stratum difficulty
+	// Check if it meets the pool's stratum difficulty
 	if (!engine_work->pool) {
 		return siaHeaderMeetsProvidedTarget(header, ob->staticChipTarget) ? 1 : 0;
 	}
@@ -168,13 +168,13 @@ int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 	// Create the header with the nonce and en2 set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
 
-    uint8_t midstate[ob->staticBoardModel.midstateSize];
-    memcpy(midstate, engine_work->midstate, ob->staticBoardModel.midstateSize);
+	uint8_t midstate[ob->staticBoardModel.midstateSize];
+	memcpy(midstate, engine_work->midstate, ob->staticBoardModel.midstateSize);
 
-    uint8_t header_tail[ob->staticBoardModel.headerTailSize];
-    memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
-    memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
-    memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, &ob->decredEN2[chipNum][engineNum], sizeof(uint32_t));
+	uint8_t header_tail[ob->staticBoardModel.headerTailSize];
+	memcpy(header_tail, engine_work->header_tail, ob->staticBoardModel.headerTailSize);
+	memcpy(header_tail + ob->staticBoardModel.nonceOffsetInTail, &nonce, sizeof(Nonce));
+	memcpy(header_tail + ob->staticBoardModel.extranonce2OffsetInTail, &ob->decredEN2[chipNum][engineNum], sizeof(uint32_t));
 
 	// Check if it meets the pool's stratum difficulty.
 	if (!engine_work->pool) {
@@ -185,48 +185,44 @@ int dcrValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Non
 
 // commitBoardBias will take all of the current chip biases and commit them to the
 // string.
-static void commitBoardBias(ob_chain* ob)
-{
-    ControlLoopState *state = &ob->control_loop_state;
-    hashBoardModel *model = &ob->staticBoardModel;
-    for (int i = 0; i < model->chipsPerBoard; i++) {
-        ob1SetClockDividerAndBias(ob->staticBoardNumber, i, state->chipDividers[i], state->chipBiases[i]);
-    }
-    state->prevBiasChangeTime = state->currentTime;
-    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+static void commitBoardBias(ob_chain* ob) {
+	ControlLoopState *state = &ob->control_loop_state;
+	hashBoardModel *model = &ob->staticBoardModel;
+	for (int i = 0; i < model->chipsPerBoard; i++) {
+		ob1SetClockDividerAndBias(ob->staticBoardNumber, i, state->chipDividers[i], state->chipBiases[i]);
+	}
+	state->prevBiasChangeTime = state->currentTime;
+	state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
 
-    // Write the new biases to disk.
-    saveThermalConfig(model->name, ob->chain_id, state);
+	// Write the new biases to disk.
+	saveThermalConfig(model->name, ob->chain_id, state);
 }
 
 // decrease the clock bias of every chip on the string.
-static void decreaseStringBias(ob_chain* ob)
-{
-    int i = 0;
-    for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-        decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-    }
-    commitBoardBias(ob);
+static void decreaseStringBias(ob_chain* ob) {
+	int i = 0;
+	for (i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		decreaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+	}
+	commitBoardBias(ob);
 }
 
 // increase the clock bias of every chip on the string.
-static void increaseStringBias(ob_chain* ob)
-{
-    for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-        if (biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]) >= ob->control_loop_state.curChild.maxBiasLevel) {
-            return;
-        }
-    }
-    for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-        increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
-    }
-    commitBoardBias(ob);
+static void increaseStringBias(ob_chain* ob) {
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		if (biasToLevel(ob->control_loop_state.chipBiases[i], ob->control_loop_state.chipDividers[i]) >= ob->control_loop_state.curChild.maxBiasLevel) {
+			return;
+		}
+	}
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		increaseBias(&ob->control_loop_state.chipBiases[i], &ob->control_loop_state.chipDividers[i]);
+	}
+	commitBoardBias(ob);
 }
 
-static void setVoltageLevel(ob_chain* ob, uint8_t level)
-{
-    ControlLoopState *state = &ob->control_loop_state;
-    hashBoardModel *model = &ob->staticBoardModel;
+static void setVoltageLevel(ob_chain* ob, uint8_t level) {
+	ControlLoopState *state = &ob->control_loop_state;
+	hashBoardModel *model = &ob->staticBoardModel;
 
 	// Sanity check on the voltage levels.
 	if (level < model->minStringVoltageLevel) {
@@ -235,36 +231,41 @@ static void setVoltageLevel(ob_chain* ob, uint8_t level)
 		level = model->maxStringVoltageLevel;
 	}
 
-    ob1SetStringVoltage(ob->staticBoardNumber, level);
-    state->currentVoltageLevel = level;
-    state->goodNoncesUponLastVoltageChange = state->currentGoodNonces;
-    state->prevVoltageChangeTime = state->currentTime;
+	ob1SetStringVoltage(ob->staticBoardNumber, level);
+	state->currentVoltageLevel = level;
+	state->goodNoncesUponLastVoltageChange = state->currentGoodNonces;
+	state->prevVoltageChangeTime = state->currentTime;
 
-    // Changing the voltage is significant enough to count as changing the bias
-    // too.
-    state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
-    state->prevBiasChangeTime = state->currentTime;
+	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
+		ob->chipBadNonces[i] = 0;
+		ob->chipGoodNonces[i] = 0;
+		cgtimer_time(&ob->chipResetTimes[i]);
+	}
 
-    // Write the new voltage level to disk.
-    saveThermalConfig(model->name, ob->chain_id, state);
+	// Changing the voltage is significant enough to count as changing the bias
+	// too.
+	state->goodNoncesUponLastBiasChange = state->currentGoodNonces;
+	state->prevBiasChangeTime = state->currentTime;
+
+	// Write the new voltage level to disk.
+	saveThermalConfig(model->name, ob->chain_id, state);
 }
 
 // Separate thread to handle the control loop so we can react quickly to temp changes
-static void* ob_control_thread(void* arg)
-{
-    struct cgpu_info* cgpu = arg;
-    ob_chain* ob = cgpu->device_data;
-    char tname[16];
+static void* ob_control_thread(void* arg) {
+	struct cgpu_info* cgpu = arg;
+	ob_chain* ob = cgpu->device_data;
+	char tname[16];
 
-    sprintf(tname, "ob_control_%d", ob->chain_id);
-    RenameThread(tname);
+	sprintf(tname, "ob_control_%d", ob->chain_id);
+	RenameThread(tname);
 
-    while (true) {
-        control_loop(ob);
-        cgsleep_ms(250);
-    }
+	while (true) {
+		control_loop(ob);
+		cgsleep_ms(250);
+	}
 
-    return NULL;
+	return NULL;
 }
 
 // bufferGlobalChipJob will send a job to all chips for work.
@@ -285,7 +286,7 @@ ApiError bufferGlobalChipJob(ob_chain* ob) {
 Job siaPrepareNextChipJob(ob_chain* ob) {
 	Job job;
 	memcpy(&job.blake2b, ob->bufferedWork->midstate, ob->staticBoardModel.headerSize);
-    return job;
+	return job;
 }
 
 // dcrPrepareNextChipJob will prepare the next job for a decred chip.
@@ -293,7 +294,7 @@ Job dcrPrepareNextChipJob(ob_chain* ob) {
 	Job job;
 	memcpy(&job.blake256.v, ob->bufferedWork->midstate, ob->staticBoardModel.midstateSize);
 	memcpy(&job.blake256.m, ob->bufferedWork->header_tail, ob->staticBoardModel.headerTailSize);
-    return job;
+	return job;
 }
 
 // siaSetChipNonceRange will set the nonce range of every engine on the chip to
@@ -459,6 +460,14 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.hasReset = false;
 
+		// Allocate the chip work fields.
+		ob->chipWork = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(struct work*));
+		ob->chipGoodNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
+		ob->chipBadNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
+		ob->chipStartTimes = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(cgtimer_t));
+		ob->chipResetTimes = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(cgtimer_t));
+		ob->chipCheckTimes = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(cgtimer_t));
+
 		// Load the thermal configuration for this machine. If that fails (no
 		// configuration file, or boards changed), fallback to default values
 		// based on our thermal models.
@@ -523,13 +532,7 @@ static void obelisk_detect(bool hotplug)
 			ob->setChipNonceRange(ob, chipNum, 2);
 		}
 		ob->bufferWork = true;
-
-		// Allocate the chip work fields.
-		ob->chipWork = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(struct work*));
-		ob->chipGoodNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
-		ob->chipBadNonces = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(uint64_t));
-		ob->chipStartTimes = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(cgtimer_t));
-		ob->chipCheckTimes = calloc(ob->staticBoardModel.chipsPerBoard, sizeof(cgtimer_t));
+		ob->chipsStarted = false;
 
         INIT_LIST_HEAD(&ob->active_wq.head);
 
@@ -829,14 +832,12 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	uint64_t requiredTime = 300;
 	time_t resetTime = 30;
 	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime;
-	// The max time allowed is twice the expected amount of time for the whole
-	// string to hit the required number of nonces.
-
 	if (timeElapsed > resetTime && !ob->control_loop_state.hasReset) {
 		ob->control_loop_state.hasReset = true;
 		for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
 			ob->chipBadNonces[i] = 0;
 			ob->chipGoodNonces[i] = 0;
+			cgtimer_time(&ob->chipResetTimes[i]);
 		}
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.goodNoncesUponLastVoltageChange = ob->control_loop_state.currentGoodNonces;
@@ -865,10 +866,6 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// Commit the new settings and mark that an adjustment has taken place.
 	setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
 	commitBoardBias(ob);
-	for (int i = 0; i < ob->staticBoardModel.chipsPerBoard; i++) {
-		ob->chipBadNonces[i] = 0;
-		ob->chipGoodNonces[i] = 0;
-	}
 
 	// Set the curChild voltage and bias levels to equal what they've been
 	// changed to by any no-ops that occured after the voltage was updated.
@@ -963,29 +960,39 @@ static bool isChipReady(ob_chain* ob, uint64_t chipNum) {
 // then performs the reset if required. 'true' is returned if the chip was
 // reset, and 'false' is returned if the chip was not reset.
 static bool resetChipIfRequired(ob_chain* ob, uint64_t chipNum) {
-	// Determine how many ms have passed since the last chip job was started.
-	cgtimer_t currentTime, lastChipStart;
+	// Determine how much time is supposed to pass to get to 10 nonces.
+	uint64_t minNonces = 10;
+	uint64_t msToReachMinNonces = 1000 * minNonces * ob->staticBoardModel.chipDifficulty / ob->staticBoardModel.chipSpeed / ob->staticBoardModel.enginesPerChip;
+
+	// Determine how many ms have passed since the last reset.
+	cgtimer_t currentTime, lastReset;
 	cgtimer_time(&currentTime);
-	cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
-	int msLastChipStart = cgtimer_to_ms(&lastChipStart);
+	cgtimer_sub(&currentTime, &ob->chipResetTimes[chipNum], &lastReset);
+	int msLastReset = cgtimer_to_ms(&lastReset);
 
-	// Logic for checking the goodness of the hashrate is not implemented yet.
-	bool chipHashrateGood = true;
-
-	// We don't need to reset the chip if the hashrate is acceptable and less
-	// than 120s have passed since the most recent chip reset.
-	if (chipHashrateGood && msLastChipStart < 120000) {
+	// The chip does not need a reset if not enough time has passed to be
+	// statistically significant. At least 30 seconds is also required.
+	if (msLastReset < msToReachMinNonces || msLastReset < 30000) {
 		return false;
 	}
 
-	// Perform a chip reset.
-	applog(LOG_ERR, "Doing a chip reset due to time out: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastChipStart);
+	// The chip does not need a reset if there are enough good nonces.
+	uint64_t goodNonces = ob->chipGoodNonces[chipNum];
+	uint64_t expectedNonces = msLastReset * ob->staticBoardModel.chipSpeed / 1000 / ob->staticBoardModel.nonceRange;
+	if (goodNonces >= expectedNonces) {
+		return false;
+	}
+
+	// Reset the chip.
+	applog(LOG_ERR, "Performing a chip reset due to performance issues: %u.%u.%lld.%lld.%i", ob->staticBoardNumber, chipNum, goodNonces, expectedNonces, msLastReset);
 	ob->setChipNonceRange(ob, chipNum, 1);
 	for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
 		ob->startNextEngineJob(ob, chipNum, engineNum);
 	}
 	ob->chipWork[chipNum] = ob->bufferedWork;
 	cgtimer_time(&ob->chipStartTimes[chipNum]);
+	cgtimer_time(&ob->chipResetTimes[chipNum]);
+	ob->chipGoodNonces[chipNum] = 0;
 
 	return true;
 }
@@ -1001,6 +1008,21 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 	bool workReady = bufferedWorkReady(ob);
 	if (!workReady) {
 		return 0;
+	}
+	// Check if chips need starting.
+	if (!ob->chipsStarted) {
+		for (uint8_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+			applog(LOG_ERR, "Starting chip: %u.%u", ob->staticBoardNumber, chipNum);
+			ob->setChipNonceRange(ob, chipNum, 1);
+			for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+				ob->startNextEngineJob(ob, chipNum, engineNum);
+			}
+			ob->chipWork[chipNum] = ob->bufferedWork;
+			cgtimer_time(&ob->chipStartTimes[chipNum]);
+			cgtimer_time(&ob->chipResetTimes[chipNum]);
+			ob->chipGoodNonces[chipNum] = 0;
+		}
+		ob->chipsStarted = true;
 	}
 	// We wait at least a little bit between each iteration to make sure we
 	// aren't blasting the SPI and blocking the other boards from getting access
