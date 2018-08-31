@@ -413,6 +413,7 @@ void checkForButtonPresses() {
         // User pressed the button and then released it - run appropriate action based on how long they held it down
         if (buttonPressedTicks >= 95) {  // Tell user 10 seconds - people count fast
             resetAllUserConfig();
+            cgsleep_ms(1000);
             doReboot();
         } else {
             // Just a quick press-release will send the mDNS packet
