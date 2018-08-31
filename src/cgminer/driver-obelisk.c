@@ -944,9 +944,6 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	if (msSinceLastIter > minMSPerIter) {
-		applog(LOG_ERR, "iter complete: %u.%i", ob->staticBoardNumber, msSinceLastIter);
-	}
 	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
 		// If there is a request to get work buffered into a chip, send out a
 		// global message to add a new job to all chips. Then clear the flag
