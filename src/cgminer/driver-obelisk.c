@@ -899,50 +899,115 @@ static void control_loop(ob_chain* ob) {
 	handleVoltageAndBiasTuning(ob);
 }
 
-// TODO: need to incorporate some sort of chip check/reset in here, to try and
-// save any chips which have desync'd, have had their nonce ranges reset, or
-// otherwise aren't working well for some reason.
-static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
-{
-	struct cgpu_info* cgpu = thr->cgpu;
-	ob_chain* ob = cgpu->device_data;
-	pthread_cond_signal(&ob->work_cond);
+///////////////////////////////////////////////////
+// Scanwork specific helper functions start here //
+///////////////////////////////////////////////////
 
-	int64_t hashesConfirmed = 0;
+// checkBufferedWork will try and fetch new buffered work if bufferedWork is
+// NULL.
+static bool bufferedWorkReady(ob_chain* ob) {
+	if (ob->bufferedWork != NULL && !ob->bufferWork) {
+		// The existing buffered work is sufficient, nothing to do.
+		return true;
+	}
 
-	// Check against the global timer to see if 100ms has passed since we
-	// started the previous iteration.
+	// Buffer a new job.
+	ApiError error = bufferGlobalChipJob(ob);
+	if (error != SUCCESS || ob->bufferedWork != NULL) {
+		applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
+		cgsleep_ms(25);
+		return false;
+	}
+
+	// Clear the request to have new work buffered.
+	ob->bufferWork = false;
+	return true;
+}
+
+// ratelimitIterations will sleep if the previous iteration happened too
+// quickly.
+static void ratelimitIterations(ob_chain* ob) {
+	// Determine how many ms the last iteration took.
 	int minMSPerIter = 100;
 	cgtimer_t currentTime, timeSinceLastIter;
 	cgtimer_time(&currentTime);
 	cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
 	int msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
-	if (msSinceLastIter < minMSPerIter || ob->bufferedWork == NULL) {
-		// If there is a request to get work buffered into a chip, send out a
-		// global message to add a new job to all chips. Then clear the flag
-		// indicating that a global work object needs to be distributed.
-		if (ob->bufferWork) {
-			ApiError error = bufferGlobalChipJob(ob);
-			if (error == SUCCESS && ob->bufferedWork != NULL) {
-				ob->bufferWork = false;
-			} else if (ob->bufferedWork == NULL) {
-				// It is critical to the program that bufferedWork is not NULL.
-				// Sleep for a bit to give some time to reset, and try again.
-				applog(LOG_ERR, "error buffering a global chip job: %u", ob->staticBoardNumber);
-				cgsleep_ms(25);
-				return 0;
-			}
-		}
 
-		// Sleep until a full 100ms have passed since the previous iteration,
-		// this keeps SPI congestion to a minimum.
-		cgtimer_time(&currentTime);
-		cgtimer_sub(&currentTime, &ob->iterationStartTime, &timeSinceLastIter);
-		msSinceLastIter = cgtimer_to_ms(&timeSinceLastIter);
+	// Sleep until a full 100ms have passed since the previous iteration, this
+	// keeps SPI congestion to a minimum.
+	if (msSinceLastIter < minMSPerIter) {
 		cgsleep_ms(minMSPerIter - msSinceLastIter);
 	}
-	// Set the start time of the current iteration.
+
+	// Set the timer for the current iteration to now.
 	cgtimer_time(&ob->iterationStartTime);
+}
+
+// isChipReady returns whether or not the chip is ready to be checked for being
+// done.
+static bool isChipReady(ob_chain* ob, uint64_t chipNum) {
+	// Determine how many ms have passed since the last chip job was started.
+	cgtimer_t currentTime, lastChipStart;
+	cgtimer_time(&currentTime);
+	cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
+	int msLastChipStart = cgtimer_to_ms(&lastChipStart);
+
+	// The chip is not ready if less than 5000ms have passed since the chip was
+	// started.
+	if (msLastChipStart < 5000) {
+		return false;
+	}
+	return true;
+}
+
+// resetChipIfRequired checks whether or not the chip needs to be reset, and
+// then performs the reset if required. 'true' is returned if the chip was
+// reset, and 'false' is returned if the chip was not reset.
+static bool resetChipIfRequired(ob_chain* ob, uint64_t chipNum) {
+	// Determine how many ms have passed since the last chip job was started.
+	cgtimer_t currentTime, lastChipStart;
+	cgtimer_time(&currentTime);
+	cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
+	int msLastChipStart = cgtimer_to_ms(&lastChipStart);
+
+	// Logic for checking the goodness of the hashrate is not implemented yet.
+	bool chipHashrateGood = true;
+
+	// We don't need to reset the chip if the hashrate is acceptable and less
+	// than 120s have passed since the most recent chip reset.
+	if (chipHashrateGood && msLastChipStart < 120000) {
+		return false;
+	}
+
+	// Perform a chip reset.
+	applog(LOG_ERR, "Doing a chip reset due to time out: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastChipStart);
+	ob->setChipNonceRange(ob, chipNum, 1);
+	for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
+		ob->startNextEngineJob(ob, chipNum, engineNum);
+	}
+	ob->chipWork[chipNum] = ob->bufferedWork;
+	cgtimer_time(&ob->chipStartTimes[chipNum]);
+
+	return true;
+}
+
+// obelisk_scanwork is called repeatedly by cgminer to perform scanning work.
+static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
+	struct cgpu_info* cgpu = thr->cgpu;
+	ob_chain* ob = cgpu->device_data;
+	pthread_cond_signal(&ob->work_cond);
+
+	// First make sure that we have buffered work, if not we can't give new jobs
+	// to chips.
+	bool workReady = bufferedWorkReady(ob);
+	if (!workReady) {
+		return 0;
+	}
+	// We wait at least a little bit between each iteration to make sure we
+	// aren't blasting the SPI and blocking the other boards from getting access
+	// to global resources.
+	ratelimitIterations(ob);
 
 	cgtimer_t lastStart, lastEnd, lastDuration;
 	cgtimer_t doneStart, doneEnd, doneDuration;
@@ -954,43 +1019,22 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 	int loadTotal = 0;
 
 	// Look for done engines, and read their nonces
+	cgtimer_t currentTime;
+	cgtimer_time(&currentTime);
+	int64_t hashesConfirmed = 0;
 	for (uint8_t chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-		cgtimer_time(&lastStart);
-
-		// Check how long it has been since the last time this chip was started.
-		cgtimer_t lastChipStart;
-		cgtimer_sub(&currentTime, &ob->chipStartTimes[chipNum], &lastChipStart);
-		int msLastChipStart = cgtimer_to_ms(&lastChipStart);
-		if (msLastChipStart < 5000) {
-			// It has been less than 7.5 seconds, assume that this chip is not
-			// finished. 7.5 seconds would imply a clock speed of 570 MHz, which
-			// we do not believe the chips are capable of. 
-		cgtimer_time(&lastEnd);
-		cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
-		lastTotal += cgtimer_to_ms(&lastDuration);
-			continue;
-		} else if (msLastChipStart > 120000) {
-			// It has been more than 120 seconds, assume that something went
-			// wrong with the chip, and that the chip needs to be started again.
-			applog(LOG_ERR, "Doing a chip reset due to time out: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastChipStart);
-			ob->setChipNonceRange(ob, chipNum, 1);
-			for (uint8_t engineNum = 0; engineNum < ob->staticBoardModel.enginesPerChip; engineNum++) {
-				ApiError error = ob->startNextEngineJob(ob, chipNum, engineNum);
-				if (error != SUCCESS) {
-					applog(LOG_ERR, "Error loading engine job: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
-				}
-			}
-			ob->chipWork[chipNum] = ob->bufferedWork;
-			cgtimer_time(&ob->chipStartTimes[chipNum]);
-		cgtimer_time(&lastEnd);
-		cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
-		lastTotal += cgtimer_to_ms(&lastDuration);
+		// Check whether the chip is ready to be checked for completeion.
+		bool chipReady = isChipReady(ob, chipNum);
+		if (!chipReady) {
 			continue;
 		}
 
-		cgtimer_time(&lastEnd);
-		cgtimer_sub(&lastEnd, &lastStart, &lastDuration);
-		lastTotal += cgtimer_to_ms(&lastDuration);
+		// Check if the chip needs to be reset.
+		bool chipReset = resetChipIfRequired(ob, chipNum);
+		if (chipReset) {
+			continue;
+		}
+
 		cgtimer_time(&doneStart);
 
 		// Check whether the chip is done by looking at the 'GetDoneEngines'
@@ -1019,7 +1063,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
 		if (msLastCheck > 500) {
-			applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i.%i", ob->staticBoardNumber, chipNum, msLastChipStart, msLastCheck);
+			applog(LOG_ERR, "a chip is reporting itself as partially done: %u.%u.%i", ob->staticBoardNumber, chipNum, msLastCheck);
 		}
 
 		cgtimer_time(&doneEnd);
