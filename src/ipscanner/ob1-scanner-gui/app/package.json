@@ -1,0 +1,18 @@
+{
+  "name": "obelisk-scanner",
+  "productName": "Obelisk Scanner",
+  "version": "1.0.0",
+  "description": "IP Scanner to find Obelisk DCR1 and SC1 Units",
+  "homepage": "https://obelisk.tech/",
+  "main": "./main.js",
+  "author": {
+    "name": "Eddie Wang",
+    "email": "eddie@sia.tech",
+    "url": "https://github.com/eddiewang"
+  },
+  "scripts": {
+    "postinstall": "npm rebuild --runtime=electron --target=1.6.6 --disturl=https://atom.io/download/atom-shell --build-from-source"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}

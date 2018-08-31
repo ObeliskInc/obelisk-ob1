@@ -60,6 +60,7 @@ typedef struct ControlLoopState {
 	double   currentStringVoltage;
 	uint8_t  currentVoltageLevel;
 	time_t   initTime;
+	time_t   lastFanAdjustment;
 	time_t   lastStatusOutput;
 	uint64_t stringTimeouts;
 
@@ -98,10 +99,9 @@ typedef struct ControlLoopState {
 } ControlLoopState;
 
 // Functions for adding/subtracting bias and dividers and formatting
-void incrementDivider(ControlLoopState* clState);
-void decrementDivider(ControlLoopState* clState);
-void incrementBias(ControlLoopState* clState);
-void decrementBias(ControlLoopState* clState);
+int  biasToLevel(int8_t bias, uint8_t divider);
+void increaseBias(int8_t* currentBias, uint8_t* currentDivider);
+void decreaseBias(int8_t* currentBias, uint8_t* currentDivider);
 void formatControlLoopState(char* buffer, ControlLoopState* clState);
 void formatDividerAndBias(char* buffer, ControlLoopState* clState);
 
@@ -109,5 +109,12 @@ void formatDividerAndBias(char* buffer, ControlLoopState* clState);
 void geneticAlgoIter(ControlLoopState *state);
 ApiError saveThermalConfig(char *name, int boardID, ControlLoopState *state);
 ApiError loadThermalConfig(char *name, int boardID, ControlLoopState *state);
+
+bool runCmd(char* cmd, char* output, int outputSize);
+void getIpV4(char* intfName, char* ipBuffer, int bufferSize);
+
+void sendMDNSResponse();
+void resetAllUserConfig();
+void doReboot();
 
 #endif

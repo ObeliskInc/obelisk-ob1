@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include "Ob1Defines.h"
+#include "Ob1Utils.h"
 #include "Ob1FanCtrl.h"
 #include "gpio_bsp.h"
 #include "miner.h"
@@ -37,6 +38,13 @@
 #define TACH1 "67"
 #define TACH2 "54"
 #define SW2 "58"
+
+// Globals
+static uint32_t fanRPM[NUM_FANS];
+static pthread_mutex_t fanLock;
+
+// Forward declarations
+static void* obFanAndButtonThread(void* arg);
 
 // Set up the tach pins and sw2 pin - note by default all pins are inputs
 static void initFanTachPins()
@@ -309,6 +317,12 @@ ApiError ob1InitializeFanCtrl() {
   initFanPWM();
   disableFanCounters();
   enableFanCounters();
+
+  // Start the fan monitor thread
+  mutex_init(&fanLock);
+  pthread_t pth;
+  pthread_create(&pth, NULL, obFanAndButtonThread, NULL);
+
   return SUCCESS;
 }
 
@@ -325,7 +339,7 @@ ApiError ob1SetFanSpeeds(uint8_t percent) {
 #define NUM_FANS 2  // TODO: Implement as a MinerModel or ControlBoardModel field
 
 // Pass in an array of NUM_FANS uint32_t's
-uint32_t ob1GetFanRPM(uint8_t fanNum) {
+uint32_t ob1ReadFanRPM(uint8_t fanNum) {
   // Static values to keep track of between reads
   static struct timespec lastReadTime[NUM_FANS] = { {0, 0}, {0, 0} };
   static int lastFanCounter[NUM_FANS] = {0, 0};  // Remember these between reads
@@ -369,6 +383,69 @@ uint32_t ob1GetFanRPM(uint8_t fanNum) {
   // applog(LOG_ERR, "Fan %u RPM is %u", fanNum, rpm);
 
   return rpm;
-  // return  ((countsSinceLastRead/4) / msSinceLastRead) * 1000 * 60;
 }
 
+uint32_t getFanRPM(uint8_t fanNum) {
+    LOCK(&fanLock);
+    uint32_t rpm = fanRPM[fanNum];
+    UNLOCK(&fanLock);
+    return rpm;
+}
+
+void setFanRPM(uint8_t fanNum, uint32_t rpm) {
+    LOCK(&fanLock);
+    fanRPM[fanNum] = rpm;
+    UNLOCK(&fanLock);
+}
+
+
+void checkForButtonPresses() {
+    static bool wasButtonPressed = false;
+    static int buttonPressedTicks = 0;
+
+    // See if the button is current pressed
+    int button = gpio_read_pin(CONTROLLER_USER_SWITCH);
+    bool isButtonPressed = button == 0; // Pressed is 0, and not pressed is 1.  Of course!
+
+    // See if the button has been pressed long enough to send the mDNS
+    if (isButtonPressed) {
+        buttonPressedTicks++;
+    } else if (wasButtonPressed) {
+        // User pressed the button and then released it - run appropriate action based on how long they held it down
+        if (buttonPressedTicks >= 95) {  // Tell user 10 seconds - people count fast
+            resetAllUserConfig();
+            doReboot();
+        } else if (buttonPressedTicks >= 9) {
+            sendMDNSResponse();
+        }
+        buttonPressedTicks = 0;
+    }
+
+    wasButtonPressed = isButtonPressed;
+}
+
+// Simple thread to update the fan RPMS once a second and check for front button presses
+static void* obFanAndButtonThread(void* arg)
+{
+    uint32_t fanCheckTicks = 0;
+    bool isButtonPressed = false;
+    uint32_t buttonPressedTicks = 0;
+    bool ismDNSSent = false;
+    while(true) {
+        // Call this every tick
+        checkForButtonPresses();
+
+        // Read fan RPMs
+        if (fanCheckTicks == 5) {
+            for (int i=0; i<NUM_FANS; i++) {
+                uint32_t rpm = ob1ReadFanRPM(i);
+                setFanRPM(i, rpm);
+            }
+            fanCheckTicks = 0;
+        }
+
+        fanCheckTicks++;
+        cgsleep_ms(100);
+    }
+    return NULL;
+}

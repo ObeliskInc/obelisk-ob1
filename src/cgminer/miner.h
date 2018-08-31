@@ -264,7 +264,7 @@ extern char* curly;
 #define SIA_HEADER_SIZE 80 // bytes
 #define NTIME_SIZE 8 // bytes
 #define NTIME_STR_SIZE 16
-#define MAX_COINBASE_SIZE 128 // bytes
+#define MAX_COINBASE_SIZE 256 // bytes
 
 #elif (ALGO == BLAKE256)
 
@@ -277,7 +277,7 @@ extern char* curly;
 #define DECRED_HEADER_TAIL_NONCE_OFFSET 12 // bytes
 #define NTIME_STR_SIZE 8
 #define NTIME_SIZE 8 // bytes
-#define MAX_COINBASE_SIZE 128 // bytes
+#define MAX_COINBASE_SIZE 256 // bytes
 
 #else
 
@@ -497,11 +497,6 @@ typedef struct temp_stats_t {
     double curr;
     double high;
 } temp_stats_t;
-
-typedef struct chip_config_t {
-    uint8_t voltage_bias;
-    uint8_t clock_divider;
-} chip_config_t;
 
 struct cgpu_info {
     int cgminer_id;
@@ -1487,8 +1482,9 @@ struct work {
     struct timeval tv_work_found;
     char getwork_mode;
 
-    // Field used to pass the nonce in the copied work struct when submitting a nonce
+    // Fields used to pass the nonce in the copied work struct when submitting a nonce
     Nonce nonce_to_submit;
+    uint32_t extranonce2_to_submit;
 };
 
 #ifdef USE_MODMINER
@@ -1536,8 +1532,8 @@ extern void get_datestamp(char*, size_t, struct timeval*);
 extern void inc_hw_errors(struct thr_info* thr);
 extern bool test_nonce(struct work* work, Nonce nonce);
 extern bool test_nonce_diff(struct work* work, Nonce nonce, double diff);
-extern bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce);
-extern bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce);
+extern bool submit_tested_work(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2);
+extern bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2);
 extern bool submit_noffset_nonce(struct thr_info* thr, struct work* work, Nonce nonce,
     int noffset);
 extern int share_work_tdiff(struct cgpu_info* cgpu);

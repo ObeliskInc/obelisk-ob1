@@ -9,6 +9,20 @@ typedef enum _gpio_ret_ {
     GPIO_RET_ERROR = -1,
 } gpio_ret_t;
 
+
+typedef enum {
+    PIN_LOW = false,
+    PIN_HIGH = true,
+} pin_value_t;
+
+typedef enum {
+    INPUT_PIN = false,
+    OUTPUT_PIN = true,
+} pin_direction_t;
+
+#define DIR_PATH(p) ("/sys/class/gpio/" p "/direction")
+#define VALUE_PATH(p) ("/sys/class/gpio/" p "/value")
+
 /* GPIO Pin Definitions - names and pin numbers */
 typedef enum _gpio_pin_ {
     /* Fans */
@@ -50,6 +64,15 @@ typedef enum _gpio_pin_ {
     SPI_SS2 = 7, // Output
     SPI_SS3 = 8, // Output
 } gpio_pin_t;
+
+typedef struct {
+    gpio_pin_t pin_id;
+    pin_direction_t is_output;
+    pin_value_t default_value;
+    char* value_path;
+    char* direction_path;
+    int fd;  // Currently used for outputs only
+} gpio_def_t;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 

@@ -755,7 +755,7 @@ static bool io_add(struct io_data *io_data, char *buf)
 
 	// DEBUG ADDED
 	dif = io_data->cur - io_data->ptr;
-	applog(LOG_ERR, "dif=%d", dif);
+	// applog(LOG_ERR, "dif=%d", dif);
 	// DEBUG ADDED
 
 	return true;

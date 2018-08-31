@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="152px" height="162px" viewBox="0 0 152 162" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 51.2 (57519) - http://www.bohemiancoding.com/sketch -->
+    <title>OBELISK_LOGO</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M0.06,77.6934385 L0.06,71.6555595 C1.37652215,38.4899674 24.2362243,9.79948289 56.556,1.267 L58.328,0.799 L55.491,16.915 L54.857,17.148 C30.812,25.98 14.657,49.102 14.657,74.682 C14.657,92.754 22.613,109.828 36.485,121.525 L37.001,121.96 L34.162,138.082 L32.656,137.034 C13.0374688,123.379318 1.00398876,101.369113 0.06,77.6934385 Z" id="path-1"></path>
+        <linearGradient x1="-0.0395298582%" y1="55.7525218%" x2="38.3889606%" y2="55.7525218%" id="linearGradient-3">
+            <stop stop-color="#DA3337" offset="0%"></stop>
+            <stop stop-color="#DA3337" offset="100%"></stop>
+        </linearGradient>
+        <path d="M22.193,123.28 L22.744,122.847 C37.643,111.121 46.188,93.566 46.188,74.682 C46.188,48.158 29.241,24.763 4.019,16.468 L3.353,16.249 L0.555,0.359 L2.286,0.766 C18.662,4.612 33.525,14.006 44.136,27.216 C54.911,40.63 60.844,57.487 60.844,74.682 C60.844,100.32 47.997,124.061 26.479,138.189 L24.989,139.167 L22.193,123.28" id="path-4"></path>
+        <linearGradient x1="-0.000829338685%" y1="50.000072%" x2="100.000498%" y2="50.000072%" id="linearGradient-6">
+            <stop stop-color="#DA3337" offset="0%"></stop>
+            <stop stop-color="#DA3337" offset="100%"></stop>
+        </linearGradient>
+        <path d="M1.75751088,161.94 L1.10641444,161.94 C0.722283258,161.792492 0.444022521,161.393185 0.524,160.922 L27.808,0.63 C27.8399081,0.442250741 27.9849416,0.352015991 28.1316504,0.35 L28.1417177,0.35 C28.3089261,0.352295552 28.475,0.468881265 28.475,0.686 L28.475,140.852 C28.475,144.861 26.286,148.551 22.768,150.473 L1.874,161.886 C1.83551675,161.907006 1.79662193,161.92496 1.7575109,161.94 Z" id="path-7"></path>
+        <linearGradient x1="27.9674406%" y1="50.0186893%" x2="46.3912534%" y2="50.0186893%" id="linearGradient-9">
+            <stop stop-color="#DA3337" offset="0%"></stop>
+            <stop stop-color="#DA3337" offset="100%"></stop>
+        </linearGradient>
+        <path d="M1.19928231,0.35 L1.20934961,0.35 C1.35605836,0.352015991 1.50109187,0.442250741 1.533,0.63 L28.817,160.922 C28.8969775,161.393185 28.6187167,161.792492 28.234345,161.94 L27.5826504,161.94 C27.5434887,161.92496 27.5045402,161.907006 27.466,161.886 L6.573,150.473 C3.055,148.551 0.866,144.861 0.866,140.852 L0.866,0.686 C0.866,0.468881265 1.03207389,0.352295552 1.19928236,0.35 Z" id="path-10"></path>
+        <linearGradient x1="53.2376272%" y1="50.0186893%" x2="71.6614399%" y2="50.0186893%" id="linearGradient-12">
+            <stop stop-color="#DA3337" offset="0%"></stop>
+            <stop stop-color="#DA3337" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="OBELISK_LOGO">
+            <g id="Group-3" transform="translate(0.000000, 21.000000)">
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <g id="Clip-2"></g>
+                <polygon id="Fill-1" fill="url(#linearGradient-3)" mask="url(#mask-2)" points="0.06 140.94 151.844 140.94 151.844 -20.65 0.06 -20.65"></polygon>
+            </g>
+            <g id="Group-6" transform="translate(91.000000, 21.000000)">
+                <mask id="mask-5" fill="white">
+                    <use xlink:href="#path-4"></use>
+                </mask>
+                <g id="Clip-5"></g>
+                <path d="M22.193,123.28 L22.744,122.847 C37.643,111.121 46.188,93.566 46.188,74.682 C46.188,48.158 29.241,24.763 4.019,16.468 L3.353,16.249 L0.555,0.359 L2.286,0.766 C18.662,4.612 33.525,14.006 44.136,27.216 C54.911,40.63 60.844,57.487 60.844,74.682 C60.844,100.32 47.997,124.061 26.479,138.189 L24.989,139.167 L22.193,123.28" id="Fill-4" fill="url(#linearGradient-6)" mask="url(#mask-5)"></path>
+            </g>
+            <g id="Group-9" transform="translate(42.000000, 0.000000)">
+                <mask id="mask-8" fill="white">
+                    <use xlink:href="#path-7"></use>
+                </mask>
+                <g id="Clip-8"></g>
+                <polygon id="Fill-7" fill="url(#linearGradient-9)" mask="url(#mask-8)" points="-41.94 161.94 109.844 161.94 109.844 0.35 -41.94 0.35"></polygon>
+            </g>
+            <g id="Group-12" transform="translate(80.000000, 0.000000)">
+                <mask id="mask-11" fill="white">
+                    <use xlink:href="#path-10"></use>
+                </mask>
+                <g id="Clip-11"></g>
+                <polygon id="Fill-10" fill="url(#linearGradient-12)" mask="url(#mask-11)" points="-79.94 161.94 71.844 161.94 71.844 0.35 -79.94 0.35"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

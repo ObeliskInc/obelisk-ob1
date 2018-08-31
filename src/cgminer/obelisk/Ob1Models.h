@@ -16,6 +16,13 @@ typedef struct hashBoardModel {
 	uint64_t midstateSize;
 	uint64_t nonceOffset;
 	uint64_t nonceOffsetInTail;
+	uint64_t extranonce2Offset;
+	uint64_t extranonce2OffsetInTail;
+
+	// Thermal information.
+	uint64_t boardHotTemp;
+	uint64_t boardIdealTemp;
+	uint64_t boardCoolTemp;
 
 	// Suggested parameters to use when operating the chips.
 	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
@@ -23,6 +30,14 @@ typedef struct hashBoardModel {
 	uint8_t  defaultStringIncrements;
 	uint64_t nonceRange;
 } hashBoardModel;
+
+// miningRigModel defines a few of the physical, unchanging parameters of a
+// mining rig that are useful when operating the unit.
+typedef struct miningRigModel {
+	uint64_t fanSpeedIncrement;
+	uint64_t fanSpeedMax;
+	uint64_t fanSpeedMin;
+} miningRigModel;
 
 // HASHBOARD_MODEL_SC1A defines the parameters for our SC1A hashing card.
 const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
@@ -38,6 +53,12 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.midstateSize      = 0,  // no midstate
 	.nonceOffset       = 32,
 	.nonceOffsetInTail = 0,  // no tail
+	.extranonce2Offset = 0,  // Not used
+	.extranonce2OffsetInTail = 0, // no tail
+
+	.boardHotTemp   = 99,
+	.boardIdealTemp = 95,
+	.boardCoolTemp  = 90,
 
 	.chipSpeed               = 100000000ULL, // 100 MHz
 	.defaultMaxBiasLevel     = 22,           // Corresponds to a /2.-4
@@ -59,11 +80,24 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.midstateSize      = 32,
 	.nonceOffset       = 140,
 	.nonceOffsetInTail = 12,
+	.extranonce2Offset = 148,
+	.extranonce2OffsetInTail = 20,
+
+	.boardHotTemp   = 99,
+	.boardIdealTemp = 95,
+	.boardCoolTemp  = 90,
 
 	.chipSpeed               = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
 	.defaultMaxBiasLevel     = 22,         // Corresponds to a /2.-4
 	.defaultStringIncrements = 16,
-	.nonceRange              = 33554432ULL // 2^25
+	.nonceRange              = 4294967296ULL // 2^32
+};
+
+// MINING_RIG_MODEL_OB1 defines the parameters for our OB1 mining rig.
+const struct miningRigModel MINING_RIG_MODEL_OB1 = {
+	.fanSpeedIncrement = 5,
+	.fanSpeedMax       = 100,
+	.fanSpeedMin       = 10
 };
 
 // Temperature models according to thermal sims of our boards.
@@ -72,4 +106,3 @@ const int64_t OB1_TEMPS_HASHBOARD_2_1[15] = {   0,   8,   1,  -8,  -8,  -2,  -7,
 const int64_t OB1_TEMPS_HASHBOARD_3_0[15] = {   0,  -7, -10, -16, -12, -19, -19,  -9, -28, -27, -30, -28, -22, -18, -13 };
 const int64_t OB1_TEMPS_HASHBOARD_3_1[15] = {   0,   6,  16, -16,  -9,   0,   9, -21, -20,  -3, -23, -13, -18,  -3, -12 };
 const int64_t OB1_TEMPS_HASHBOARD_3_2[15] = {   0,   1,   5, -16,  -9,  -5,  -4, -19, -22, -14, -27, -19, -20,  -9, -14 };
-
