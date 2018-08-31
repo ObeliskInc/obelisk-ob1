@@ -377,6 +377,7 @@ ApiError dcrStartNextEngineJob(ob_chain* ob, uint16_t chipNum, uint16_t engineNu
 // SC1A specific initialization.
 void initSC1ABoard(ob_chain* ob) {
 	ob->staticBoardModel = HASHBOARD_MODEL_SC1A;
+	ob->staticRigModel = MINING_RIG_MODEL_OB1;
 
 	// Employ memcpy because we can't set the target directly.
 	uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -393,6 +394,7 @@ void initSC1ABoard(ob_chain* ob) {
 // DCR1A specific initialization.
 void initDCR1ABoard(ob_chain* ob) {
 	ob->staticBoardModel = HASHBOARD_MODEL_DCR1A;
+	ob->staticRigModel = MINING_RIG_MODEL_OB1;
 
 	// Employ memcpy because we can't set the target directly.
 	uint8_t chipTarget[] = { 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -804,30 +806,34 @@ static void handleFanChange(ob_chain* ob) {
 	}
 
 	// Check for conditions where we change the fan speed.
-	bool allOver98 = true;
-	bool allUnder95 = true;
-	bool anyUnder90 = false;
+	bool allHot = true;
+	bool allBelowIdeal = true;
+	bool anyCool = false;
 	for (int i = 0; i < ob->staticTotalBoards; i++) {
-		mutex_lock(&chains[i].lock);
 		double chainTemp = chains[i].hotChipTemp;
-		mutex_unlock(&chains[i].lock);
-		if (chainTemp <= 98) {
-			allOver98 = false;
+		if (chainTemp <= chains[i].staticBoardModel.boardHotTemp) {
+			allHot = false;
 		}
-		if (chainTemp >= 95) {
-			allUnder95 = false;
+		if (chainTemp >= chains[i].staticBoardModel.boardIdealTemp) {
+			allBelowIdeal = false;
 		}
-		if (chainTemp < 90) {
-			anyUnder90 = true;
+		if (chainTemp < chains[i].staticBoardModel.boardCoolTemp) {
+			anyCool = true;
 		}
 	}
 
-	if (allOver98 && ob->fanSpeed != 100) {
-		ob->fanSpeed = 100;
+	uint64_t maxSpeed = ob->staticRigModel.fanSpeedMax;
+	uint64_t minSpeed = ob->staticRigModel.fanSpeedMin;
+	uint64_t increment = ob->staticRigModel.fanSpeedIncrement;
+	if (allHot && ob->fanSpeed != maxSpeed) {
+		ob->fanSpeed = maxSpeed;
 		ob1SetFanSpeeds(ob->fanSpeed);
 	}
-	if ((allUnder95 || anyUnder90) && ob->fanSpeed > 10) {
-		ob->fanSpeed = ob->fanSpeed - 5;
+	if ((allBelowIdeal || anyCool) && ob->fanSpeed >= (minSpeed + increment)) {
+		// Perform subtraction, division, and then multiplication to ensure that
+		// the final number ends up on an increment that is supported by the
+		// architecture.
+		ob->fanSpeed = ((ob->fanSpeed - increment) / increment) * increment;
 		ob1SetFanSpeeds(ob->fanSpeed);
 	}
 }

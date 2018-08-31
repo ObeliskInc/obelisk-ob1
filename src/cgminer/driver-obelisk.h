@@ -94,6 +94,7 @@ struct stringSettings {
 struct ob_chain {
 	// Board information.
 	hashBoardModel staticBoardModel;
+	miningRigModel staticRigModel;
 	int            staticBoardNumber;
 	int            staticTotalBoards;
 
