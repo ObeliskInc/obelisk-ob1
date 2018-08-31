@@ -544,7 +544,6 @@ static void obelisk_detect(bool hotplug)
         pthread_create(&pth, NULL, ob_gen_work_thread, cgpu);
 
         pthread_cond_init(&ob->nonce_cond, NULL);
-        //pthread_create(&pth, NULL, ob_nonce_thread, cgpu);
         pthread_create(&pth, NULL, ob_control_thread, cgpu);
     }
 
@@ -590,12 +589,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 }
 
 // Status display variables.
-#define ChipCount 15
 #define StatusOutputFrequency 60 
-
-// Temperature measurement variables.
-#define ChipTempVariance 5.0 // Temp rise of chip due to silicon inconsistencies.
-#define HotChipTargetTemp 105.0 // Acceptable temp for hottest chip.
 
 // Overtemp variables.
 #define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
@@ -607,8 +601,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define UndertempCheckFrequency 1
 
 // targetTemp returns the target temperature for the chip we want.
-static double getHottestDelta(ob_chain* ob)
-{
+static double getHottestDelta(ob_chain* ob) {
 	// To get the hottest delta, iterate through the 14 chips that don't have a
 	// temperature senosr, use the thermal model plus their bias difference to
 	// determine the delta between that chip and the measured chip.
@@ -654,40 +647,39 @@ static double getHottestDelta(ob_chain* ob)
 
 // updateControlState will update fields that depend on external factors.
 // Things like the time and string temperature.
-static void updateControlState(ob_chain* ob)
-{
-    // Fetch some status variables about the hashing board.
-    HashboardStatus hbStatus = ob1GetHashboardStatus(ob->staticBoardNumber);
+static void updateControlState(ob_chain* ob) {
+	// Fetch some status variables about the hashing board.
+	HashboardStatus hbStatus = ob1GetHashboardStatus(ob->staticBoardNumber);
 
 	// TODO: Update some API level stuffs. This may not be the best place for
 	// these.
 	//
-    // Update the min/max/curr temps for reporting via the API
-    update_temp(&ob->board_temp, hbStatus.boardTemp);
-    update_temp(&ob->chip_temp, hbStatus.chipTemp);
-    update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
-    // TODO: Implement these fields for realz: TEMP HACK
-    ob->fan_speed[0] = 2400;
-    ob->fan_speed[1] = 2500;
-    ob->num_chips = 15;
-    ob->num_cores = 15 * 64;
+	// Update the min/max/curr temps for reporting via the API
+	update_temp(&ob->board_temp, hbStatus.boardTemp);
+	update_temp(&ob->chip_temp, hbStatus.chipTemp);
+	update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
+	// TODO: Implement these fields for realz: TEMP HACK
+	ob->fan_speed[0] = 2400;
+	ob->fan_speed[1] = 2500;
+	ob->num_chips = 15;
+	ob->num_cores = 15 * 64;
 
 	// Update the current hotChipTemp for this board, under lock.
 	double hottestDelta = getHottestDelta(ob);
 	double hotChipTemp = hottestDelta + ob->control_loop_state.currentStringTemp;
 	ob->hotChipTemp = hotChipTemp;
 
-    // Update status values.
-    ob->control_loop_state.currentTime = time(0);
-    ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
-    ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
+	// Update status values.
+	ob->control_loop_state.currentTime = time(0);
+	ob->control_loop_state.currentStringTemp = hbStatus.chipTemp;
+	ob->control_loop_state.currentStringVoltage = hbStatus.asicV15;
 
-    // Fetch nonce count updates.
-    mutex_lock(&ob->lock);
-    ob->control_loop_state.currentGoodNonces = ob->goodNoncesFound;
-    mutex_unlock(&ob->lock);
-    ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
-    ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
+	// Fetch nonce count updates.
+	mutex_lock(&ob->lock);
+	ob->control_loop_state.currentGoodNonces = ob->goodNoncesFound;
+	mutex_unlock(&ob->lock);
+	ob->control_loop_state.goodNoncesSinceBiasChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastBiasChange;
+	ob->control_loop_state.goodNoncesSinceVoltageChange = ob->control_loop_state.currentGoodNonces - ob->control_loop_state.goodNoncesUponLastVoltageChange;
 
 	// Sanity check - exit with error if the voltage is at unsafe levels.
 	if (ob->control_loop_state.currentStringVoltage < 6) {
@@ -695,97 +687,79 @@ static void updateControlState(ob_chain* ob)
 	}
 }
 
-static uint64_t computeHashRate(ob_chain *ob)
-{
-    uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
-    time_t secondsElapsed = (ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime) + 1;
-    return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
+static uint64_t computeHashRate(ob_chain *ob) {
+	uint64_t goodNonces = ob->control_loop_state.goodNoncesSinceVoltageChange;
+	time_t secondsElapsed = (ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime) + 1;
+	return ob->staticBoardModel.chipDifficulty * goodNonces / secondsElapsed;
 }
 
 // displayControlState will check if enough time has passed, and then display
 // the current state of the hashing board to the user.
-static void displayControlState(ob_chain* ob)
-{
-    time_t lastStatus = ob->control_loop_state.lastStatusOutput;
-    time_t currentTime = ob->control_loop_state.currentTime;
+static void displayControlState(ob_chain* ob) {
+	time_t lastStatus = ob->control_loop_state.lastStatusOutput;
+	time_t currentTime = ob->control_loop_state.currentTime;
 	time_t totalTime = (ob->control_loop_state.currentTime - ob->control_loop_state.initTime) + 1;
-    uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
-    if (currentTime - lastStatus > StatusOutputFrequency) {
-        // Currently only displays the bias of the first chip.
-		applog(LOG_ERR, "");
-        applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
-            ob->staticBoardNumber,
-            ob->hotChipTemp,
-            ob->control_loop_state.currentStringVoltage,
-			ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
-			totalTime,
-            computeHashRate(ob) / 1000000000,
-			ob->staticBoardModel.chipDifficulty * goodNonces / totalTime / 1000000000,
-            ob->control_loop_state.currentVoltageLevel);
-		applog(LOG_ERR, "");
-        
-		/*
-        cgtimer_t currTime, totalTime;
-        cgtimer_time(&currTime);
-        cgtimer_sub(&currTime, &ob->startTime, &totalTime);
-        applog(LOG_NOTICE, "totalTime: %d ms, totalScanWorkTime: %d ms, doneNoncetime: %d ms, chipScanTime %d ms, loadJobTime: %d ms, submitNonceTime: %d ms, readNonceTime: %d ms, statsTime: %d ms",
-            cgtimer_to_ms(&totalTime),
-            ob->totalScanWorkTime, 
-			ob->doneNonceTime,
-			ob->chipScanTime,
-            ob->loadJobTime, 
-            ob->obLoadJobTime, 
-            ob->submitNonceTime,
-            ob->readNonceTime,
-			ob->statsTime);
-		*/
-		for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
-			uint64_t goodNonces = ob->chipGoodNonces[chipNum];
-			uint64_t badNonces = ob->chipBadNonces[chipNum];
-			uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
-			int8_t bias = ob->control_loop_state.chipBiases[chipNum];
-			applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
-		}
+	uint64_t goodNonces = ob->control_loop_state.currentGoodNonces;
+	if (currentTime - lastStatus <= StatusOutputFrequency) {
+		return;
+	}
 
-        ob->control_loop_state.lastStatusOutput = currentTime;
-    }
+	// Display some string-wide stats.
+	applog(LOG_ERR, "");
+	applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
+		ob->staticBoardNumber,
+		ob->hotChipTemp,
+		ob->control_loop_state.currentStringVoltage,
+		ob->control_loop_state.currentTime - ob->control_loop_state.prevVoltageChangeTime,
+		totalTime,
+		computeHashRate(ob) / 1000000000,
+		ob->staticBoardModel.chipDifficulty * goodNonces / totalTime / 1000000000,
+		ob->control_loop_state.currentVoltageLevel);
+	applog(LOG_ERR, "");
+
+	// Display some individual chip stats.
+	for (int chipNum = 0; chipNum < ob->staticBoardModel.chipsPerBoard; chipNum++) {
+		uint64_t goodNonces = ob->chipGoodNonces[chipNum];
+		uint64_t badNonces = ob->chipBadNonces[chipNum];
+		uint8_t divider = ob->control_loop_state.chipDividers[chipNum];
+		int8_t bias = ob->control_loop_state.chipBiases[chipNum];
+		applog(LOG_ERR, "Chip %i: bias=%u.%i  good=%lld  bad=%lld", chipNum, divider, bias, goodNonces, badNonces);
+	}
+
+	ob->control_loop_state.lastStatusOutput = currentTime;
 }
 
 // handleOvertemps will clock down the string if the string is overheating.
-//
-// TODO: Add the deviation growth bits for unstable strings.
-static void handleOvertemps(ob_chain* ob, double targetTemp)
-{
-    time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevOvertempCheck;
-    double currentTemp = ob->control_loop_state.currentStringTemp;
-    if (timeElapsed > OvertempCheckFrequency) {
-        // Reduce the string bias if we are overtemp.
-        if (currentTemp > targetTemp + TempDeviationAcceptable) {
-            decreaseStringBias(ob);
-        }
-        // Rapidly reduce the string bias again if we are at an urgent
-        // temperature.
-        if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
-            decreaseStringBias(ob);
-            decreaseStringBias(ob);
-        }
-        ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
-    }
+static void handleOvertemps(ob_chain* ob, double targetTemp) {
+	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevOvertempCheck;
+	double currentTemp = ob->control_loop_state.currentStringTemp;
+	if (timeElapsed > OvertempCheckFrequency) {
+		// Reduce the string bias if we are overtemp.
+		if (currentTemp > targetTemp + TempDeviationAcceptable) {
+			decreaseStringBias(ob);
+		}
+		// Rapidly reduce the string bias again if we are at an urgent
+		// temperature.
+		if (currentTemp > targetTemp + TempDeviationAcceptable + TempDeviationUrgent) {
+			decreaseStringBias(ob);
+			decreaseStringBias(ob);
+		}
+		ob->control_loop_state.prevOvertempCheck = ob->control_loop_state.currentTime;
+	}
 }
 
 // handleUndertemps will clock up the string if the string is too cold.
-static void handleUndertemps(ob_chain* ob, double targetTemp)
-{
-    time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevUndertempCheck;
-    double currentTemp = ob->control_loop_state.currentStringTemp;
-    double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
-    if (timeElapsed > UndertempCheckFrequency) {
-        if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
-            increaseStringBias(ob);
-        }
-        ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
-        ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
-    }
+static void handleUndertemps(ob_chain* ob, double targetTemp) {
+	time_t timeElapsed = ob->control_loop_state.currentTime - ob->control_loop_state.prevUndertempCheck;
+	double currentTemp = ob->control_loop_state.currentStringTemp;
+	double prevTemp = ob->control_loop_state.prevUndertempStringTemp;
+	if (timeElapsed > UndertempCheckFrequency) {
+		if (currentTemp < targetTemp - TempDeviationAcceptable && currentTemp - prevTemp < TempRiseSpeedHot * UndertempCheckFrequency) {
+			increaseStringBias(ob);
+		}
+		ob->control_loop_state.prevUndertempCheck = ob->control_loop_state.currentTime;
+		ob->control_loop_state.prevUndertempStringTemp = ob->control_loop_state.currentStringTemp;
+	}
 }
 
 // handleFanChange will adjust the fans based on the current temperatures of all
@@ -909,17 +883,16 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
 // hashrate.
-static void control_loop(ob_chain* ob)
-{
-    // Get a static view of the current state of the hashing board.
-    updateControlState(ob);
-    displayControlState(ob);
+static void control_loop(ob_chain* ob) {
+	// Get a static view of the current state of the hashing board.
+	updateControlState(ob);
+	displayControlState(ob);
 
-    // Determine the target temperature for the temperature chip.
-    double hottestDelta = getHottestDelta(ob);
-	double targetTemp = HotChipTargetTemp - ChipTempVariance - hottestDelta;
-    handleOvertemps(ob, targetTemp);
-    handleUndertemps(ob, targetTemp);
+	// Determine the target temperature for the temperature chip.
+	double hottestDelta = getHottestDelta(ob);
+	double targetTemp = ob->staticBoardModel.hotChipTargetTemp - ob->staticBoardModel.chipTempVariance - hottestDelta;
+	handleOvertemps(ob, targetTemp);
+	handleUndertemps(ob, targetTemp);
 	handleFanChange(ob);
 
 	// Perform any adjustments to the voltage and bias that may be required.
@@ -1090,7 +1063,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr)
 						// NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
 						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
 					}
-                }
+				}
 			}
 
 		cgtimer_time(&loadStart);
