@@ -49,7 +49,11 @@ struct AuthMW {
         if (diff <= 0) {
           // Found it - just return success since the client already has a sessionId cookie
           ctx.isAuthenticated = true;
-          // TODO: Bump up sessionExpirationTime every time the session is used
+          // Bump up sessionExpirationTime every time the session is used
+          struct tm expTime = makeExpirationTime(SESSION_DURATION_SECS);
+          sessionInfo.sessionExpirationTime = mktime(&expTime);
+          activeSessions[sessionId] = sessionInfo;
+          CROW_LOG_DEBUG << "Bumping session expiration time";
           return;
         }
 
