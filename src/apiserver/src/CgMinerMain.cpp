@@ -150,7 +150,7 @@ private:
         CgMiner::Response resp{CGMINER_ERROR, "Invalid JSON received", ""};
         return resp;
 
-      } catch (const std::exception &exc) {
+      } catch (const std::exception& exc) {
         // Parsing exception means we still need to read more data
         CROW_LOG_DEBUG << "Waiting for more JSON data...";
         numReadAttempts++;
@@ -177,9 +177,14 @@ private:
 };
 
 void *runCgMiner(void *) {
-  CROW_LOG_DEBUG << "runCgMiner()";
-  CgMinerClient client("127.0.0.1", "4028");
-  client.start();
-
+  while (true) {
+    try {
+      CROW_LOG_DEBUG << "runCgMiner()";
+      CgMinerClient client("127.0.0.1", "4028");
+      client.start();
+    } catch(const std::exception& exc) {
+      CROW_LOG_ERROR << "CgMinerMain EXCEPTION: " << exc.what();
+    }
+  }
   return NULL;
 }
