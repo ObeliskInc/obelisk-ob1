@@ -237,6 +237,7 @@ string runCmd(string cmd) {
     output.append(lineBuffer);
   }
 
+  fclose(fp);
   return output;
 }
 

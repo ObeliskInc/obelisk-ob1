@@ -902,8 +902,6 @@ void resetAllUserConfig() {
 
     // Reset login to admin/admin
     resetApiLogin();
-
-    cgsleep_ms(100);
 }
 
 void doReboot() {
