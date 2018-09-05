@@ -22,6 +22,8 @@ using namespace crow;
 // This is the queue we use to send cgminer requests
 extern SafeQueue<CgMiner::Request> gRequestQueue;
 
+string gModel = "";
+
 void sendError(string error, int code, crow::response &resp) {
   json::wvalue jsonErr = json::load("{}");
   jsonErr["error"] = error;
@@ -530,9 +532,8 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
-    // TODO: Add fan speeds back in when they are implemented
-    // systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
-    // systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+    systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
+    systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
 
     jsonResp["systemInfo"] = to_rvalue(systemArr);
     string str = json::dump(jsonResp);
@@ -833,4 +834,36 @@ void handleAction(string &path, const crow::request &req, crow::response &resp) 
 
   auto handler = it->second;
   handler(path, args, req, resp);
+}
+
+void sendInfoResp(crow::response &resp) {
+    string macAddress = getMACAddr(INTF_NAME);
+    string ipAddress = getIpV4(INTF_NAME);
+
+    json::wvalue respJson = json::load("{}");
+    respJson["macAddress"] = macAddress;
+    respJson["ipAddress"] = ipAddress;
+    respJson["model"] = gModel.length() == 0 ? "Obelisk" : gModel;
+    respJson["vendor"] = "Obelisk";
+
+    sendJson(json::dump(respJson), resp);
+}
+
+void handleInfo(const crow::request &req, crow::response &resp) {
+  CROW_LOG_DEBUG << "INFO";
+
+  // Fetch the model only if we didn't already fetch it before
+  if (gModel.length() == 0) {
+    sendCgMinerCmd("version", "", [&](CgMiner::Response cgMinerResp) {
+      if (!cgMinerResp.error) {
+        json::rvalue cgMinerJson = json::load(cgMinerResp.json);
+        json::rvalue container = cgMinerJson["VERSION"];
+        gModel = container[0]["Model"].s();
+      }
+
+      sendInfoResp(resp);
+    });
+  } else {
+      sendInfoResp(resp);
+  }
 }

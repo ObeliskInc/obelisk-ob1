@@ -5,6 +5,4 @@
 
 ApiError ob1InitializeFanCtrl();
 
-ApiError ob1SetFanSpeeds(uint8_t percent);
-
-uint32_t ob1GetFanRPM(uint8_t fanNum);
+uint32_t getFanRPM(uint8_t fanNum);

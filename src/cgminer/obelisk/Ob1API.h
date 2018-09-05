@@ -1,5 +1,6 @@
 // Obelisk ASIC API
 #include "Ob1Defines.h"
+#include "Ob1FanCtrl.h"
 
 //==================================================================================================
 // Chip-level API
@@ -114,6 +115,8 @@ uint8_t ob1GetNumEnginesPerChip();
 
 HashboardModel ob1GetHashboardModel();
 
+const char* ob1GetModelName();
+
 // Return the number of fans in the units
 uint8_t ob1GetNumFans();
 
@@ -121,7 +124,7 @@ uint8_t ob1GetNumFans();
 uint32_t ob1GetFanRPM(uint8_t fanNum);
 
 // The percent can be 10-100
-ApiError ob1SetFanSpeed(uint8_t fanNum, uint8_t percent);
+ApiError ob1SetFanSpeeds(uint8_t percent);
 
 //==================================================================================================
 // Diagnostics API

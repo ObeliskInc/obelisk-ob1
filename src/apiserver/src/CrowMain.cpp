@@ -49,7 +49,11 @@ struct AuthMW {
         if (diff <= 0) {
           // Found it - just return success since the client already has a sessionId cookie
           ctx.isAuthenticated = true;
-          // TODO: Bump up sessionExpirationTime every time the session is used
+          // Bump up sessionExpirationTime every time the session is used
+          struct tm expTime = makeExpirationTime(SESSION_DURATION_SECS);
+          sessionInfo.sessionExpirationTime = mktime(&expTime);
+          activeSessions[sessionId] = sessionInfo;
+          CROW_LOG_DEBUG << "Bumping session expiration time";
           return;
         }
 
@@ -168,17 +172,8 @@ void runCrow(int port) {
   // NOTE: This is a non-authenticated endpoint, so only info that should be known
   //       publicly should be added here.
   CROW_ROUTE(app, "/api/info").methods("GET"_method)([&](const request &req, crow::response &resp) {
-    string macAddress = getMACAddr(INTF_NAME);
-    string ipAddress = getIpV4(INTF_NAME);
-
-    json::wvalue respJson = json::load("{}");
-    respJson["macAddress"] = macAddress;
-    respJson["ipAddress"] = ipAddress;
-    // TODO: Make the model dynamic and correct
-    respJson["model"] = "SC1/DCR1";
-    respJson["vendor"] = "Obelisk";
-
-    sendJson(json::dump(respJson), resp);
+    CROW_LOG_DEBUG << "/api/info";
+    handleInfo(req, resp);
   });
 
   CROW_ROUTE(app, "/api/<path>")

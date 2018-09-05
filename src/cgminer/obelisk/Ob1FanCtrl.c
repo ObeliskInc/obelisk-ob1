@@ -385,7 +385,7 @@ uint32_t ob1ReadFanRPM(uint8_t fanNum) {
   return rpm;
 }
 
-uint32_t getFanRPM(uint8_t fanNum) {
+uint32_t ob1GetFanRPM(uint8_t fanNum) {
     LOCK(&fanLock);
     uint32_t rpm = fanRPM[fanNum];
     UNLOCK(&fanLock);
@@ -397,7 +397,6 @@ void setFanRPM(uint8_t fanNum, uint32_t rpm) {
     fanRPM[fanNum] = rpm;
     UNLOCK(&fanLock);
 }
-
 
 void checkForButtonPresses() {
     static bool wasButtonPressed = false;
@@ -414,8 +413,10 @@ void checkForButtonPresses() {
         // User pressed the button and then released it - run appropriate action based on how long they held it down
         if (buttonPressedTicks >= 95) {  // Tell user 10 seconds - people count fast
             resetAllUserConfig();
+            cgsleep_ms(1000);
             doReboot();
-        } else if (buttonPressedTicks >= 9) {
+        } else {
+            // Just a quick press-release will send the mDNS packet
             sendMDNSResponse();
         }
         buttonPressedTicks = 0;
@@ -435,7 +436,7 @@ static void* obFanAndButtonThread(void* arg)
         // Call this every tick
         checkForButtonPresses();
 
-        // Read fan RPMs
+        // Read fan RPMs into our cache
         if (fanCheckTicks == 5) {
             for (int i=0; i<NUM_FANS; i++) {
                 uint32_t rpm = ob1ReadFanRPM(i);

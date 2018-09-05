@@ -655,15 +655,14 @@ static void updateControlState(ob_chain* ob) {
 	// TODO: Update some API level stuffs. This may not be the best place for
 	// these.
 	//
-	// Update the min/max/curr temps for reporting via the API
-	update_temp(&ob->board_temp, hbStatus.boardTemp);
-	update_temp(&ob->chip_temp, hbStatus.chipTemp);
-	update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
-	// TODO: Implement these fields for realz: TEMP HACK
-	ob->fan_speed[0] = 2400;
-	ob->fan_speed[1] = 2500;
-	ob->num_chips = 15;
-	ob->num_cores = 15 * 64;
+    // Update the min/max/curr temps for reporting via the API
+    update_temp(&ob->board_temp, hbStatus.boardTemp);
+    update_temp(&ob->chip_temp, hbStatus.chipTemp);
+    update_temp(&ob->psu_temp, hbStatus.powerSupplyTemp);
+    ob->fan_speed[0] = (int32_t)ob1GetFanRPM(0);
+    ob->fan_speed[1] = (int32_t)ob1GetFanRPM(1);
+    ob->num_chips = ob->staticBoardModel.chipsPerBoard;
+    ob->num_cores = ob->staticBoardModel.chipsPerBoard * ob->staticBoardModel.enginesPerChip;
 
 	// Update the current hotChipTemp for this board, under lock.
 	double hottestDelta = getHottestDelta(ob);

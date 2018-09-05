@@ -2,7 +2,7 @@ IMAGEROOT = controlCardImage/board/microchip/sama5d2_som/rootfs-overlay
 
 all: common cgminer-dcr create-image-dcr cgminer-sia create-image-sia
 
-common: initial-build build-patches sd-utils control-utils apiserver webclient
+common: initial-build build-patches sd-utils control-utils apiserver ee2mac webclient
 dcr: common cgminer-dcr create-image-dcr
 sia: common cgminer-sia create-image-sia
 
@@ -10,6 +10,7 @@ full: clean dependencies configs all
 
 clean: 
 	@rm -rf $(IMAGEROOT)/usr/sbin/apiserver
+	@rm -rf $(IMAGEROOT)/usr/sbin/ee2mac
 	@rm -rf $(IMAGEROOT)/usr/sbin/cgminer
 	@rm -rf $(IMAGEROOT)/usr/sbin/gpio_init
 	@rm -rf $(IMAGEROOT)/usr/sbin/led_alternate
@@ -32,6 +33,8 @@ clean:
 	@rm -rf src/apiserver/src/util/s*.o
 	@rm -rf src/apiserver/src/handlers/*.o
 	@rm -rf src/apiserver/.depend
+	@rm -rf src/ee2mac/*.o
+	@rm -rf src/ee2mac/bin
 	@rm -rf src/cgminer/cgminer
 	@rm -rf src/cgminer/confdefs.h
 	@rm -rf src/cgminer/config.log
@@ -172,6 +175,12 @@ apiserver:
 	cd src/apiserver && make OBELISK_OB1_DIR=$(shell pwd)
 	cp src/apiserver/bin/apiserver $(IMAGEROOT)/usr/sbin/
 
+ee2mac:
+	# Create ee2mac
+	mkdir -p src/ee2mac/bin
+	cd src/ee2mac && make OBELISK_OB1_DIR=$(shell pwd)
+	cp src/ee2mac/bin/ee2mac $(IMAGEROOT)/usr/sbin/
+
 webclient:
 	# Create the webclient
 	rm -rf src/webclient/build
@@ -261,4 +270,4 @@ control-utils:
 	mkdir -p src/controlCardUtils/obj
 	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
 
-.PHONY: all full clean dependencies configs initial-build build-patches sd-utils control-utils apiserver webclient cgminer create-image control-menu sd-menu control-utils
+.PHONY: all full clean dependencies configs initial-build build-patches sd-utils control-utils apiserver ee2mac webclient cgminer create-image control-menu sd-menu control-utils
