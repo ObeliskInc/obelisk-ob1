@@ -237,7 +237,7 @@ string runCmd(string cmd) {
     output.append(lineBuffer);
   }
 
-  fclose(fp);
+  pclose(fp);
   return output;
 }
 
@@ -310,13 +310,13 @@ inline uint64_t asNanos(struct timespec *ts) {
 
 // Returns free memory as an integer number of kilobytes
 int getFreeMemory() {
-  string output = runCmd("free -m | awk '/^Mem/ {print $4}'");
+  string output = runCmd("free -m | awk '/^Mem/ {print $4}' | tr -d '\\n'");
   return stoi(output);
 }
 
 // Returns free memory as an integer number of kilobytes
 int getTotalMemory() {
-  string output = runCmd("free -m | awk '/^Mem/ {print $2}'");
+  string output = runCmd("free -m | awk '/^Mem/ {print $2}' | tr -d '\\n'");
   return stoi(output);
 }
 

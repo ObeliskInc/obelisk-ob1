@@ -269,11 +269,5 @@ void runCrow(int port) {
         }
       });
 
-  while (true) {
-    try {
-    app.port(port).multithreaded().run();
-    } catch(const std::exception& exc) {
-      CROW_LOG_ERROR << "CrowMain EXCEPTION: " << exc.what();
-    }
-  }
+  app.port(port).multithreaded().run();
 }
