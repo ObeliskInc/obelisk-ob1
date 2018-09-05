@@ -5,7 +5,7 @@ CXXFLAGS := -std=c++14 -Wno-psabi -s -Os
 LDLIBS := -lcrypt -lpthread -lboost_system
 
 # srcfiles := $(shell find src -name "*.cpp")
-srcfiles := src/main.cpp src/CgMinerMain.cpp src/CrowMain.cpp src/utils/CgMinerUtils.cpp src/utils/utils.cpp src/utils/base64.cpp src/handlers/Handlers.cpp src/Crow.h
+srcfiles := src/main.cpp src/CgMinerMain.cpp src/CrowMain.cpp src/utils/CgMinerUtils.cpp src/utils/utils.cpp src/utils/base64.cpp src/handlers/Handlers.cpp
 objects  := $(patsubst %.cpp, %.o, $(srcfiles))
 
 all: $(appname)
