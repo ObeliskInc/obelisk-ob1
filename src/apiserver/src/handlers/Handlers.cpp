@@ -532,9 +532,8 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
-    // TODO: Add fan speeds back in when they are implemented
-    // systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
-    // systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+    systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
+    systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
 
     jsonResp["systemInfo"] = to_rvalue(systemArr);
     string str = json::dump(jsonResp);
