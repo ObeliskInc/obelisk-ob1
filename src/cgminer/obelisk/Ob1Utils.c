@@ -863,7 +863,8 @@ void resetNetworking() {
                     "auto lo\n"
                     "auto eth0\n"
                     "iface lo inet loopback\n"
-                    "iface eth0 inet dhcp\n";
+                    "iface eth0 inet dhcp\n"
+                    "    hostname Obelisk";
 
     snprintf(cmdBuf, CMD_BUF_LEN, "echo $'%s' > /root/config/interfaces", netConf);
     runCmd(cmdBuf, NULL, 0);
