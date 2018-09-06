@@ -22,7 +22,7 @@ import Content from 'components/Content'
 import Stat from 'components/Stat'
 import { fetchDashboardStatus } from 'modules/Main/actions'
 import { getDashboardStatus } from 'modules/Main/selectors'
-import { DashboardStatus, HashboardStatus, PoolStatus, StatsEntry } from 'modules/Main/types'
+import { DashboardStatus, HashboardStatus, PoolStatus, StatsEntry, HashrateEntry } from 'modules/Main/types'
 import { formatTime } from 'utils'
 
 interface ConnectProps {
@@ -188,27 +188,32 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         )
       })
 
-    // Add lines based on how many board entries are in the data in the first entry
-    const firstEntry = _.get(dashboardStatus.hashrateData, 0, {})
-    let keys = _.keys(firstEntry)
-    console.log('keys before remove =' + keys)
-    keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'total')
-    console.log('keys after remove  =' + keys)
-    const areas = _.map(keys, (key: string, index: number) => (
-      <Area
-        type="monotone"
-        dataKey={key}
-        stroke="#FF0000"
-        fill={chartColors[index]}
-        stackId="1"
-        key={index}
-      />
-    ))
+    // Add lines based on how many board entries are in the data
+    // Filter entries with no board data, because sometimes cgminer is not ready when apiserver polls (e.g., when a pool is down).
+    let areas = undefined
+    const hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry.board0 !== undefined)
+    if (hashrateEntries.length > 0) {
+      const firstEntry = hashrateEntries[0]
+      let keys = _.keys(firstEntry)
+      console.log('keys before remove =' + keys)
+      keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'total')
+      console.log('keys after remove  =' + keys)
+      areas = _.map(keys, (key: string, index: number) => (
+        <Area
+          type="monotone"
+          dataKey={key}
+          stroke="#FF0000"
+          fill={chartColors[index]}
+          stackId="1"
+          key={index}
+        />
+      ))
+    }
 
     const renderPools =
       dashboardStatus.poolStatus.length > 0 &&
       dashboardStatus.poolStatus.map((_, i) => (
-        <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
+        <Table definition={true} striped={true} unstackable={true} className={classNames.table} key={i}>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell width={4} />
@@ -225,7 +230,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         <Header as="h2">Hashrate</Header>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart
-            data={dashboardStatus.hashrateData}
+            data={hashrateEntries}
             margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
           >
             <Line type="monotone" dataKey="total" stroke="#FF0000" />
