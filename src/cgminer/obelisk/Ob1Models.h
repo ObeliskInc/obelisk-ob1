@@ -23,6 +23,8 @@ typedef struct hashBoardModel {
 	uint64_t boardHotTemp;
 	uint64_t boardIdealTemp;
 	uint64_t boardCoolTemp;
+	uint64_t chipTempVariance;
+	uint64_t hotChipTargetTemp;
 
 	// Suggested parameters to use when operating the chips.
 	uint64_t chipSpeed; // A chip running below this speed indicates a problem.
@@ -56,9 +58,11 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.extranonce2Offset = 0,  // Not used
 	.extranonce2OffsetInTail = 0, // no tail
 
-	.boardHotTemp   = 99,
-	.boardIdealTemp = 95,
-	.boardCoolTemp  = 90,
+	.boardHotTemp      = 99,
+	.boardIdealTemp    = 95,
+	.boardCoolTemp     = 90,
+	.chipTempVariance  = 5,
+	.hotChipTargetTemp = 105,
 
 	.chipSpeed               = 100000000ULL, // 100 MHz
 	.defaultMaxBiasLevel     = 22,           // Corresponds to a /2.-4
@@ -83,12 +87,14 @@ const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.extranonce2Offset = 148,
 	.extranonce2OffsetInTail = 20,
 
-	.boardHotTemp   = 99,
-	.boardIdealTemp = 95,
-	.boardCoolTemp  = 90,
+	.boardHotTemp      = 99,
+	.boardIdealTemp    = 95,
+	.boardCoolTemp     = 90,
+	.chipTempVariance  = 5,
+	.hotChipTargetTemp = 105,
 
-	.chipSpeed               = 2000000ULL, // 2 MHz - this will be increased as we optimize the SPI
-	.defaultMaxBiasLevel     = 22,         // Corresponds to a /2.-4
+	.chipSpeed               = 100000000ULL, // 100 MHz
+	.defaultMaxBiasLevel     = 22,           // Corresponds to a /2.-4
 	.defaultStringIncrements = 16,
 	.nonceRange              = 4294967296ULL // 2^32
 };
