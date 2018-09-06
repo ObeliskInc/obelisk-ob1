@@ -22,7 +22,7 @@ import Content from 'components/Content'
 import Stat from 'components/Stat'
 import { fetchDashboardStatus } from 'modules/Main/actions'
 import { getDashboardStatus } from 'modules/Main/selectors'
-import { DashboardStatus, HashrateEntry, HashboardStatus, PoolStatus, StatsEntry } from 'modules/Main/types'
+import { DashboardStatus, HashboardStatus, HashrateEntry, PoolStatus, StatsEntry } from 'modules/Main/types'
 import { formatTime } from 'utils'
 
 interface ConnectProps {
