@@ -39,30 +39,36 @@ public:
       CgMiner::Request req = gRequestQueue.dequeue();
       CgMiner::Response lastResp(0, "", "");
 
-      for (auto cmd : req.commands) {
-        // CROW_LOG_DEBUG << "Connecting for cgminer command: " << cmd.first << ", " << cmd.second;
-        if (!resolveAndConnect()) {
-          CgMiner::Response resp = {CGMINER_ERROR, "Unable to connect to obelisk-miner", ""};
-          req.callback(resp);
-          goto wait;
+      try {
+        for (auto cmd : req.commands) {
+          // CROW_LOG_DEBUG << "Connecting for cgminer command: " << cmd.first << ", " << cmd.second;
+          if (!resolveAndConnect()) {
+            CgMiner::Response resp = {CGMINER_ERROR, "Unable to connect to obelisk-miner", ""};
+            req.callback(resp);
+            goto wait;
+          }
+
+          // CROW_LOG_DEBUG << "Calling sendCommand(" << cmd.first << ", " << cmd.second << ")";
+          CgMiner::Response resp = sendCommand(cmd.first, cmd.second);
+          lastResp = resp;
+          // CROW_LOG_DEBUG << "Send/receive complete";
+          // CROW_LOG_DEBUG << "Data = " << resp.json;
+          // int i = 0;
+          // while (i < resp.json.length()) {
+          //   CROW_LOG_DEBUG << resp.json.substr(i, 80);
+          //   i += 80;
+          // }
         }
 
-        // CROW_LOG_DEBUG << "Calling sendCommand(" << cmd.first << ", " << cmd.second << ")";
-        CgMiner::Response resp = sendCommand(cmd.first, cmd.second);
-        lastResp = resp;
-        // CROW_LOG_DEBUG << "Send/receive complete";
-        // CROW_LOG_DEBUG << "Data = " << resp.json;
-        // int i = 0;
-        // while (i < resp.json.length()) {
-        //   CROW_LOG_DEBUG << resp.json.substr(i, 80);
-        //   i += 80;
-        // }
+        // Call the callback with the last response now that all commands are done
+        // TODO: Could instead return an array of responses if we need access to the individual
+        // resps.
+        req.callback(lastResp);
+      } catch (std::exception* exc) {
+        // The callback probably generated an exception, so let's try again with an error
+        CgMiner::Response resp = {CGMINER_ERROR, "Internal processing error", ""};
+        req.callback(resp);
       }
-
-      // Call the callback with the last response now that all commands are done
-      // TODO: Could instead return an array of responses if we need access to the individual
-      // resps.
-      req.callback(lastResp);
     }
   }
 
@@ -150,7 +156,7 @@ private:
         CgMiner::Response resp{CGMINER_ERROR, "Invalid JSON received", ""};
         return resp;
 
-      } catch (const std::exception &exc) {
+      } catch (const std::exception& exc) {
         // Parsing exception means we still need to read more data
         CROW_LOG_DEBUG << "Waiting for more JSON data...";
         numReadAttempts++;
@@ -177,9 +183,14 @@ private:
 };
 
 void *runCgMiner(void *) {
-  CROW_LOG_DEBUG << "runCgMiner()";
-  CgMinerClient client("127.0.0.1", "4028");
-  client.start();
-
+  while (true) {
+    try {
+      CROW_LOG_DEBUG << "runCgMiner()";
+      CgMinerClient client("127.0.0.1", "4028");
+      client.start();
+    } catch(const std::exception& exc) {
+      CROW_LOG_ERROR << "CgMinerMain EXCEPTION: " << exc.what();
+    }
+  }
   return NULL;
 }

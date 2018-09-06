@@ -145,6 +145,7 @@ void pollForHashrate() {
       }
 
     } catch (...) {
+      // Unable to poll this time - just try again later
     }
     isPollInProgress = false;
   });
@@ -185,24 +186,6 @@ void getInventorySystem(string path, query_string &urlParams, const crow::reques
   jsonResp["osVersion"] = osVersion;
   sendJson(json::dump(jsonResp), resp);
 }
-
-/*
-TODO: Define a standard handler or a handler wrapper to handle error case
-[&](CgMiner::Response cgMinerResp) {
-                                // For now, this just returns the exact JSON response from cgminer
-                                // TODO: Expand code to convert to a cleaner format.
-                                if (!cgMinerResp.isValid) {
-                                  sendError("Internal server error", HttpStatus_InternalServerError,
-                                            resp);
-                                }
-
-                                CROW_LOG_DEBUG << cgMinerResp.json;
-
-                                // Otherwise, just forward the JSON on to the client for now
-                                // TODO: Should have a way to just return OK/error
-                                sendJson(cgMinerResp.json, resp);
-                              }
-                              */
 
 void getInventoryAsicCount(string path, query_string &urlParams, const crow::request &req,
                            crow::response &resp) {
