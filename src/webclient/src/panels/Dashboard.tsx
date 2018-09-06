@@ -22,7 +22,7 @@ import Content from 'components/Content'
 import Stat from 'components/Stat'
 import { fetchDashboardStatus } from 'modules/Main/actions'
 import { getDashboardStatus } from 'modules/Main/selectors'
-import { DashboardStatus, HashboardStatus, PoolStatus, StatsEntry, HashrateEntry } from 'modules/Main/types'
+import { DashboardStatus, HashrateEntry, HashboardStatus, PoolStatus, StatsEntry } from 'modules/Main/types'
 import { formatTime } from 'utils'
 
 interface ConnectProps {
@@ -195,9 +195,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     if (hashrateEntries.length > 0) {
       const firstEntry = hashrateEntries[0]
       let keys = _.keys(firstEntry)
-      console.log('keys before remove =' + keys)
       keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'total')
-      console.log('keys after remove  =' + keys)
       areas = _.map(keys, (key: string, index: number) => (
         <Area
           type="monotone"
