@@ -237,7 +237,7 @@ string runCmd(string cmd) {
     output.append(lineBuffer);
   }
 
-  fclose(fp);
+  pclose(fp);
   return output;
 }
 
@@ -310,13 +310,13 @@ inline uint64_t asNanos(struct timespec *ts) {
 
 // Returns free memory as an integer number of kilobytes
 int getFreeMemory() {
-  string output = runCmd("free -m | awk '/^Mem/ {print $4}'");
+  string output = runCmd("free -m | awk '/^Mem/ {print $4}' | tr -d '\\n'");
   return stoi(output);
 }
 
 // Returns free memory as an integer number of kilobytes
 int getTotalMemory() {
-  string output = runCmd("free -m | awk '/^Mem/ {print $2}'");
+  string output = runCmd("free -m | awk '/^Mem/ {print $2}' | tr -d '\\n'");
   return stoi(output);
 }
 
@@ -424,9 +424,15 @@ bool setNetworkInfo(string intfName, string hostname, string ipAddress, string s
       config << "iface " << intfName << " inet dhcp\\n";
     } else {
       config << "iface " << intfName << " inet static\\n"
-             << "    address " << ipAddress << "\\n    netmask " << subnetMask << "\\n    gateway "
-             << defaultGateway << "\\n";
+             << "    address " << ipAddress << "\\n"
+             << "    netmask " << subnetMask << "\\n"
+             << "    gateway " << defaultGateway << "\\n";
     }
+
+    // Append the hostname here in addition to setting it below, because this is where DNS looks
+    // for it.  Putting hostname here allows nmap, nslookup, etc. to see the hostname, since they
+    // use DNS lookup to get the name.
+    config << "    hostname " << hostname << "\\n";
 
     ostringstream cmd;
     cmd << "printf \"" << config.str() << "\" > /root/config/interfaces" << endl;

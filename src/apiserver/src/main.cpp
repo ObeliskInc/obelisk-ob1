@@ -32,7 +32,19 @@ int main(int argc, char *argv[]) {
   // Force password set (after deleting auth.json)
   // changePassword("admin", "", "admin", AUTH_FILE, true);
 
-  runCrow(8080);
-
+  bool isRunning = true;
+  while (isRunning) {
+    try {
+      runCrow(8080);
+      isRunning = false;
+    } catch(const std::exception& exc) {
+      CROW_LOG_ERROR << "CrowMain EXCEPTION: " << exc.what();
+      // Catching and continuing here causes Crow to misbehave for some reason, even though
+      // we create a new app instance, so we just exit -- no exception has happened from
+      // runCrow() though, except ones initiated on purpose for testing.
+      return -1;
+    }
+  }
+ 
   return 0;
 }
