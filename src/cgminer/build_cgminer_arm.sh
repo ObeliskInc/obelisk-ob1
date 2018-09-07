@@ -17,5 +17,6 @@ export CPP=$TOOLCHAIN_PATH/bin/$TOOL_PREFIX-cpp
 export GCC=$TOOLCHAIN_PATH/bin/$TOOL_PREFIX-gcc
 export CXX=$TOOLCHAIN_PATH/bin/$TOOL_PREFIX-g++
 export RANLIB=$TOOLCHAIN_PATH/bin/$TOOL_PREFIX-ranlib
+export CFLAGS="-s -Os"
 
 ./configure --enable-obelisk --host=arm --disable-libcurl
