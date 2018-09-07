@@ -1939,7 +1939,7 @@ static void apiversion(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 
 	root = api_add_string(root, "CGMiner", VERSION, false);
 	root = api_add_const(root, "API", APIVERSION, false);
-	root = api_add_string(root, "Model", ob1GetModelName(), false);
+	root = api_add_string(root, "Model", (char*)ob1GetModelName(), false);
 
 	root = print_data(io_data, root, isjson, false);
 	if (isjson && io_open)

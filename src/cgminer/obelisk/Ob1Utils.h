@@ -59,6 +59,7 @@ typedef struct ControlLoopState {
 	double currentStringVoltage;
 	uint8_t currentVoltageLevel;
 	time_t initTime;
+	time_t lastHashrateCheckTime;
 	time_t lastFanAdjustment;
 	time_t lastStatusOutput;
 	uint64_t stringTimeouts;

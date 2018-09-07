@@ -1,5 +1,6 @@
 // Obelisk Ob1 API for SC1 and DCR1
 #include "Ob1Utils.h"
+#include "Ob1API.h"
 #include "CSS_SC1_hal.h"
 #include "CSS_DCR1_hal.h"
 #include "err_codes.h"
