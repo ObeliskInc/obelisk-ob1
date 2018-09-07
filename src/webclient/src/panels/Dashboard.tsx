@@ -245,14 +245,11 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             <YAxis tick={{ fill: 'white', stroke: 'white' }} />
             <Tooltip
               isAnimationActive={false}
-              wrapperStyle={{ background: '#202020' }}
+              wrapperStyle={{ background: '#202020', fontSize: 18, fontFamily: 'Karbon Regular' }}
               labelFormatter={formatTime}
             />
           </ComposedChart>
         </ResponsiveContainer>
-
-        <Header as="h2">Pool Info</Header>
-        {renderPools}
 
         <Header as="h2">Hashboard Info</Header>
         <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
@@ -269,6 +266,9 @@ class Dashboard extends React.PureComponent<CombinedProps> {
         <Table definition={true} striped={true} unstackable={true} className={classNames.table}>
           <Table.Body>{systemStats}</Table.Body>
         </Table>
+
+        <Header as="h2">Pool Info</Header>
+        {renderPools}
       </Content>
     )
   }
