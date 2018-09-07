@@ -775,7 +775,7 @@ static void handleFanChange(ob_chain* ob) {
 
 	// Check that enough time has elapsed since the last fan speed adjustment,
 	// only happens once every 20 seconds.
-	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastFanAdjustment < 20) {
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastFanAdjustmentTime < 20) {
 		return;
 	}
 
@@ -804,12 +804,11 @@ static void handleFanChange(ob_chain* ob) {
 		ob1SetFanSpeeds(ob->fanSpeed);
 	}
 	if ((allBelowIdeal || anyCool) && ob->fanSpeed >= (minSpeed + increment)) {
-		// Perform subtraction, division, and then multiplication to ensure that
-		// the final number ends up on an increment that is supported by the
-		// architecture.
-		ob->fanSpeed = ((ob->fanSpeed - increment) / increment) * increment;
+		ob->fanSpeed -= increment;
 		ob1SetFanSpeeds(ob->fanSpeed);
 	}
+
+	ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
 }
 
 // handleOvertimeExit will exit if cgminer has been running for too long. The
