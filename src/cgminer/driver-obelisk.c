@@ -144,7 +144,7 @@ static void* ob_gen_work_thread(void* arg)
 
 // siaValidNonce returns '0' if the nonce is not valid under either the pool
 // difficulty nor the chip difficulty, '1' if the nonce is not valid under the
-// pool difficulty but is valid under the chip difficutly, and '2' if the nonce
+// pool difficulty but is valid under the chip difficulty, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
 int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
 	// Create the header with the nonce set up correctly.
@@ -456,6 +456,7 @@ static void obelisk_detect(bool hotplug)
 
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.hasReset = false;
@@ -604,7 +605,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 // targetTemp returns the target temperature for the chip we want.
 static double getHottestDelta(ob_chain* ob) {
 	// To get the hottest delta, iterate through the 14 chips that don't have a
-	// temperature senosr, use the thermal model plus their bias difference to
+	// temperature sensor, use the thermal model plus their bias difference to
 	// determine the delta between that chip and the measured chip.
 	//
 	// Chip 0 has the temp sensor, so we skip chip 0.
@@ -811,13 +812,18 @@ static void handleFanChange(ob_chain* ob) {
 	ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
 }
 
-// handleOvertimeExit will exit if cgminer has been running for too long. The
-// watchdog should revive cgminer. If cgminer runs for a long time, for whatever
-// reason the hashrate just falls off of a cliff. So we restart cgminer after 30
-// minutes.
-static void handleOvertimeExit(ob_chain* ob) {
-	if (ob->control_loop_state.currentTime - ob->control_loop_state.initTime > 1800) {
-		exit(0);
+// handleLowHashrateExit will exit if the hashrate of a board drops below 150GH/s.
+// We do this, because sometimes the hashrate drops for an unknown reason (perhaps we have lost
+// some chips). This check is done every 30 minutes. The watchdog should revive cgminer.
+static void handleLowHashrateExit(ob_chain* ob) {
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {
+		// If after at least 30 minutes, any board has fallen below the hashrate limit, then exit
+		if (computeHashRate(ob) < 150LL) {
+			exit(0);
+		}
+
+		// Reset the time so we check again in another 30 minutes
+		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
 	}
 }
 
@@ -843,7 +849,7 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	}
 
 	// If we haven't found enough nonces and also not too much time has passed,
-	// no changges are made to voltage or bias.
+	// no changes are made to voltage or bias.
 	if (timeElapsed < requiredTime) {
 		return;
 	}
@@ -866,12 +872,12 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	commitBoardBias(ob);
 
 	// Set the curChild voltage and bias levels to equal what they've been
-	// changed to by any no-ops that occured after the voltage was updated.
+	// changed to by any no-ops that occurred after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 	ob->control_loop_state.hasReset = false;
 
-	// cgminer will exit if it has been running for too long.
-	handleOvertimeExit(ob);
+	// Exit if hashrate drops too low, as this usually means we have lost several chips.
+	handleLowHashrateExit(ob);
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
