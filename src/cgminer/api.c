@@ -2214,7 +2214,6 @@ static void pgastatus(struct io_data *io_data, int pga, bool isjson, bool precom
 
 static void devstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "devstatus=======================");
 	bool io_open = false;
 	int devcount = 0;
 	int numasc = 0;
@@ -2266,7 +2265,6 @@ static void devstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __ma
 
 static void dashboard_devstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "dashboard_devstatus=======================");
 	bool io_open = false;
 	int devcount = 0;
 	int numasc = 0;
@@ -2576,8 +2574,6 @@ static void pgaidentify(struct io_data *io_data, __maybe_unused SOCKETTYPE c, ch
 
 static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "poolstatus=======================");
-
 	struct api_data *root = NULL;
 	bool io_open = false;
 	char *status, *lp;
@@ -2684,8 +2680,6 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 // Simplified pool status for the Obelisk dashboard
 static void dashboard_poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "dashboard_poolstatus=======================");
-
 	struct api_data *root = NULL;
 	bool io_open = false;
 	char *status, *lp;
@@ -3590,7 +3584,6 @@ static int driverstats(struct io_data *io_data, int i, char *id, struct cgminer_
 
 static void minerstats(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "minerstats=======================");
 	struct cgpu_info *cgpu;
 	bool io_open = false;
 	struct api_data *extra;
@@ -3630,7 +3623,6 @@ static void minerstats(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 
 static void dashboard_minerstats(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __maybe_unused char *param, bool isjson, __maybe_unused char group)
 {
-	applog(LOG_ERR, "dashboard_minerstats=======================");
 	struct cgpu_info *cgpu;
 	bool io_open = false;
 	struct api_data *extra;
