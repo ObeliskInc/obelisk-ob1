@@ -65,10 +65,10 @@ export interface HashingConfig {
 // -------------------------------------------------------------------------------------------------
 export interface HashrateEntry {
   time: number
-  board0?: number
-  board1?: number
-  board2?: number
-  total?: number
+  'Board 1'?: number
+  'Board 2'?: number
+  'Board 3'?: number
+  Total?: number
 }
 
 export interface StatsEntry {

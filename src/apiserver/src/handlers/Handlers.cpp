@@ -448,11 +448,11 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
 
         uint32_t value = hashrate_history_secs[i].hashrates[hb];
         if (value != 0) {
-          entry["board" + to_string(hb)] = value;
+          entry["Board " + to_string(hb + 1)] = value;
           total += value;
         }
       }
-      entry["total"] = total;
+      entry["Total"] = total;
       hashrateArr[i] = to_rvalue(entry);
     }
     jsonResp["hashrateData"] = to_rvalue(hashrateArr);

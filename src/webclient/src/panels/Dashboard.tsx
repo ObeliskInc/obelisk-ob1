@@ -191,11 +191,11 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     // Add lines based on how many board entries are in the data
     // Filter entries with no board data, because sometimes cgminer is not ready when apiserver polls (e.g., when a pool is down).
     let areas = undefined
-    const hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry.board0 !== undefined)
+    const hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry["Board 1"] !== undefined)
     if (hashrateEntries.length > 0) {
       const firstEntry = hashrateEntries[0]
       let keys = _.keys(firstEntry)
-      keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'total')
+      keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'Total')
       areas = _.map(keys, (key: string, index: number) => (
         <Area
           type="monotone"
@@ -231,7 +231,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             data={hashrateEntries}
             margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
           >
-            <Line type="monotone" dataKey="total" stroke="#FF0000" />
+            <Line type="monotone" dataKey="Total" stroke="#FF0000" />
             {areas}
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             <XAxis
