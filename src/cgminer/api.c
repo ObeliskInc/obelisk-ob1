@@ -10,7 +10,7 @@
 #define _MEMORY_DEBUG_MASTER 1
 
 #include "config.h"
-#include "obelisk/Ob1Api.h"
+#include "obelisk/Ob1API.h"
 
 #include <stdio.h>
 #include <ctype.h>
