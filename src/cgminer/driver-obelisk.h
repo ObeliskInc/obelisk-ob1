@@ -27,8 +27,8 @@
 #define NUM_ENGINES_PER_CHIP 128U
 #define NONCE_RANGE_SIZE (0xFFFFFFFFULL / 128ULL)
 
-#define MAX_WQ_SIZE 2
-#define WQ_REFILL_SIZE 1
+#define MAX_WQ_SIZE 1
+#define WQ_REFILL_SIZE 0
 
 #endif
 
