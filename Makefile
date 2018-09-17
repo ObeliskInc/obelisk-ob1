@@ -264,10 +264,4 @@ sd-menu:
 	cd sdCardImage && make O=$(shell pwd)/sdCardImage BR2_EXTERNAL=$(shell pwd)/sdCardImage -C ../buildArtifacts/buildroot sama5d2_som_minimal_defconfig && \
 		make menuconfig
 
-control-utils:
-	# Compile the control card image utils.
-	mkdir -p src/controlCardUtils/bin
-	mkdir -p src/controlCardUtils/obj
-	cd src/controlCardUtils && make OBELISK_OB1_DIR=$(shell pwd)
-
 .PHONY: all full clean dependencies configs initial-build build-patches sd-utils control-utils apiserver ee2mac webclient cgminer create-image control-menu sd-menu control-utils
