@@ -13,6 +13,7 @@ import {
   changePassword,
   clearNextRoutes,
   fetchCurrUser,
+  fetchVersions,
   fetchDashboardStatus,
   fetchMiningConfig,
   fetchNetworkConfig,
@@ -107,6 +108,25 @@ export const fetchCurrUserLogic = createLogic({
       // If the user is not logged in, switch to the login view
       getHistory().push('/login')
     }
+    done()
+    return result
+  },
+})
+
+export const fetchVersionsLogic = createLogic({
+  type: fetchVersions.started.type,
+
+  processOptions: {
+    dispatchReturn: true,
+    successType: fetchVersions.done,
+    failType: fetchVersions.failed,
+  },
+
+  async process(deps: LogicDeps, dispatch: any, done: () => void) {
+    // TODO: Better type
+    const { axios } = deps
+    let result
+    result = await axios.get('/api/inventory/versions')
     done()
     return result
   },
@@ -493,6 +513,7 @@ export default [
   loginLogic,
   logoutLogic,
   fetchCurrUserLogic,
+  fetchVersionsLogic,
   fetchNetworkConfigLogic,
   fetchSystemConfigLogic,
   fetchPoolsConfigLogic,

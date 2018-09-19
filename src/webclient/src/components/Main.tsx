@@ -12,8 +12,8 @@ import { Button, Icon, Image, Menu, Responsive, Segment, Sidebar } from 'semanti
 
 // import Main from 'components/Main'
 import SidebarMenuItem from 'components/SidebarMenuItem'
-import { fetchCurrUser, logout, showSidebar, toggleSidebar } from 'modules/Main/actions'
-import { getShowSidebar } from 'modules/Main/selectors'
+import { fetchCurrUser, fetchVersions, logout, showSidebar, toggleSidebar } from 'modules/Main/actions'
+import { getShowSidebar, getFirmwareVersion } from 'modules/Main/selectors'
 import Dashboard from 'panels/Dashboard'
 import MiningPanel from 'panels/MiningPanel'
 import NetworkPanel from 'panels/NetworkPanel'
@@ -26,6 +26,7 @@ const history = getHistory()
 
 interface ConnectProps {
   isShowSidebar: boolean
+  firmwareVersion?: string
 }
 
 type CombinedProps = ConnectProps & BrowserRouterProps & InjectedProps & DispatchProp<any>
@@ -60,11 +61,15 @@ class App extends React.PureComponent<CombinedProps> {
     spacer: {
       flex: 1,
     },
+    version: {
+      marginBottom: 10,
+    }
   }
 
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchCurrUser.started({}))
+      this.props.dispatch(fetchVersions.started({}))
     }
   }
 
@@ -100,7 +105,7 @@ class App extends React.PureComponent<CombinedProps> {
 
   render() {
     // const { classNames } = this.props
-    const { classNames, isShowSidebar } = this.props
+    const { classNames, isShowSidebar, firmwareVersion } = this.props
 
     const menuItems = [
       <SidebarMenuItem
@@ -159,6 +164,7 @@ class App extends React.PureComponent<CombinedProps> {
           >
             {menuItems}
             <div className={classNames.spacer} />
+            <div className={classNames.version}>{firmwareVersion}</div>
             <Button onClick={this.handleLogout} icon="log out" content="LOGOUT" />
           </Sidebar>
           <Sidebar.Pusher>
@@ -168,6 +174,7 @@ class App extends React.PureComponent<CombinedProps> {
                 <Menu icon="labeled" vertical={true} inverted={true}>
                   {menuItems}
                   <div className={classNames.spacer} />
+                  <div className={classNames.version}>{firmwareVersion}</div>
                   <Button onClick={this.handleLogout} icon="log out" content="LOGOUT" />
                 </Menu>
               </Responsive>
@@ -205,6 +212,7 @@ class App extends React.PureComponent<CombinedProps> {
 
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   isShowSidebar: getShowSidebar(state.Main),
+  firmwareVersion: getFirmwareVersion(state.Main),
 })
 
 const app = withStyles()<any>(App)

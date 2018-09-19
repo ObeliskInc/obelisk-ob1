@@ -326,6 +326,14 @@ string getOSName() {
   return runCmd(cmd.str());
 }
 
+string getFirmwareVersion() {
+  string result = runCmd( "cat /root/.version | tr -d '\\n'");
+  if (result.length() == 0) {
+    return "v1.0.0";
+  }
+  return result;
+}
+
 string getOSVersion() {
   ostringstream cmd;
   cmd << "cat /etc/os-release | sed -n -r 's/^VERSION=\"(.*)\"/\\1/p' | tr -d '\\n'";
