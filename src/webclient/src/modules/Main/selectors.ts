@@ -38,3 +38,7 @@ export const getLastError = (state: State): string | undefined => state.lastErro
 export const getLastRequestParams = (state: State): string | undefined => state.lastRequestParams
 
 export const getLastRequest = (state: State): string | undefined => state.lastRequestType
+
+export const getFirmwareVersion = (state: State): string | undefined => state.firmwareVersion
+
+export const getCgMinerVersions = (state: State): string | undefined => state.cgminerVersions

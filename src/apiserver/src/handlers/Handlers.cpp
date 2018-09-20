@@ -167,7 +167,8 @@ void getInventoryVersions(string path, query_string &urlParams, const crow::requ
     try {
       json::rvalue cgMinerJson = json::load(cgMinerResp.json);
       json::wvalue jsonResp;
-      jsonResp["version"] = cgMinerJson["VERSION"];
+      jsonResp["cgminerVersion"] = cgMinerJson["VERSION"];
+      jsonResp["firmwareVersion"] = getFirmwareVersion();
 
       sendJson(json::dump(jsonResp), resp);
     } catch (...) {
@@ -517,6 +518,7 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
     systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
     systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
+    systemArr[i++] = makeSystemInfoEntry("Firmware Version", getFirmwareVersion());
 
     jsonResp["systemInfo"] = to_rvalue(systemArr);
     string str = json::dump(jsonResp);
@@ -822,12 +824,14 @@ void handleAction(string &path, const crow::request &req, crow::response &resp) 
 void sendInfoResp(crow::response &resp) {
     string macAddress = getMACAddr(INTF_NAME);
     string ipAddress = getIpV4(INTF_NAME);
+    string firmwareVersion = getFirmwareVersion();
 
     json::wvalue respJson = json::load("{}");
     respJson["macAddress"] = macAddress;
     respJson["ipAddress"] = ipAddress;
     respJson["model"] = gModel.length() == 0 ? "Obelisk" : gModel;
     respJson["vendor"] = "Obelisk";
+    respJson["firmwareVersion"] = firmwareVersion;
 
     sendJson(json::dump(respJson), resp);
 }

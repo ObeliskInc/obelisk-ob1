@@ -20,6 +20,14 @@ export interface LoginResponse {
 }
 
 // -------------------------------------------------------------------------------------------------
+// Inventory interfaces
+// -------------------------------------------------------------------------------------------------
+export interface VersionInfo {
+  firmwareVersion: string
+  cgminerVersions: any
+}
+
+// -------------------------------------------------------------------------------------------------
 // Config interfaces
 // -------------------------------------------------------------------------------------------------
 export interface NetworkConfig {
@@ -148,6 +156,10 @@ export interface State {
   showSidebar: boolean
   deviceModel: string
   username: string
+
+  // Inventory
+  firmwareVersion?: string
+  cgminerVersions?: any
 
   // Configs
   networkConfig: NetworkConfig
