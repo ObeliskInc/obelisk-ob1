@@ -15,7 +15,7 @@ while true; do
 
         # Allow some time for all upgrade files to be extracted in case we see targetVersion
         # early on in the extraction.
-        sleep 5
+        sleep 35
 
         # Kill watchdog, cgminer, and apiserver
         killall -q watchdog.sh

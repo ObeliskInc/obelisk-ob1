@@ -118,3 +118,7 @@
 # for personal note taking
 *.notes
 *.o
+upgrade
+src/upgrades/releases
+src/ee2mac/bin
+src/hello
