@@ -2626,7 +2626,7 @@ bool auth_stratum(struct pool* pool)
     // Set a fixed difficulty of 256 for Luxor pool to prevent strange sdiff behavior
     char user[256];
     // If the user contains "dcr" and "luxor.tech", but does not already contain a '+' character, then append "+256"
-    if (strstr(pool->rpc_user, "dcr") != NULL && strstr(pool->rpc_user, "luxor.tech") != NULL && strchr(pool->rpc_user, '+') == NULL) {
+    if (strstr(pool->rpc_url, "dcr") != NULL && strstr(pool->rpc_url, "luxor.tech") != NULL && strchr(pool->rpc_user, '+') == NULL) {
         snprintf(user, 256, "%s+256", pool->rpc_user);
     } else {
         strncpy(user, pool->rpc_user, 256);
