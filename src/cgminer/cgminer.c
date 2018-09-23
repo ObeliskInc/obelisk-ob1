@@ -7834,8 +7834,11 @@ static bool new_nonce(struct thr_info* thr, Nonce nonce)
  * nonce submitted by this device. */
 bool submit_nonce(struct thr_info* thr, struct work* work, Nonce nonce, uint32_t extranonce2)
 {
-    if (new_nonce(thr, nonce)) { // && test_nonce(work, nonce))
-        submit_tested_work(thr, work, nonce, extranonce2);
+    if (new_nonce(thr, nonce)) {
+        // Don't submit stale shares
+        if (work->id >= work->pool->stale_share_id) {
+            submit_tested_work(thr, work, nonce, extranonce2);
+        }
     } else {
         inc_hw_errors(thr);
         return false;

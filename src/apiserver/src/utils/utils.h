@@ -37,6 +37,7 @@ int getFreeMemory();
 int getTotalMemory();
 string getOSName();
 string getOSVersion();
+string getFirmwareVersion();
 void doReboot();
 string replaceAll(string const &original, string const &from, string const &to);
 string unescapeCgMinerString(string s);

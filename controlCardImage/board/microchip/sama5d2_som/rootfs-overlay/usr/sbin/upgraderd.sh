@@ -17,7 +17,7 @@ while true; do
         sleep 5
 
         # kill watchdog, cgminer, and apiserver
-        killall -q watchdog
+        killall -q watchdog.sh
         killall -q cgminer
         killall -q apiserver
 

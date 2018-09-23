@@ -15,9 +15,10 @@ import {
   MiningConfig,
   NetworkConfig,
   PoolConfig,
+  RunUpgradeResp,
   SystemConfig,
   UploadFirmwareFileParams,
-  RunUpgradeResp,
+  VersionInfo,
 } from './types'
 
 export const showSidebarAC = actionCreator<{ show: boolean }>('SHOW_SIDEBAR')
@@ -34,6 +35,10 @@ export const login = actionCreator.async<LoginRequest, LoginResponse, ApiError>(
 export const logout = actionCreator.async<{}, ApiOK, ApiError>('LOGOUT')
 
 export const fetchCurrUser = actionCreator.async<{}, ApiOK, ApiError>('FETCH_CURR_USER', {
+  meta: { failSilently: true },
+})
+
+export const fetchVersions = actionCreator.async<{}, VersionInfo, ApiError>('FETCH_VERSIONS', {
   meta: { failSilently: true },
 })
 

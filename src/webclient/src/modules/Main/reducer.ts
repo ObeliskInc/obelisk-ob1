@@ -4,12 +4,13 @@
 import { isType, Action } from 'typescript-fsa'
 const updeep = require('updeep')
 
-import { NetworkConfig, State } from './types'
+import { NetworkConfig, State, VersionInfo } from './types'
 
 import {
   clearLastErrorAC,
   clearNextRoutesAC,
   fetchCurrUser,
+  fetchVersions,
   fetchDashboardStatus,
   fetchMiningConfig,
   fetchNetworkConfig,
@@ -34,6 +35,7 @@ import {
   changePassword,
   runUpgrade,
 } from './actions'
+import { version } from 'react'
 
 const initialState: State = {
   showSidebar: false,
@@ -179,6 +181,20 @@ export const reducer = (state: State = initialState, action: Action<any>): State
     // -------------------------------------------------------------------------------------------
   } else if (isType(action, logout.done) || isType(action, logout.failed)) {
     newState = initialState
+
+    // -------------------------------------------------------------------------------------------
+    // fetchVersions.done
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, fetchVersions.done)) {
+    const payload = action.payload as any
+    const versionInfo = payload.data as VersionInfo
+    newState = updeep(
+      {
+        firmwareVersion: versionInfo.firmwareVersion,
+        cgminerVersions: versionInfo.cgminerVersions,
+      },
+      state,
+    )
 
     // --------------------------------------------------------------------------------------------
     // Sidebar

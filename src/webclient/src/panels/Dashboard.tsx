@@ -193,7 +193,7 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     let areas = undefined
     const hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry["Board 1"] !== undefined)
     if (hashrateEntries.length > 0) {
-      const firstEntry = hashrateEntries[0]
+      const firstEntry = hashrateEntries[hashrateEntries.length - 1]
       let keys = _.keys(firstEntry)
       keys = _.remove(keys, (s: string) => s !== 'time' && s !== 'Total')
       areas = _.map(keys, (key: string, index: number) => (
