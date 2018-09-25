@@ -1,0 +1,9 @@
+To build an upgrade, cd to the desired model and version folder and then run:
+
+    ../../build-upgrade
+
+It will build a file named <model>-<fromVersion>-to-<toVersion>.tar.gz in the
+folder src/upgrades/releases.
+
+This script should be improved so it's in the user's path to avoid the need to
+call it with ../../
