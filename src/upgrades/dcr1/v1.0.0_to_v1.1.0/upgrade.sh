@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ ! -d /tmp/upgrade/rootfs-overlay ]; then
+# Don't do anything if there was no file system overlay found
+exit -1
+fi
+
 # Stop everything here again, because the name of the watchdog is wrong in upgraderd.sh
 # TODO: The new version of upgraderd.sh will do this for us, so these lines can be removed in
 # the next upgrade file.
