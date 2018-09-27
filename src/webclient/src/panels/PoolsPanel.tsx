@@ -38,7 +38,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
 
   render() {
     const { classNames, poolForm } = this.props
-    const renderSubmit = (dirty: any) => {
+    const renderSave = (dirty: any) => {
       switch (poolForm) {
         case 'started':
           return (
@@ -56,6 +56,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
       }
       return
     }
+
     return (
       <Content>
         <Header as="h1">POOLS CONFIG</Header>
@@ -168,7 +169,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
               <Form onSubmit={formikProps.handleSubmit}>
                 {poolFields}
 
-                {renderSubmit(formikProps.dirty)}
+                {renderSave(formikProps.dirty)}
               </Form>
             )
           }}

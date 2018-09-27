@@ -517,6 +517,7 @@ export default [
   fetchNetworkConfigLogic,
   fetchSystemConfigLogic,
   fetchPoolsConfigLogic,
+  fetchMiningConfigLogic,
 
   fetchDashboardStatusLogic,
   resetSystemConfigLogic,

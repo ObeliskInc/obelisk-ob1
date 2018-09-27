@@ -12,7 +12,7 @@ import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
 import { withRouter, BrowserRouterProps } from 'react-router-dom'
 import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
-import { Button, Form, Header } from 'semantic-ui-react'
+import { Button, Dimmer, Form, Header, Loader } from 'semantic-ui-react'
 
 import { common } from 'styles/common'
 import { getHistory } from 'utils'
@@ -23,6 +23,7 @@ import { isIp as isValidIp } from 'utils/ip'
 
 interface ConnectProps {
   networkConfig?: NetworkConfig
+  networkForm: string
 }
 
 type CombinedProps = BrowserRouterProps & ConnectProps & InjectedProps & DispatchProp<any>
@@ -44,7 +45,26 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
   }
 
   render() {
-    const { classNames } = this.props
+    const { classNames, networkForm } = this.props
+
+    const renderSave = (dirty: any) => {
+      switch (networkForm) {
+        case 'started':
+          return (
+            <Dimmer active>
+              <Loader />
+            </Dimmer>
+          )
+        case 'failed':
+          return <span>Failed</span>
+        case 'done':
+          return <span>Done</span>
+      }
+      if (dirty) {
+        return <Button type="submit">SAVE</Button>
+      }
+      return undefined
+    }
 
     return (
       <Content>
@@ -196,7 +216,7 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                 <div className={classNames.formFieldError}>
                   {_.get(formikProps.errors, ['dnsServer'], ' ')}
                 </div>
-                {formikProps.dirty && <Button type="submit">SAVE</Button>}
+                {renderSave(formikProps.dirty)}
               </Form>
             )
           }}
@@ -208,6 +228,8 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
 
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   networkConfig: getNetworkConfig(state.Main),
+  networkForm:   state.Main.forms.networkForm,
+
 })
 
 const networkPanel = withStyles()<any>(NetworkPanel)
