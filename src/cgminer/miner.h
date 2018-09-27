@@ -1121,6 +1121,16 @@ extern int swork_id;
 extern pthread_mutex_t lockstat_lock;
 #endif
 
+// Obelisk options
+extern int opt_ob_step_size;
+extern int opt_ob_max_fan_speed_percent;
+extern int opt_ob_max_hot_chip_temp_c;
+extern int opt_ob_optimization_mode;
+
+#define OBELISK_OPTIMIZATION_MODE_EFFICIENT    0
+#define OBELISK_OPTIMIZATION_MODE_BALANCED     1
+#define OBELISK_OPTIMIZATION_MODE_MAX_HASHRATE 2
+
 extern pthread_rwlock_t netacc_lock;
 
 extern const uint32_t sha256_init_state[];

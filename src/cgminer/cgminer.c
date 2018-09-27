@@ -361,6 +361,13 @@ char* opt_kernel_path;
 char* cgminer_path;
 bool opt_gen_stratum_work;
 
+
+// Obelisk options
+int opt_ob_step_size = 1;
+int opt_ob_max_fan_speed_percent = 100;
+int opt_ob_max_hot_chip_temp_c = 105;
+int opt_ob_optimization_mode = OBELISK_OPTIMIZATION_MODE_MAX_HASHRATE;
+
 #if defined(USE_BITFORCE)
 bool opt_bfl_noncerange;
 #endif
@@ -1258,6 +1265,7 @@ static char* set_null(const char __maybe_unused* arg)
 
 /* These options are available from config file or commandline */
 static struct opt_table opt_config_table[] = {
+
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--anu-freq",
         set_float_125_to_500, &opt_show_floatval, &opt_anu_freq,
@@ -1515,9 +1523,6 @@ static struct opt_table opt_config_table[] = {
         opt_set_bool, &opt_avalonm_autof,
         "Automatic adjust frequency base on chip HW"),
 #endif
-    OPT_WITH_ARG("--obelisk-options",
-        opt_set_charp, NULL, &opt_obelisk_options,
-        "Set obelisk options ???"),
 
     OPT_WITHOUT_ARG("--balance",
         set_balance, &pool_strategy,
@@ -1835,6 +1840,23 @@ static struct opt_table opt_config_table[] = {
     OPT_WITHOUT_ARG("--no-submit-stale",
         opt_set_invbool, &opt_submit_stale,
         "Don't submit shares if they are detected as stale"),
+
+
+    // Obelisk option definitions
+    OPT_WITH_ARG("--ob-step-size",
+        opt_set_intval, NULL, &opt_ob_step_size,
+        "Step size, default: 1"),
+    OPT_WITH_ARG("--ob-max-fan-speed-percent",
+        opt_set_intval, NULL, &opt_ob_max_fan_speed_percent,
+        "Maximum fan speed in percent: 0-100, default: 100"),
+    OPT_WITH_ARG("--ob-max-hot-chip-temp-c",
+        opt_set_intval, NULL, &opt_ob_max_hot_chip_temp_c,
+        "Maximum temperature for the hottest chip in the board (in degrees C):, default: 105"),
+    OPT_WITH_ARG("--ob-optimization-mode",
+        opt_set_intval, NULL, &opt_ob_optimization_mode,
+        "Optimization mode: 0=Max hashrate, 1=Balanced, 2=Efficient:, default: 0"),
+
+
 #ifdef USE_BITFURY
     OPT_WITH_ARG("--osm-led-mode",
         set_int_0_to_4, opt_show_intval, &opt_osm_led_mode,
@@ -1953,6 +1975,7 @@ static struct opt_table opt_config_table[] = {
     OPT_WITHOUT_ARG("--worktime",
         opt_set_bool, &opt_worktime,
         "Display extra work time debug information"),
+
     OPT_ENDTABLE
 };
 
@@ -1994,6 +2017,8 @@ static char* parse_config(json_t* config, bool fileconf)
             val = json_object_get(config, p + 2);
             if (!val)
                 continue;
+
+            printf("Found in JSON config file: %s\n", p);
 
             if ((opt->type & (OPT_HASARG | OPT_PROCESSARG)) && json_is_string(val)) {
                 str = json_string_value(val);

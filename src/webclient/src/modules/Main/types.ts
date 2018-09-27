@@ -46,7 +46,10 @@ export interface PoolConfig {
 }
 
 export interface MiningConfig {
-  optimizationMode: string
+  optimizationMode: number
+  stepSize: number
+  maxFanSpeedPercent: number
+  maxHotChipTempC: number
 }
 
 export const MAX_POOLS = 3
@@ -150,6 +153,8 @@ export interface FormState {
   poolForm: string
   systemForm: string
   passwordForm: string
+  networkForm: string
+  miningForm: string
 }
 // Module State
 export interface State {

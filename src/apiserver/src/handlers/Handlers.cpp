@@ -253,8 +253,36 @@ void getConfigSystem(string path, query_string &urlParams, const crow::request &
 
 void getConfigMining(string path, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
+  json::rvalue conf = readCgMinerConfig();
+
+  // CROW_LOG_ERROR << json::dump(conf);
+
+  // NOTE: This duplicates the default values as set in cgminer, which is not ideal
   json::wvalue jsonResp = json::load("{}");
-  // jsonResp["optimizationMode"] = getOptimizationMode();
+  if (conf.has("ob-step-size")) {
+    jsonResp["stepSize"] = conf["ob-step-size"].i();
+  } else {
+    jsonResp["stepSize"] = 1;
+  }
+
+  if (conf.has("ob-optimization-mode")) {
+    jsonResp["optimizationMode"] = conf["ob-optimization-mode"].i();
+  } else {
+    jsonResp["optimizationMode"] = 2;  // 2 means optimize for best hashrate
+  }
+
+  if (conf.has("ob-max-fan-speed-percent")) {
+    jsonResp["maxFanSpeedPercent"] = conf["ob-max-fan-speed-percent"].i();
+  } else {
+    jsonResp["maxFanSpeedPercent"] = 100;
+  }
+
+  if (conf.has("ob-max-hot-chip-temp-c")) {
+    jsonResp["maxHotChipTempC"] = conf["ob-max-hot-chip-temp-c"].i();
+  } else {
+    jsonResp["maxHotChipTempC"] = 105;
+  }
+  
   string jsonStr = json::dump(jsonResp);
 
   sendJson(jsonStr, resp);
@@ -366,10 +394,27 @@ void setConfigMining(string path, json::rvalue &args, const crow::request &req,
     return;
   }
 
-  // TODO: Implement setConfigMining()
+  // Read .cgminer/cgminer.conf
+  json::rvalue conf = readCgMinerConfig();
+  // Create a wvalue from the rvalue
+  json::wvalue newConf;
+  try {
+    newConf = conf;
+  } catch (...) {
+    newConf = json::load("{}");
+  }
 
-  resp.end();
-  return;
+  // cgminer needs its integers in strings in the config file
+  newConf["ob-step-size"] = to_string(args["stepSize"].i());
+  newConf["ob-max-fan-speed-percent"] = to_string(args["maxFanSpeedPercent"].i());
+  newConf["ob-max-hot-chip-temp-c"] = to_string(args["maxHotChipTempC"].i());
+  newConf["ob-optimization-mode"] = to_string(args["optimizationMode"].i());
+
+  // Write out config file
+  writeCgMinerConfig(newConf);
+
+  CROW_LOG_ERROR << "setConfigMining() - Resetting cgminer!";
+  sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
 void setConfigAsic(string path, json::rvalue &args, const crow::request &req,
