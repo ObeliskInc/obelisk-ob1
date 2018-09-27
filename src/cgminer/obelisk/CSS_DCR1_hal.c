@@ -790,18 +790,6 @@ int iDCR1DeviceInit(uint8_t uiBoard)
             } // if (ERR_NONE == iResult)
 
             // *************
-            // Unlike the SC1 asic, the DCR1 seems to have no step register
-            //             if (ERR_NONE == iResult) {
-            //                 iConfigStep++;
-            //                 sSC1XferBuf.eMode     = E_SC1_MODE_MULTICAST; // global write to all chips and engines
-            //                 sSC1XferBuf.uiChip    = 0; // chip and core is don't care (set to 0's)
-            //                 sSC1XferBuf.uiCore    = 0;
-            //                 sSC1XferBuf.uiReg = E_SC1_REG_STEP;
-            //                 sSC1XferBuf.uiData    = SC1_STEP_VAL;
-            //                 iResult = iSC1SpiTransfer(&sSC1XferBuf);
-            //             }   // if (ERR_NONE == iResult)
-
-            // *************
             // 7) Set lower bound register to 0x0
             if (ERR_NONE == iResult) {
                 iConfigStep++;

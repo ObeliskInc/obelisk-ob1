@@ -147,6 +147,11 @@ static void* ob_gen_work_thread(void* arg)
 // pool difficulty but is valid under the chip difficulty, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
 int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
+	// Nonces should be divisible by the step size
+	if (nonce % opt_ob_step_size != 0) {
+		return 0;
+	}
+
 	// Create the header with the nonce set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
 	uint8_t header[ob->staticBoardModel.headerSize];
@@ -305,6 +310,10 @@ ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 		Nonce nonceStart = (chipNum * ob->staticBoardModel.enginesPerChip * ob->staticBoardModel.nonceRange) + (engineNum * ob->staticBoardModel.nonceRange);
 		Nonce nonceEnd = nonceStart + ob->staticBoardModel.nonceRange-1;
 
+		// Take step size into account
+		nonceStart *= opt_ob_step_size;
+		nonceEnd *= opt_ob_step_size;
+
 		// Try each engine several times. If the engine is not set correctly on
 		// the first try, try again.
 		for (uint8_t i = 0; i < tries; i++) {
@@ -412,9 +421,8 @@ static void obelisk_detect(bool hotplug)
     pthread_t pth;
 
 	// Basic initialization.
-    applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
-	gBoardModel = eGetBoardType(0);
+    gBoardModel = eGetBoardType(0);
 
     // Set the initial fan speed - control loop will take over shortly
     ob1SetFanSpeeds(100);
@@ -452,7 +460,10 @@ static void obelisk_detect(bool hotplug)
 			initDCR1ABoard(ob);
 		}
 
-        cgtime(&cgpu->dev_start_tv);
+		// Apply user overrides
+		ob->staticBoardModel.hotChipTargetTemp = opt_ob_max_hot_chip_temp_c;
+
+		cgtime(&cgpu->dev_start_tv);
 
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
