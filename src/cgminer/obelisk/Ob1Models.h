@@ -1,3 +1,5 @@
+extern int opt_ob_max_hot_chip_temp_c;
+
 // hashBoardModel defines a few of the physical, unchanging parameters of a
 // hashing board that is compatible with the obelisk mining software.
 typedef struct hashBoardModel {
@@ -42,7 +44,7 @@ typedef struct miningRigModel {
 } miningRigModel;
 
 // HASHBOARD_MODEL_SC1A defines the parameters for our SC1A hashing card.
-const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
+struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 	.name                  = "SC1A",
 	.chipsPerBoard         = 15,
 	.enginesPerChip        = 64,
@@ -71,7 +73,7 @@ const struct hashBoardModel HASHBOARD_MODEL_SC1A = {
 };
 
 // HASHBOARD_MODEL_DCR1A defines the parameters for our DCR1A hashing card.
-const struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
+struct hashBoardModel HASHBOARD_MODEL_DCR1A = {
 	.name                  = "DCR1A",
 	.chipsPerBoard         = 15,
 	.enginesPerChip        = 128,

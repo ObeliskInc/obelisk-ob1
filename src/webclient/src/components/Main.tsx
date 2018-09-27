@@ -124,14 +124,14 @@ class App extends React.PureComponent<CombinedProps> {
         onClick={() => this.navigateToPath('/pools')}
         active={this.isActive('/pools')}
       />,
-      // <SidebarMenuItem
-      //   key="mining"
-      //   name="mining"
-      //   label="MINING"
-      //   iconName="diamond"
-      //   onClick={() => this.navigateToPath('/mining')}
-      //   active={this.isActive('/mining')}
-      // />,
+      <SidebarMenuItem
+        key="mining"
+        name="mining"
+        label="MINING"
+        iconName="diamond"
+        onClick={() => this.navigateToPath('/mining')}
+        active={this.isActive('/mining')}
+      />,
       <SidebarMenuItem
         key="system"
         name="system"
