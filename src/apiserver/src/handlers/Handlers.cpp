@@ -259,12 +259,6 @@ void getConfigMining(string path, query_string &urlParams, const crow::request &
 
   // NOTE: This duplicates the default values as set in cgminer, which is not ideal
   json::wvalue jsonResp = json::load("{}");
-  if (conf.has("ob-step-size")) {
-    jsonResp["stepSize"] = conf["ob-step-size"].i();
-  } else {
-    jsonResp["stepSize"] = 1;
-  }
-
   if (conf.has("ob-optimization-mode")) {
     jsonResp["optimizationMode"] = conf["ob-optimization-mode"].i();
   } else {
@@ -405,7 +399,6 @@ void setConfigMining(string path, json::rvalue &args, const crow::request &req,
   }
 
   // cgminer needs its integers in strings in the config file
-  newConf["ob-step-size"] = to_string(args["stepSize"].i());
   newConf["ob-max-fan-speed-percent"] = to_string(args["maxFanSpeedPercent"].i());
   newConf["ob-max-hot-chip-temp-c"] = to_string(args["maxHotChipTempC"].i());
   newConf["ob-optimization-mode"] = to_string(args["optimizationMode"].i());

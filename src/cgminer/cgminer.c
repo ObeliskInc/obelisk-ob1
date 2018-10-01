@@ -363,7 +363,6 @@ bool opt_gen_stratum_work;
 
 
 // Obelisk options
-int opt_ob_step_size = 1;
 int opt_ob_max_fan_speed_percent = 100;
 int opt_ob_max_hot_chip_temp_c = 105;
 int opt_ob_optimization_mode = OBELISK_OPTIMIZATION_MODE_MAX_HASHRATE;
@@ -1843,9 +1842,6 @@ static struct opt_table opt_config_table[] = {
 
 
     // Obelisk option definitions
-    OPT_WITH_ARG("--ob-step-size",
-        opt_set_intval, NULL, &opt_ob_step_size,
-        "Step size, default: 1"),
     OPT_WITH_ARG("--ob-max-fan-speed-percent",
         opt_set_intval, NULL, &opt_ob_max_fan_speed_percent,
         "Maximum fan speed in percent: 0-100, default: 100"),

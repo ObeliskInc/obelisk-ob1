@@ -148,7 +148,7 @@ static void* ob_gen_work_thread(void* arg)
 // is valid under both the pool difficulty and the chip difficulty.
 int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
 	// Nonces should be divisible by the step size
-	if (nonce % opt_ob_step_size != 0) {
+	if (nonce % SC1_STEP_VAL != 0) {
 		return 0;
 	}
 
@@ -311,8 +311,8 @@ ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 		Nonce nonceEnd = nonceStart + ob->staticBoardModel.nonceRange-1;
 
 		// Take step size into account
-		nonceStart *= opt_ob_step_size;
-		nonceEnd *= opt_ob_step_size;
+		nonceStart *= SC1_STEP_VAL;
+		nonceEnd *= SC1_STEP_VAL;
 
 		// Try each engine several times. If the engine is not set correctly on
 		// the first try, try again.

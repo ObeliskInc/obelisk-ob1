@@ -47,7 +47,6 @@ export interface PoolConfig {
 
 export interface MiningConfig {
   optimizationMode: number
-  stepSize: number
   maxFanSpeedPercent: number
   maxHotChipTempC: number
 }

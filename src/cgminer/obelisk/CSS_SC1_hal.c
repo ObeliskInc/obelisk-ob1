@@ -742,7 +742,7 @@ int iSC1DeviceInit(uint8_t uiBoard)
                 sSC1XferBuf.uiChip = 0; // chip and core is don't care (set to 0's)
                 sSC1XferBuf.uiCore = 0;
                 sSC1XferBuf.eRegister = E_SC1_REG_STEP;
-                sSC1XferBuf.uiData = opt_ob_step_size;
+                sSC1XferBuf.uiData = SC1_STEP_VAL;
                 iResult = iSC1SpiTransfer(&sSC1XferBuf);
             } // if (ERR_NONE == iResult)
 

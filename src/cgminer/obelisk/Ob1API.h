@@ -83,9 +83,6 @@ ApiError ob1Initialize();
 // field will contain an error code.
 HashboardStatus ob1GetHashboardStatus(uint8_t boardNum);
 
-// Valid values for voltage range from 8.5 to 10.0.  Since voltage is actually
-// controlled in a discrete, stepwise fashion, the code will select the
-// nearest value without going over the specified voltage.
 // Values for voltage are about 12 to 127, and 127 is the lowest voltage.
 ApiError ob1SetStringVoltage(uint8_t boardNum, uint8_t voltage);
 

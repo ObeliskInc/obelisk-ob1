@@ -1122,7 +1122,6 @@ extern pthread_mutex_t lockstat_lock;
 #endif
 
 // Obelisk options
-extern int opt_ob_step_size;
 extern int opt_ob_max_fan_speed_percent;
 extern int opt_ob_max_hot_chip_temp_c;
 extern int opt_ob_optimization_mode;

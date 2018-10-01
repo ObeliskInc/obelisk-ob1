@@ -21,11 +21,6 @@ interface ConnectProps {
 
 type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
 
-const algoOptions = [
-  { text: 'Blake2b (Siacoin)', value: 1009, key: 0 },
-  { text: 'Blake2b (Other)', value: 1, key: 1 },
-]
-
 const fanSpeedOptions = (() => {
   const result = []
   for (let i=0; i<=100; i+=5) {
@@ -200,17 +195,6 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                   </Button.Group>
 
                   <Header as="h2">Advanced Controls</Header>
-                  <Form.Dropdown
-                    options={algoOptions}
-                    selection={true}
-                    label="ALGORITHM"
-                    name="stepSize"
-                    onChange={formikProps.handleChange}
-                    onBlur={formikProps.handleBlur}
-                    value={formikProps.values.stepSize}
-                    error={formikProps.errors.stepSize}
-                  />
-
                   <Form.Dropdown
                     options={fanSpeedOptions}
                     selection={true}
