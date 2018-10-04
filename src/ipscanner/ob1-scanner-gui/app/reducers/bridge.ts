@@ -11,6 +11,7 @@ export interface Miner {
   ip: string
   model: string
   mac: string
+  firmwareVersion: string
 }
 
 export interface ScanData {
@@ -23,6 +24,13 @@ export interface BeforeScan {
   bitmask?: string
 }
 
+export interface BeforeUpdate {
+  model: string
+  host: string
+  sshuser: string
+  sshpass: string
+}
+
 export interface IState {
   logs: Log[]
   miners: Miner[]
@@ -32,7 +40,7 @@ export interface IState {
 const INITIAL_STATE: IState = {
   logs: [],
   miners: [],
-  loading: 'initial',
+  loading: 'initial'
 }
 
 export default function bridgeReducer(
@@ -42,14 +50,16 @@ export default function bridgeReducer(
   switch (action.type) {
     case actions.startScan.type:
     case actions.spawnMDNS.type:
-      return { ...state, miners: [], loading: 'started' }
+      return { ...state, miners: [], logs: [], loading: 'started' }
+    case actions.startScan.type:
+      return { ...state, logs: [] }
     case actions.receiveLogAction.type:
       return { ...state, logs: [...state.logs, action.payload] }
     case actions.scanComplete.type:
       return {
         ...state,
         miners: [...action.payload.payload],
-        loading: 'finished',
+        loading: 'finished'
       }
     default:
       return state
