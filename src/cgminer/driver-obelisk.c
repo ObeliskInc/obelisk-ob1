@@ -38,6 +38,9 @@ DCR1:
 // HACK:
 extern void dump(unsigned char* p, int len, char* label);
 
+extern int opt_ob_reboot_min_hashrate;
+extern int opt_ob_disable_genetic_algo;
+
 #include "obelisk/siahash/siaverify.h"
 #include "obelisk/dcrhash/dcrverify.h"
 
@@ -468,6 +471,7 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.bootTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.hasReset = false;
@@ -823,18 +827,31 @@ static void handleFanChange(ob_chain* ob) {
 	ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
 }
 
-// handleLowHashrateExit will exit if the hashrate of a board drops below 150GH/s.
+// handleLowHashrateExit will exit if the hashrate of a board drops below the specified amount.
 // We do this, because sometimes the hashrate drops for an unknown reason (perhaps we have lost
 // some chips). This check is done every 30 minutes. The watchdog should revive cgminer.
 static void handleLowHashrateExit(ob_chain* ob) {
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {
 		// If after at least 30 minutes, any board has fallen below the hashrate limit, then exit
-		if (computeHashRate(ob) < 150LL) {
+		if (computeHashRate(ob) < (long long)opt_ob_reboot_min_hashrate * 1000000000LL) {
 			exit(0);
 		}
 
 		// Reset the time so we check again in another 30 minutes
 		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
+	}
+}
+
+// Reboot the miner if it has been running for the user-specified interval in minutes
+static void handlePeriodicReboot(ob_chain* ob) {
+	// If user has set interval to zero, then periodic reboots are disabled
+	if (ob->chain_id != 0 || opt_ob_reboot_interval_mins == 0) {
+		return;
+	}
+
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.bootTime > opt_ob_reboot_interval_mins * 60) {
+		applog(LOG_ERR, "$$$$$$$$$$ PERIODIC REBOOT AFTER USER CONFIGURED INTERVAL OF %d MINUTES", opt_ob_reboot_interval_mins);
+		doReboot();
 	}
 }
 
@@ -876,7 +893,10 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// Run the genetic algorithm, recording the performance of the current
 	// settings and breeding the population to produce new settings.
-	geneticAlgoIter(&ob->control_loop_state);
+	// Only run the genetic algo if the user has not disabled it
+	if (opt_ob_disable_genetic_algo == 0) {
+		geneticAlgoIter(&ob->control_loop_state);
+	}
 
 	// Commit the new settings and mark that an adjustment has taken place.
 	setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
@@ -886,9 +906,6 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// changed to by any no-ops that occurred after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 	ob->control_loop_state.hasReset = false;
-
-	// Exit if hashrate drops too low, as this usually means we have lost several chips.
-	handleLowHashrateExit(ob);
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
@@ -907,6 +924,11 @@ static void control_loop(ob_chain* ob) {
 
 	// Perform any adjustments to the voltage and bias that may be required.
 	handleVoltageAndBiasTuning(ob);
+
+	// Exit if hashrate drops too low, as this usually means we have lost several chips.
+	handleLowHashrateExit(ob);
+
+	handlePeriodicReboot(ob);
 }
 
 ///////////////////////////////////////////////////
@@ -924,7 +946,7 @@ static bool bufferedWorkReady(ob_chain* ob) {
 	// Buffer a new job.
 	ApiError error = bufferGlobalChipJob(ob);
 	if (error != SUCCESS || ob->bufferedWork == NULL) {
-		applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
+		// applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
 		cgsleep_ms(25);
 		return false;
 	}
@@ -1039,6 +1061,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 		}
 		ob->chipsStarted = true;
 	}
+
 	// We wait at least a little bit between each iteration to make sure we
 	// aren't blasting the SPI and blocking the other boards from getting access
 	// to global resources.

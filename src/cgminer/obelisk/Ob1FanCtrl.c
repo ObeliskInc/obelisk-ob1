@@ -327,12 +327,12 @@ ApiError ob1InitializeFanCtrl() {
 }
 
 ApiError ob1SetFanSpeeds(uint8_t percent) {
-  // Limit to user-specified max
-  if (percent > opt_ob_max_fan_speed_percent) {
-    percent = opt_ob_max_fan_speed_percent;
+  // Limit to user-specified min
+  if (percent < opt_ob_min_fan_speed_percent) {
+    percent = opt_ob_min_fan_speed_percent;
   }
 
-  if (percent < 5) {
+  if (percent < 10) {
     disableFanPWM();
   } else {
     setFanDutyCycle(percent);

@@ -1122,9 +1122,12 @@ extern pthread_mutex_t lockstat_lock;
 #endif
 
 // Obelisk options
-extern int opt_ob_max_fan_speed_percent;
+extern int opt_ob_min_fan_speed_percent;
 extern int opt_ob_max_hot_chip_temp_c;
 extern int opt_ob_optimization_mode;
+extern int opt_ob_reboot_interval_mins;
+extern int opt_ob_reboot_min_hashrate;
+extern int opt_ob_disable_genetic_algo;
 
 #define OBELISK_OPTIMIZATION_MODE_EFFICIENT    0
 #define OBELISK_OPTIMIZATION_MODE_BALANCED     1

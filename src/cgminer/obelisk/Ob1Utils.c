@@ -909,3 +909,35 @@ void resetAllUserConfig() {
 void doReboot() {
     runCmd("reboot", NULL, 0);
 }
+
+unsigned long hash(unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while (c = *str++) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+
+    return hash;
+}
+
+void logDiagnostic(char* msg) {
+    char buf[80];
+    char timeBuf[80];
+    time_t rawtime;
+    struct tm * timeinfo;
+
+    FILE* fp = fopen("/var/log/diagnostics.log", "at");
+
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    unsigned long h = hash(msg);
+    snprintf(timeBuf, 80, "%s", asctime(timeinfo));
+    timeBuf[strlen(timeBuf) - 1] = 0;  // Trim the \n
+    snprintf(buf, 80, "%s [%08X]: ", timeBuf, h);
+    fwrite(buf, strlen(buf), 1, fp);
+    fwrite(msg, strlen(msg), 1, fp);
+    fwrite("\n", 1, 1, fp);
+    fclose(fp);
+}
