@@ -23,10 +23,8 @@ type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
 
 const fanSpeedOptions = (() => {
   const result = []
-  for (let i=0; i<=100; i+=5) {
-    if (i != 5) {
-      result.push(  { text: `${i}%`, value: i, key: i })
-    }
+  for (let i=10; i<=100; i+=5) {
+    result.push(  { text: `${i}%`, value: i, key: i })
   }
   return result
 })()
@@ -38,6 +36,36 @@ const hotChipTempOptions = (() => {
   }
   return result
 })()
+
+
+const rebootIntervalOptions = (() => {
+  // First three entries are special
+  const result = [
+    { text: 'NEVER', value: 0, key: 0},
+    { text: '0.5 hours', value: 30, key: 30},
+    { text: '1 hour', value: 60, key: 60}
+  ]
+
+  // Add the rest
+  for (let i=2; i<=24; i++) {
+    const minutes = i * 60
+    result.push(  { text: `${i} hours`, value: minutes, key: minutes })
+  }
+  return result
+})()
+
+const rebootHashrateOptions = (() => {
+  const result = []
+  for (let i=100; i<=400; i += 25) {
+    result.push(  { text: `${i} GH/s`, value: i, key: i })
+  }
+  return result
+})()
+
+const geneticAlgoOptions = [
+  { text: "Enabled", value: false, key: 0 },
+  { text: "Disabled", value: true, key: 1 },
+]
 
 class MiningPanel extends React.PureComponent<CombinedProps> {
   public static styles: InputSheet<{}> = {
@@ -162,6 +190,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
             return (
               <div>
                 <Form onSubmit={formikProps.handleSubmit}>
+                  { /*
                   <Header as="h2">Optimization Mode</Header>
                   {optimizationMsg}
                   <Button.Group className={classNames.buttonGroup}>
@@ -193,17 +222,18 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                       </Button>
                     )}
                   </Button.Group>
+                    */ }
 
                   <Header as="h2">Advanced Controls</Header>
                   <Form.Dropdown
                     options={fanSpeedOptions}
                     selection={true}
-                    label="MAX. FAN SPEED"
-                    name="maxFanSpeedPercent"
+                    label="MIN. FAN SPEED"
+                    name="minFanSpeedPercent"
                     onChange={formikProps.handleChange}
                     onBlur={formikProps.handleBlur}
-                    value={formikProps.values.maxFanSpeedPercent}
-                    error={formikProps.errors.maxFanSpeedPercent}
+                    value={formikProps.values.minFanSpeedPercent}
+                    error={formikProps.errors.minFanSpeedPercent}
                   />
 
                   <Form.Dropdown
@@ -215,6 +245,39 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                     onBlur={formikProps.handleBlur}
                     value={formikProps.values.maxHotChipTempC}
                     error={formikProps.errors.maxHotChipTempC}
+                  />
+
+                  <Form.Dropdown
+                    options={rebootIntervalOptions}
+                    selection={true}
+                    label="REBOOT EVERY"
+                    name="rebootIntervalMins"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.rebootIntervalMins}
+                    error={formikProps.errors.rebootIntervalMins}
+                  />
+
+                  <Form.Dropdown
+                    options={rebootHashrateOptions}
+                    selection={true}
+                    label="REBOOT IF HASHRATE OF ANY SINGLE BOARD IS LESS THAN"
+                    name="rebootMinHashrate"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.rebootMinHashrate}
+                    error={formikProps.errors.rebootMinHashrate}
+                  />
+
+                  <Form.Dropdown
+                    options={geneticAlgoOptions}
+                    selection={true}
+                    label="GENETIC ALGORITHM HASHRATE"
+                    name="disableGeneticAlgo"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.disableGeneticAlgo}
+                    error={formikProps.errors.disableGeneticAlgo}
                   />
 
                     {renderSave(formikProps.dirty)}

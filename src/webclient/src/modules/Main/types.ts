@@ -47,8 +47,11 @@ export interface PoolConfig {
 
 export interface MiningConfig {
   optimizationMode: number
-  maxFanSpeedPercent: number
+  minFanSpeedPercent: number
   maxHotChipTempC: number
+  rebootIntervalMins: number
+  rebootMinHashrate: number
+  disableGeneticAlgo: boolean
 }
 
 export const MAX_POOLS = 3
@@ -155,6 +158,7 @@ export interface FormState {
   networkForm: string
   miningForm: string
 }
+
 // Module State
 export interface State {
   showSidebar: boolean
@@ -191,6 +195,9 @@ export interface State {
 
   // UI forms
   forms: FormState
+
+  // Diagnostics
+  diagnostics?: string
 }
 
 export interface RunUpgradeResp {

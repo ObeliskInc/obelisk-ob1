@@ -13,6 +13,7 @@ import {
   fetchCurrUser,
   fetchVersions,
   fetchDashboardStatus,
+  fetchDiagnostics,
   fetchMiningConfig,
   fetchNetworkConfig,
   fetchPoolsConfig,
@@ -87,9 +88,11 @@ const initialState: State = {
   },
   miningConfig: {
     optimizationMode: OptimizationModeHashrate,
-    stepSize: 1009,
-    maxFanSpeedPercent: 100,
+    minFanSpeedPercent: 100,
     maxHotChipTempC: 105,
+    rebootIntervalMins: 6 * 80,
+    rebootMinHashrate: 150,
+    disableGeneticAlgo: false,
   },
 
   systemConfig: {
@@ -108,6 +111,8 @@ const initialState: State = {
 
   nextRouteOnFail: undefined,
   nextRouteOnSuccess: undefined,
+
+  diagnostics: undefined,
 }
 
 // console.log(JSON.stringify(initialState.dashboardStatus, null, 0))
@@ -296,6 +301,13 @@ export const reducer = (state: State = initialState, action: Action<any>): State
   } else if (isType(action, fetchDashboardStatus.done)) {
     const payload = action.payload as any
     newState = updeep({ dashboardStatus: payload.data }, newState)
+
+    // -------------------------------------------------------------------------------------------
+    // Diagnostics
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, fetchDiagnostics.done)) {
+    const payload = action.payload as any
+    newState = updeep({ diagnostics: payload.data }, newState)
 
     // -------------------------------------------------------------------------------------------
     // Upload status

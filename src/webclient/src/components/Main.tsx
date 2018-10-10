@@ -15,6 +15,7 @@ import SidebarMenuItem from 'components/SidebarMenuItem'
 import { fetchCurrUser, fetchVersions, logout, showSidebar, toggleSidebar } from 'modules/Main/actions'
 import { getShowSidebar, getFirmwareVersion } from 'modules/Main/selectors'
 import Dashboard from 'panels/Dashboard'
+import Diagnostics from 'panels/Diagnostics'
 import MiningPanel from 'panels/MiningPanel'
 import NetworkPanel from 'panels/NetworkPanel'
 import PoolsPanel from 'panels/PoolsPanel'
@@ -148,6 +149,14 @@ class App extends React.PureComponent<CombinedProps> {
         onClick={() => this.navigateToPath('/network')}
         active={this.isActive('/network')}
       />,
+      <SidebarMenuItem
+        key="diagnostics"
+        name="diagnostics"
+        label="DIAGNOSTICS"
+        iconName="bug"
+        onClick={() => this.navigateToPath('/diagnostics')}
+        active={this.isActive('/diagnostics')}
+      />,
     ]
 
     return (
@@ -198,6 +207,7 @@ class App extends React.PureComponent<CombinedProps> {
                     <Route path="/mining" component={MiningPanel} />
                     <Route path="/network" component={NetworkPanel} />
                     <Route path="/system" component={SystemPanel} />
+                    <Route path="/diagnostics" component={Diagnostics} />
                     <Route component={Dashboard} />
                   </Switch>
                 </div>

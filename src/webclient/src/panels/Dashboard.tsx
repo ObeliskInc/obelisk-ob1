@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Header, Label, Table } from 'semantic-ui-react'
+import { Header, Label, Table, TextArea } from 'semantic-ui-react'
 
 import Content from 'components/Content'
 import Stat from 'components/Stat'
