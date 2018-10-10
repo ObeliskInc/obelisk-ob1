@@ -340,6 +340,10 @@ string getOSVersion() {
   return runCmd(cmd.str());
 }
 
+string getDiagnostics() {
+  return runCmd("cat /var/log/diagnostics.log");
+}
+
 void doReboot() { runCmd("reboot"); }
 
 // Network utils
