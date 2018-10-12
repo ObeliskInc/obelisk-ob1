@@ -26,6 +26,7 @@ DCR1:
 #include "driver-obelisk.h"
 #include "obelisk/gpio_bsp.h"
 #include "obelisk/multicast.h"
+#include "obelisk/Ob1Utils.h"
 #include "compat.h"
 #include "config.h"
 #include "klist.h"
@@ -102,8 +103,8 @@ static struct work* wq_dequeue(ob_chain* ob, bool sig)
         // Discard stale work - this will cause us to loop around and dequeue work until
         // we either run out of work or find non-stale work.
         if (work && work->id < work->pool->stale_share_id) {
-            applog(LOG_ERR, "HB%u: DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)",
-                ob->chain_id, work->job_id, work->id, work->pool->stale_share_id);
+            applog(LOG_ERR, "HB%d: DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)",
+                ob->chain_id + 1, work->job_id, work->id, work->pool->stale_share_id);
             free_work(work);
             work = NULL;
             retry = true;
@@ -472,7 +473,8 @@ static void obelisk_detect(bool hotplug)
 		ob->staticBoardNumber = i;
 		ob->staticTotalBoards = numHashboards;
 		ob->fanSpeed = 100;
-        cgtimer_time(&ob->startTime);
+		ob->fanAdjustmentInterval = 20;
+		cgtimer_time(&ob->startTime);
 
 		// Determine the type of board.
 		//
@@ -494,6 +496,7 @@ static void obelisk_detect(bool hotplug)
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.bootTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
@@ -722,6 +725,7 @@ static void updateControlState(ob_chain* ob) {
 
 	// Sanity check - exit with error if the voltage is at unsafe levels.
 	if (ob->control_loop_state.currentStringVoltage < 6) {
+		applog(LOG_ERR, "REBOOTING DUE TO LOW VOLTAGE on HB%d", ob->chain_id + 1);
 		exit(-1);
 	}
 }
@@ -745,7 +749,7 @@ static void displayControlState(ob_chain* ob) {
 
 	// Display some string-wide stats.
 	applog(LOG_ERR, "");
-	applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
+	applog(LOG_ERR, "HB%d:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
 		ob->staticBoardNumber,
 		ob->hotChipTemp,
 		ob->control_loop_state.currentStringVoltage,
@@ -887,7 +891,7 @@ static void handlePeriodicReboot(ob_chain* ob) {
 	}
 
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.bootTime > opt_ob_reboot_interval_mins * 60) {
-		applog(LOG_ERR, "$$$$$$$$$$ PERIODIC REBOOT AFTER USER CONFIGURED INTERVAL OF %d MINUTES", opt_ob_reboot_interval_mins);
+		applog(LOG_ERR, "$$$$$$$$$$ REBOOTING BECAUSE USER CONFIGURED INTERVAL OF %d MINUTES HAS ELAPSED", opt_ob_reboot_interval_mins);
 		doReboot();
 	}
 }
