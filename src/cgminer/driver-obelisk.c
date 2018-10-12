@@ -1251,6 +1251,7 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
     stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
     stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "hotChipTemp", &ob->hotChipTemp, false);
     stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has
