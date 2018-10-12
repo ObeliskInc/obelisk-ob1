@@ -935,9 +935,16 @@ void logDiagnostic(char* msg) {
     unsigned long h = hash(msg);
     snprintf(timeBuf, 80, "%s", asctime(timeinfo));
     timeBuf[strlen(timeBuf) - 1] = 0;  // Trim the \n
-    snprintf(buf, 80, "%s [%08X]: ", timeBuf, h);
+    snprintf(buf, 80, "[%08X] %s: ", h, timeBuf);
     fwrite(buf, strlen(buf), 1, fp);
     fwrite(msg, strlen(msg), 1, fp);
     fwrite("\n", 1, 1, fp);
     fclose(fp);
+
+    // Also log to syslog
+    applog(LOG_ERR, msg);
+}
+
+void logClearDiagnostics() {
+    remove("/var/log/diagnostics.log");
 }

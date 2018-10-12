@@ -423,6 +423,9 @@ static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
 
+		// Remove the old diagnostics file
+		logClearDiagnostics();
+
 	// Basic initialization.
     ob1Initialize();
     gBoardModel = eGetBoardType(0);

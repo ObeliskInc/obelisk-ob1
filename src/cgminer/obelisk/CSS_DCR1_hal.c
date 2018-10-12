@@ -254,8 +254,6 @@ int iDCR1StringStartup(uint8_t uiBoard)
 #endif
 
 #define ASIC_TEST_FLAGS_PASS 0x7FFF
-    logDiagnostic("DCR1 String Startup");
-    
     bool bDone;
     uint8_t ixJ;
     uint8_t uiRetryCnt;

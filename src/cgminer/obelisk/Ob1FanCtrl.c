@@ -300,7 +300,8 @@ static void initFanPWM(void)
     }
 
     if (write(exportfd, t_str, 1) < 0) {
-        applog(LOG_ERR, "Unable to export PWM0 resource. %d:%s\n", errno, strerror(errno));
+        // This is harmless, so don't report it, as users think they have a problem when seeing this.
+        // applog(LOG_ERR, "Unable to export PWM0 resource. %d:%s\n", errno, strerror(errno));
         close(exportfd);
         return;
     }
