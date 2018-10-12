@@ -12,6 +12,8 @@ import Content from 'components/Content'
 import { fetchDiagnostics } from 'modules/Main/actions'
 import { getDiagnostics } from 'modules/Main/selectors'
 
+const {CopyToClipboard } = require('react-copy-to-clipboard');
+
 interface ConnectProps {
   diagnostics?: string
 }
@@ -19,7 +21,6 @@ interface ConnectProps {
 type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
 
 class Diagnostics extends React.PureComponent<CombinedProps> {
-  private textArea: React.RefObject<HTMLTextAreaElement>;
   public static styles: InputSheet<{}> = {
     diagnostics: {
       background: 'black',
@@ -32,45 +33,34 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
 
   constructor(props: CombinedProps) {
     super(props);
-    this.textArea = React.createRef();
-}
+  }
+
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchDiagnostics.started({}))
     }
   }
 
-  setTextArea = (element: any) => {
-    this.textArea = element
-  }
-
-  handleCopy = () => {
-    if (this.textArea) {
-      this.textArea.select()
-      window.document.execCommand("copy")
-    }
-  }
-
   render() {
     const { classNames, diagnostics } = this.props
-
-    let diagnosticInfo: any = undefined;
 
     return (
       <Content>
         <Header as="h1">Diagnostics</Header>
         <Message
-          icon="info"
-          header="Diagnostic Info"
+          icon="warning sign"
+          header="Privacy Warning"
           content={
-            'The information below has just been collected directly from the miner.  Please include ' +
-            'this information if you need to contact Obelisk for technical support.'
+            'The information below has been collected directly from your miner.  It ' +
+            'may contain private information such as wallet addresses and pool passwords. ' +
+            'Please edit the information to remove anything you don\'t want to share.'
           }
         />
 
-        <TextArea ref={this.setTextArea} className={classNames.diagnostics} rows={40}  value={"Testing 1 2 3"} disabled={true}/>
-        <Button onClick={this.handleCopy}>COPY TO CLIPBOARD</Button>
-
+        <TextArea className={classNames.diagnostics} rows={40}  value={diagnostics} disabled={true}/>
+        <CopyToClipboard text={diagnostics}>
+          <Button>COPY TO CLIPBOARD</Button>
+        </CopyToClipboard>
       </Content>
     )
   }
