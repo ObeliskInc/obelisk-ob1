@@ -109,10 +109,16 @@ class Dashboard extends React.PureComponent<CombinedProps> {
             {h.boardTemp} C
           </Table.Cell>
         )),
-      'CHIP TEMP.': (s: HashboardStatus[]) =>
+        'MEASURED CHIP TEMP.': (s: HashboardStatus[]) =>
         _.map(s, (h: HashboardStatus, i) => (
           <Table.Cell key={i} textAlign="center">
             {h.chipTemp} C
+          </Table.Cell>
+        )),
+        'HOT CHIP TEMP.': (s: HashboardStatus[]) =>
+        _.map(s, (h: HashboardStatus, i) => (
+          <Table.Cell key={i} textAlign="center">
+            {h.hotChipTemp} C
           </Table.Cell>
         )),
       'POWER SUPPLY TEMP.': (s: HashboardStatus[]) =>

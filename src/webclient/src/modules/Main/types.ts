@@ -103,6 +103,7 @@ export interface HashboardStatus {
   rejected: number
   boardTemp: number
   chipTemp: number
+  hotChipTemp: number
   powerSupplyTemp: number
   mhsAvg: number
   mhs1m: number
