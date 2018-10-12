@@ -239,7 +239,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                   <Form.Dropdown
                     options={hotChipTempOptions}
                     selection={true}
-                    label="MAX. CHIP TEMP."
+                    label="MAX. HOT CHIP TEMP."
                     name="maxHotChipTempC"
                     onChange={formikProps.handleChange}
                     onBlur={formikProps.handleBlur}
@@ -261,7 +261,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                   <Form.Dropdown
                     options={rebootHashrateOptions}
                     selection={true}
-                    label="REBOOT IF HASHRATE OF ANY SINGLE BOARD IS LESS THAN"
+                    label="REBOOT IF HASHRATE OF ANY BOARD IS LESS THAN"
                     name="rebootMinHashrate"
                     onChange={formikProps.handleChange}
                     onBlur={formikProps.handleBlur}
@@ -272,7 +272,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                   <Form.Dropdown
                     options={geneticAlgoOptions}
                     selection={true}
-                    label="GENETIC ALGORITHM HASHRATE"
+                    label="GENETIC ALGORITHM (ATTEMPTS TO OPTIMIZE HASHRATE)"
                     name="disableGeneticAlgo"
                     onChange={formikProps.handleChange}
                     onBlur={formikProps.handleBlur}
