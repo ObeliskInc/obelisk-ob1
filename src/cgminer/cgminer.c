@@ -367,11 +367,7 @@ int opt_ob_min_fan_speed_percent = 10;
 int opt_ob_max_hot_chip_temp_c = 105;
 int opt_ob_optimization_mode = OBELISK_OPTIMIZATION_MODE_MAX_HASHRATE;
 int opt_ob_reboot_interval_mins = 60 * 8;  // 8 hours by default
-#if (MODEL == DCR1)
-int opt_ob_min_hashrate = 300;
-#elif (MODEL == SC1)
-int opt_ob_reboot_min_hashrate = 150;
-#endif
+int opt_ob_reboot_min_hashrate = 150;  // DCR1 should be higher - user can override
 int opt_ob_disable_genetic_algo = false;
 
 #if defined(USE_BITFORCE)
