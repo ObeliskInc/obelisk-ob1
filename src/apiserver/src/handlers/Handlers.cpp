@@ -157,25 +157,11 @@ void pollForHashrate() {
 
 void getInventoryVersions(string path, query_string &urlParams, const crow::request &req,
                           crow::response &resp) {
-  sendCgMinerCmd("version", "", [&](CgMiner::Response cgMinerResp) {
-    if (cgMinerResp.error) {
-      sendError(cgMinerResp.errorMsg, HttpStatus_InternalServerError, resp);
-      return;
-    }
+    json::wvalue jsonResp;
+    jsonResp["cgminerVersion"] = "4.10.0";
+    jsonResp["firmwareVersion"] = getFirmwareVersion();
 
-    // No error, so build up the response that the user is expecting
-    try {
-      json::rvalue cgMinerJson = json::load(cgMinerResp.json);
-      json::wvalue jsonResp;
-      jsonResp["cgminerVersion"] = cgMinerJson["VERSION"];
-      jsonResp["firmwareVersion"] = getFirmwareVersion();
-
-      sendJson(json::dump(jsonResp), resp);
-    } catch (...) {
-      sendError("Invalid JSON object", HttpStatus_InternalServerError, resp);
-      return;
-    }
-  });
+    sendJson(json::dump(jsonResp), resp);
 }
 
 void getInventorySystem(string path, query_string &urlParams, const crow::request &req,
