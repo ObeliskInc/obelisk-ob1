@@ -59,12 +59,13 @@ while true; do
 	# If there is no network connection when we first boot, udhcpc quits.  This check ensures
 	# that it gets restarted so that connecting Ethernet later on will still pull an IP
 	# address over DHCP.
-	RESTART=0
+	#
+	# Only check to restart udhcpc if the interface is set to dhcp, not static.
 	MODE=cat /root/config/interfaces | sed -En 's/iface(.*) eth0 inet (.*)/\2/p'
-	
-	# Only start udhcpc if the interface is set to dhcp, not static
 	if [ $MODE -eq "dhcp"]
 	then
+		RESTART=0
+	
 		if [ -f /var/run/udhcpc.eth0.pid ]; then
 			UDHCPC_PID=`cat /var/run/udhcpc.eth0.pid`
 			if ! kill -0 $UDHCPC_PID
@@ -82,10 +83,10 @@ while true; do
 		fi
 	fi
 
-	# Check that the default gateway is still accessible, otherwise it probably means that
-	# our network connection is broken, so reboot to try to recover.
+	# Every 5 minutes, check that the default gateway is still accessible, otherwise it probably
+	# means that our network interface is down, so reboot to try to recover.
 	NET_CHECK_CNT=$((NET_CHECK_CNT+1))
-	if [ $NET_CHECK_CNT -ge 60 ]
+	if [ $NET_CHECK_CNT -ge 300 ]
 	then
 		DEFAULT_GATEWAY=`route -n | awk '/^0.0.0.0/ {print $2}'`
 		if [ -z $DEFAULT_GATEWAY ]
