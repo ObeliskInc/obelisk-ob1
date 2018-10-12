@@ -866,8 +866,11 @@ static void handleFanChange(ob_chain* ob) {
 // some chips). This check is done every 30 minutes. The watchdog should revive cgminer.
 static void handleLowHashrateExit(ob_chain* ob) {
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {
-		// If after at least 30 minutes, any board has fallen below the hashrate limit, then exit
-		if (computeHashRate(ob) < (long long)opt_ob_reboot_min_hashrate * 1000000000LL) {
+		uint64_t actualHashrate = ob->cgpu->rolling5;
+		uint64_t hashrateLimit = ((uint64_t)opt_ob_reboot_min_hashrate) * 1000LL;
+		if (actualHashrate < hashrateLimit) {
+			applog(LOG_ERR, "$$$$$$$$$$ REBOOTING BECAUSE HASHRATE OF HB%d IS %lld, WHICH IS BELOW THE LIMIT OF=%lld",
+				ob->chain_id + 1, actualHashrate, hashrateLimit);
 			exit(0);
 		}
 
