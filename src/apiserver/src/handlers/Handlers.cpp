@@ -574,6 +574,13 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
   });
 }
 
+void getStatusDiagnostics(string path, query_string &urlParams, const crow::request &req,
+                        crow::response &resp) {
+  string diagnostics = getDiagnostics();
+  resp.write(diagnostics);
+  resp.end();
+}
+
 void getStatusDeviceDetails(string path, query_string &urlParams, const crow::request &req,
                             crow::response &resp) {
   sendCgMinerCmd("devdetails", "",
@@ -798,6 +805,7 @@ map<string, PathHandlerForGet> pathHandlerMapForGet = {
 
     // Status
     {"status/dashboard", getStatusDashboard},
+    {"status/diagnostics", getStatusDiagnostics},
     {"status/memory", getStatusMemory},
     {"status/devDetails", getStatusDeviceDetails},
     {"status/summary", getStatusSummary},
