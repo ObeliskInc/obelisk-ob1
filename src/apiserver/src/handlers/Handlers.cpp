@@ -502,6 +502,7 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
           entry["numCores"] = statsEntry["numCores"].i();
           entry["boardTemp"] = statsEntry["boardTemp"].d();
           entry["chipTemp"] = statsEntry["chipTemp"].d();
+          entry["hotChipTemp"] = statsEntry["hotChipTemp"].d();
           entry["powerSupplyTemp"] = statsEntry["powerSupplyTemp"].d();
           entry["fanSpeed0"] = statsEntry["fanSpeed0"].i();
           entry["fanSpeed1"] = statsEntry["fanSpeed1"].i();
