@@ -430,6 +430,26 @@ static void obelisk_detect(bool hotplug)
     ob1Initialize();
     gBoardModel = eGetBoardType(0);
 
+		// Check to make sure that we are not running the wrong firmware!
+		// If it is wrong, we sleep for a minute and clear the diagnostics log,
+		// because cgminer restarts immediately after detect fails, and we
+		// otherwise end up with a spammed log.
+		// TODO: Should probably have a more generic way to prevent log spamming
+		//       with errors from cgminer that cause it to exit.
+		#if (MODEL == SC1)
+			if (gBoardModel != MODEL_SC1) {
+				logDiagnostic("ERROR: Running SC1 firmware on a DCR1 miner!");
+				cgsleep_ms(60 * 1000);
+				return;
+			}
+		#elif (MODEL == DCR1)
+			if (gBoardModel != MODEL_DCR1) {
+				logDiagnostic("ERROR: Running DCR1 firmware on an SC1 miner!");
+				cgsleep_ms(60 * 1000);
+				return;
+			}
+		#endif
+
     // Set the initial fan speed - control loop will take over shortly
     ob1SetFanSpeeds(100);
 
