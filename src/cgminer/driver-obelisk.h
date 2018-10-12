@@ -162,6 +162,7 @@ struct ob_chain {
 	// Hot temp and fan speed.
 	double  hotChipTemp;
 	uint8_t fanSpeed;
+	uint8_t fanAdjustmentInterval;
 
     struct work_queue active_wq;
 
