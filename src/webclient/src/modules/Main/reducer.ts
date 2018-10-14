@@ -97,7 +97,6 @@ const initialState: State = {
 
   systemConfig: {
     timezone: 'America/New_York',
-    ntpServer: 'pool.ntp.org',
   },
 
   activeRequestType: undefined,

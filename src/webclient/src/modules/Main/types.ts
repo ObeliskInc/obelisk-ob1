@@ -62,7 +62,6 @@ export interface UserInfo {
 
 export interface SystemConfig {
   timezone?: string
-  ntpServer?: string
 
   // These are here just to satisfy Formik type handling - never send them with SystemConfig
   oldPassword?: string

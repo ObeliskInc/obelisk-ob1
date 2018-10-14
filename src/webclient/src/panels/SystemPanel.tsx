@@ -140,7 +140,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
           onSubmit={(values: SystemConfig, formikBag: FormikProps<SystemConfig>) => {
             if (this.props.dispatch) {
               const valuesToSend = {
-                ntpServer: values.ntpServer,
                 timezone: values.timezone,
               }
               this.props.dispatch(setSystemConfig.started(valuesToSend))
@@ -264,16 +263,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     search={true}
                     options={timezoneOptions}
                     value={formikProps.values.timezone}
-                  />
-                  <Form.Input
-                    label="NTP SERVER"
-                    name="ntpServer"
-                    placeholder="NTP Server Address"
-                    onChange={formikProps.handleChange}
-                    onBlur={formikProps.handleBlur}
-                    value={formikProps.values.ntpServer}
-                    error={!!_.get(formikProps.errors, ['ntpServer'], '')}
-                    disabled={true}
                   />
                   {renderSave(formikProps.dirty)}
                 </Form>
