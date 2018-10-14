@@ -1,12 +1,12 @@
 #!/bin/sh
 
-if [ -d /tmp/upgrade ]; then
-UPGRADE_PATH=/tmp/upgrade
-fi
+#if [ -d /tmp/upgrade ]; then
+#UPGRADE_PATH=/tmp/upgrade
+#fi
 
-if [ -d /root/upgrade ]; then
+#if [ -d /root/upgrade ]; then
 UPGRADE_PATH=/root/upgrade
-fi
+#fi
 
 # Stop everything here again, because the name of the watchdog is wrong in upgraderd.sh
 # TODO: The new version of upgraderd.sh will do this for us, so these lines can be removed in
@@ -38,3 +38,5 @@ rm -rf $UPGRADE_PATH
 
 # Change the owner of the new files so that lighttpd can read them
 chown -R www-data:www-data /var/www
+
+cp /root/upgrade/newVersion /root/.version

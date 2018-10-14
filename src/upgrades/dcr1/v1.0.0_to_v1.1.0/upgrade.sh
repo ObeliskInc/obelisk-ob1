@@ -1,8 +1,8 @@
 #!/bin/sh
 
-if [ ! -d /tmp/upgrade/rootfs-overlay ]; then
+if [ ! -d /root/upgrade/rootfs-overlay ]; then
 # Don't do anything if there was no file system overlay found
-exit -1
+exit 1
 fi
 
 # Stop everything here again, because the name of the watchdog is wrong in upgraderd.sh
@@ -15,7 +15,7 @@ killall -q apiserver
 # Ensure the boards are not hashing during the upgrade and that the fan is still running to cool the chips
 # since they were most likely just hashing.  This will also be folded into upgraderd.sh in the version
 # that this upgrade installs.
-/tmp/upgrade/rootfs-overlay/usr/sbin/stopasics
+/root/upgrade/rootfs-overlay/usr/sbin/stopasics
 
 # Remove the old GUI files
 rm -rf /var/www
@@ -24,7 +24,9 @@ rm -rf /var/www
 rm -f /etc/init.d/S25watchdogd
 
 # Copy all the new files into place
-cp -r /tmp/upgrade/rootfs-overlay/* /
+cp -r /root/upgrade/rootfs-overlay/* /
 
 # Change the owner of the new files so that lighttpd can read them
 chown -R www-data:www-data /var/www
+
+cp /root/upgrade/newVersion /root/.version
