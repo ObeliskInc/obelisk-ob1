@@ -1,0 +1,5 @@
+#!/bin/sh
+# set the mac address
+# description: At startup, reads the MAC address from the SOM over the i2c interface and sets it for Linux to use
+
+/usr/sbin/ee2mac -i eth0 -e /sys/bus/i2c/devices/3-0050/eeprom -o 0xfa
