@@ -37,7 +37,7 @@ export const startScanLogic = createLogic({
       cmd = `scan -i ${action.payload.subnet}/${action.payload.bitmask}`
     }
     ipcRenderer.send('obexec', cmd)
-  },
+  }
 })
 
 export const spawnMDNSLogic = createLogic({
@@ -45,5 +45,13 @@ export const spawnMDNSLogic = createLogic({
   process() {
     let cmd = 'mdns'
     ipcRenderer.send('obspawn', cmd)
-  },
+  }
+})
+
+export const startUpdateLogic = createLogic({
+  type: actions.startUpgrade.type,
+  process({ action }: any) {
+    const data = JSON.stringify(action.payload)
+    ipcRenderer.send('obupdate', data)
+  }
 })
