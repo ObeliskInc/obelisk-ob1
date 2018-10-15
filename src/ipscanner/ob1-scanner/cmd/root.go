@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"reflect"
@@ -14,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gitlab.com/NebulousLabs/ob1-scanner/scanner"
+	"golang.org/x/crypto/ssh"
 )
 
 // exit codes
@@ -29,6 +32,15 @@ type ScanConfig struct {
 	timeout string
 }
 
+type UpgradeConfig struct {
+	sshuser            string
+	sshpass            string
+	siaFirmwarePath    string
+	decredFirmwarePath string
+	detectPath         string
+	host               string
+}
+
 var FlagJSON bool
 
 // JSONMachines defines the JSON payload for scan func
@@ -39,6 +51,9 @@ type JSONMachines struct {
 
 // ScanConf is a config for scan
 var ScanConf ScanConfig
+
+// UpgradeConf is a config for upgrade
+var UpgradeConf UpgradeConfig
 
 var rootCmd = &cobra.Command{
 	Use:   "ob1-scanner",
@@ -51,7 +66,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version of ob1-scanner",
 	Long:  "Prints the current binary version of ob1-scanner you are using.",
 	Run: func(cmd *cobra.Command, _ []string) {
-		logrus.Infof("ob1-scanner Version 0.0.1 %s / %s\n", runtime.GOOS, runtime.GOARCH)
+		logrus.Infof("ob1-scanner Version 0.0.3 %s / %s\n", runtime.GOOS, runtime.GOARCH)
 	},
 }
 
@@ -69,10 +84,26 @@ var mdnsCmd = &cobra.Command{
 	Run:   wrap(mdnsHandler),
 }
 
+var upgradeCmd = &cobra.Command{
+	Use:   "upgrade",
+	Short: "Upgrades an Obelisk with passed in firmware.",
+	Long:  "SSHs into the Obelisk, and attempts to upgrade the new firmware.",
+	Run:   wrap(upgradeHandler),
+}
+
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(mdnsCmd)
+	rootCmd.AddCommand(upgradeCmd)
+	// Upgrade config
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.host, "host", "i", "", "set host")
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.siaFirmwarePath, "siaFirmware", "s", "", "firmware path")
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.decredFirmwarePath, "decredFirmware", "d", "", "firmware path")
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.detectPath, "detect", "z", "", "detect path")
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.sshuser, "user", "u", "root", "ssh user")
+	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.sshpass, "password", "p", "obelisk", "ssh password")
+	// scan conf
 	scanCmd.PersistentFlags().StringVarP(&ScanConf.timeout, "timeout", "t", "2s", "timeout for port checks and RPC calls")
 	// Figure out subnet
 	var ipString string
@@ -102,6 +133,179 @@ func Execute() {
 
 func startDaemonCmd(cmd *cobra.Command, _ []string) {
 	cmd.UsageFunc()(cmd)
+}
+
+func detect() (string, error) {
+	port := "22"
+	logrus.Infof("Setting up SSH info for Obelisk with IP %s", UpgradeConf.host)
+	config := &ssh.ClientConfig{
+		User:            UpgradeConf.sshuser,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth: []ssh.AuthMethod{
+			ssh.Password(UpgradeConf.sshpass),
+		},
+	}
+	// scp detect
+	logrus.Info("SCPing detect to upgrade directory...")
+	err := moveFile("detect", UpgradeConf.detectPath, "~/", UpgradeConf.host, port, config)
+	if err != nil {
+		logrus.Error("Error moving file", err)
+		return "", err
+	}
+	// run detect
+	tries := 10
+	var exitCode string
+	for tries > 0 {
+		exitCode = executeCmd("./detect", UpgradeConf.host, port, config)
+		if strings.Contains(exitCode, "2") {
+			logrus.Infof("%s, trying again...", exitCode)
+			tries--
+		} else {
+			break
+		}
+	}
+
+	logrus.Info("removing detect binary")
+	executeCmd("rm detect", UpgradeConf.host, port, config)
+
+	if strings.Contains(exitCode, "3") {
+		logrus.Info("Detected SC1!")
+		return "SC1", nil
+	} else if strings.Contains(exitCode, "4") {
+		logrus.Info("Detected DCR1!")
+		return "DCR1", nil
+	}
+	return "", fmt.Errorf("Invalid model: %s", exitCode)
+}
+
+func upgradeHandler() {
+	if FlagJSON {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	}
+	// cmd := []string{
+	// 	"test -f /root/.version && mkdir -p /tmp/upgrade || mkdir -p /root/upgrade",
+	// 	`test -f /root/.version && echo "/tmp/upgrade" || echo "/root/upgrade"`,
+	// 	"test -f /root/.version && cd /tmp/upgrade && gunzip firmware.tar.gz && tar -xf firmware.tar && rm firmware.tar || cd /root/upgrade && gunzip firmware.tar.gz && tar -xf firmware.tar && rm firmware.tar && ./upgrader.sh",
+	// }
+	cmd := []string{
+		"mkdir -p /root/upgrade",
+		`echo "/root/upgrade"`,
+		"cd /root/upgrade && gunzip firmware.tar.gz && tar -xf firmware.tar && rm firmware.tar && ./upgrade.sh",
+		"rm -rf /root/upgrade && /sbin/reboot -f",
+	}
+
+	port := "22"
+	logrus.Infof("Setting up SSH info for Obelisk with IP %s", UpgradeConf.host)
+	config := &ssh.ClientConfig{
+		User:            UpgradeConf.sshuser,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth: []ssh.AuthMethod{
+			ssh.Password(UpgradeConf.sshpass),
+		},
+	}
+	// mkdir
+	logrus.Info("Creating upgrade directory...")
+	executeCmd(cmd[0], UpgradeConf.host, port, config)
+	// detect
+	model, err := detect()
+	if err != nil {
+		logrus.Errorf("Error identifying machine... %s.", err)
+		return
+	}
+	var fwPath string
+	if model == "SC1" {
+		fwPath = UpgradeConf.siaFirmwarePath
+	} else if model == "DCR1" {
+		fwPath = UpgradeConf.decredFirmwarePath
+	}
+	// get path
+	path := executeCmd(cmd[1], UpgradeConf.host, port, config)
+	logrus.Infof("Upgrade Path is %s ", path)
+	// scp firmware
+	logrus.Infof("SCPing %s firmware to upgrade directory...", model)
+	err = moveFile("firmware.tar.gz", fwPath, path, UpgradeConf.host, port, config)
+	if err != nil {
+		logrus.Error("Error moving firmware: ", err)
+		return
+	}
+	// gunzip and tar
+	logrus.Info("Gunzip and untar'ing upgrade files...")
+	executeCmd(cmd[2], UpgradeConf.host, port, config)
+	logrus.Infof("Firmware transfer complete for Obelisk with IP %s... machine should reboot momentarily.", UpgradeConf.host)
+	// finally try reboot
+	executeCmd(cmd[3], UpgradeConf.host, port, config)
+	return
+}
+
+func moveFile(fileName, fromPath, toPath, hostname, port string, config *ssh.ClientConfig) error {
+	// client := scp.NewClient(fmt.Sprintf("%s:%s", hostname, port), config)
+	// err := client.Connect()
+	// if err != nil {
+	// 	logrus.Debug("error connecting to scp", err)
+	// 	return err
+	// }
+	// f, err := os.Open(fromPath)
+	// if err != nil {
+	// 	logrus.Debug("error opening file", err)
+	// 	return err
+	// }
+	// defer client.Close()
+	// defer f.Close()
+	// err = client.CopyFile(f, toPath, "0655")
+	// if err != nil {
+	// 	if err.Error() == "Process exited with status 1" {
+	// 		return nil
+	// 	}
+	// 	return err
+	// }
+	// return nil
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", hostname, port), config)
+	if err != nil {
+		return err
+	}
+	content, err := ioutil.ReadFile(fromPath)
+	if err != nil {
+		return err
+	}
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	defer client.Close()
+	go func() {
+		w, _ := session.StdinPipe()
+		defer w.Close()
+		fmt.Fprintln(w, "C0755", len(content), fileName)
+		w.Write(content)
+		fmt.Fprint(w, "\x00") // transfer end with \x00
+	}()
+	return session.Run("/usr/bin/scp -t " + toPath)
+}
+
+func executeCmd(cmd string, hostname string, port string, config *ssh.ClientConfig) string {
+	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", hostname, port), config)
+	defer conn.Close()
+	if err != nil {
+		logrus.Info("Failed to dial", err)
+	}
+
+	var stdoutBuffer bytes.Buffer
+	var stderrBuffer bytes.Buffer
+	session, err := conn.NewSession()
+	session.Stdout = &stdoutBuffer
+	session.Stderr = &stderrBuffer
+	if err != nil {
+		logrus.Error("Failed to create session", err)
+	}
+	defer session.Close()
+	err = session.Run(cmd)
+	if err != nil {
+		// logrus.Errorf("cmd run error: %s | %s", err, stderrBuffer.String())
+		return err.Error()
+	}
+	response := stdoutBuffer.String()
+	return response
 }
 
 func scanHandler() {

@@ -1,16 +1,19 @@
-import * as React from 'react'
-import Loader from './Loader'
-import { Link, RouteComponentProps } from 'react-router-dom'
-import { ipcRenderer } from 'electron'
-import { receiveLogAction, spawnMDNS } from '../actions/bridge'
-// import { receivelog } from '../actions'
-import { Log, Miner, BeforeScan } from '../reducers/bridge'
-const LogoSVG = require('../assets/svg/logo.svg')
-let styles = require('./Home.scss')
+import * as React from "react"
+import StayScrolled from "react-stay-scrolled"
+import Message from "./messages"
+
+import { Tab, Tabs, TabList, TabPanel } from "react-tabs"
+
+import Loader from "./Loader"
+import { Link, RouteComponentProps } from "react-router-dom"
+import { Log, Miner, BeforeScan, BeforeUpdate } from "../reducers/bridge"
+const LogoSVG = require("../assets/svg/logo.svg")
+let styles = require("./Home.scss")
 
 export interface IProps extends RouteComponentProps<any> {
   startScan(payload: BeforeScan): void
   spawnMDNS(): void
+  startUpgrade(payload: BeforeUpdate): void
   logs: Log[]
   miners: Miner[]
   loading: string
@@ -29,17 +32,21 @@ function validateIP(ip: string) {
 
 export default class Home extends React.Component<IProps> {
   state = {
-    checked: false,
-    subnet: '',
-    bitmask: '',
+    subnetChecked: false,
+    sshChecked: false,
+    subnet: "",
+    bitmask: "",
+    sshuser: "",
+    sshpass: "",
+    customip: ""
   }
   componentDidMount() {}
   startScan = () => {
-    const { checked, subnet, bitmask } = this.state
-    if (checked && validateIP(subnet) && parseInt(bitmask, 10) != NaN) {
+    const { subnetChecked, subnet, bitmask } = this.state
+    if (subnetChecked && validateIP(subnet) && parseInt(bitmask, 10) != NaN) {
       this.props.startScan({
         subnet,
-        bitmask,
+        bitmask
       })
     } else {
       this.props.startScan({})
@@ -50,52 +57,145 @@ export default class Home extends React.Component<IProps> {
   }
   handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value
     })
   }
   onCheck = () => {
     this.setState({
-      checked: !this.state.checked,
+      subnetChecked: !this.state.subnetChecked
     })
+  }
+  onSSHCheck = () => {
+    this.setState({
+      sshChecked: !this.state.sshChecked
+    })
+  }
+  upgradeSingle = (ip: string, model: string) => () => {
+    const sshuser = this.state.sshChecked ? this.state.sshuser : "root"
+    const sshpass = this.state.sshChecked ? this.state.sshpass : "obelisk"
+    this.props.startUpgrade({
+      host: ip,
+      sshuser,
+      sshpass,
+      model
+    })
+  }
+  upgradeAll = () => {
+    this.props.miners.forEach(m => {
+      this.upgradeSingle(m.ip, m.model)()
+    })
+  }
+  startManualUpdate = () => {
+    const { customip } = this.state
+    console.log("custom", customip, validateIP(customip))
+    if (validateIP(customip)) {
+      this.upgradeSingle(customip, "deprecated")()
+    }
   }
   render() {
     const mappedLogs = this.props.logs.map((l, i) => {
       return (
-        <pre key={i}>
-          <strong>{l.level}</strong> {l.msg} {l.time}
-        </pre>
+        <Message
+          key={i}
+          text={
+            <pre key={i}>
+              <strong>{l.level}</strong> {l.msg} {l.time}
+            </pre>
+          }
+        />
       )
     })
+    const oneUpgrade = (m: Miner) => (
+      <button
+        onClick={this.upgradeSingle(m.ip, m.model)}
+        className={styles.upgradeButton}
+      >
+        Upgrade
+      </button>
+    )
     const mappedMiners = this.props.miners.map((m, i) => {
       return (
         <tr key={i}>
           <td>{m.ip}</td>
           <td>{m.mac}</td>
           <td>{m.model}</td>
+          <td>
+            {m.firmwareVersion
+              ? m.firmwareVersion.includes("v1.1.0")
+                ? m.firmwareVersion
+                : oneUpgrade(m)
+              : oneUpgrade(m)}
+          </td>
         </tr>
       )
     })
+    const renderSSH = (
+      <div>
+        <input
+          type="checkbox"
+          name="override"
+          value="ssh"
+          checked={this.state.sshChecked}
+          onChange={this.onSSHCheck}
+        />
+        <span>Custom SSH Login (default root/obelisk)</span>
+        <div
+          className={`${styles.input} ${this.state.sshChecked &&
+            styles.active}`}
+        >
+          <input
+            type="text"
+            placeholder="User (root)"
+            value={this.state.sshuser}
+            name="sshuser"
+            onChange={this.handleChange}
+          />
+          <input
+            type="text"
+            placeholder="Password (obelisk)"
+            name="sshpass"
+            onChange={this.handleChange}
+            value={this.state.sshpass}
+          />
+        </div>
+      </div>
+    )
+    const oldMinersExist =
+      this.props.miners.filter(m => !m.firmwareVersion).length > 1
     let renderLoadingOrResults = (
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>IP Address</th>
-            <th>MAC</th>
-            <th>Model</th>
-          </tr>
-        </thead>
-        <tbody>{mappedMiners}</tbody>
-      </table>
+      <div>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>MAC</th>
+              <th>Model</th>
+              <th>Firmware</th>
+            </tr>
+          </thead>
+          <tbody>{mappedMiners}</tbody>
+        </table>
+        {oldMinersExist && (
+          <div className={styles.upgradeAll}>
+            <button
+              onClick={this.upgradeAll}
+              className={styles.upgradeAllButton}
+            >
+              Upgrade All
+            </button>
+          </div>
+        )}
+      </div>
     )
     switch (this.props.loading) {
-      case 'started':
+      case "started":
         renderLoadingOrResults = (
           <div className={styles.loading}>
             <Loader />
           </div>
         )
         break
-      case 'finished':
+      case "finished":
         if (this.props.miners.length < 1) {
           renderLoadingOrResults = (
             <div className="notFound">
@@ -122,50 +222,86 @@ export default class Home extends React.Component<IProps> {
           <div className={styles.left}>
             <h2>Obelisk Scanner</h2>
             <span className={styles.subheading}>
-              Find Obelisk Machines on your subnet.
+              Find & Update Obelisk Machines on your subnet.
             </span>
-            <div>
-              <button onClick={this.startScan} className={styles.button}>
-                Start Smart Scan
-              </button>
-              <button onClick={this.spawnServer} className={styles.button2}>
-                IP Reporter mDNS
-              </button>
-            </div>
-            <div className={styles.settings}>
-              <input
-                type="checkbox"
-                name="override"
-                value="subnet"
-                checked={this.state.checked}
-                onChange={this.onCheck}
-              />
-              <span>Enable Manual Subnet Override (For Colos)</span>
-              <div
-                className={`${styles.input} ${this.state.checked &&
-                  styles.active}`}
-              >
-                <input
-                  type="text"
-                  placeholder="Subnet (192.168.0.1)"
-                  value={this.state.subnet}
-                  name="subnet"
-                  onChange={this.handleChange}
-                />
-                <input
-                  type="text"
-                  placeholder="Bitmask (24)"
-                  name="bitmask"
-                  onChange={this.handleChange}
-                  value={this.state.bitmask}
-                />
+            <Tabs selectedTabClassName={styles.tabactive}>
+              <TabList className={styles.tablist}>
+                <Tab>Scanner</Tab>
+                <Tab>Manual Updater</Tab>
+              </TabList>
+              <div className={styles.tabwrap}>
+                <TabPanel>
+                  <div>
+                    <button onClick={this.startScan} className={styles.button}>
+                      Start Smart Scan
+                    </button>
+                    <button
+                      onClick={this.spawnServer}
+                      className={styles.button2}
+                    >
+                      IP Reporter mDNS
+                    </button>
+                  </div>
+                  <div className={styles.settings}>
+                    <input
+                      type="checkbox"
+                      name="override"
+                      value="subnet"
+                      checked={this.state.subnetChecked}
+                      onChange={this.onCheck}
+                    />
+                    <span>Enable Manual Subnet Override (For Colos)</span>
+                    <div
+                      className={`${styles.input} ${this.state.subnetChecked &&
+                        styles.active}`}
+                    >
+                      <input
+                        type="text"
+                        placeholder="Subnet (192.168.0.1)"
+                        value={this.state.subnet}
+                        name="subnet"
+                        onChange={this.handleChange}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Bitmask (24)"
+                        name="bitmask"
+                        onChange={this.handleChange}
+                        value={this.state.bitmask}
+                      />
+                    </div>
+                    {renderSSH}
+                  </div>
+                </TabPanel>
+                <TabPanel>
+                  <div className={styles.manual}>
+                    <input
+                      type="text"
+                      placeholder="Obelisk IP"
+                      name="customip"
+                      onChange={this.handleChange}
+                      value={this.state.customip}
+                    />
+                  </div>
+                  {renderSSH}
+                  <button
+                    onClick={this.startManualUpdate}
+                    className={styles.button}
+                  >
+                    Start Manual Update
+                  </button>
+                </TabPanel>
               </div>
-            </div>
+            </Tabs>
             <div className={styles.terminal}>
               <span>
                 <strong>Logging</strong>
               </span>
-              <div className={styles.terminalbox}>{mappedLogs}</div>
+
+              <StayScrolled className={styles.terminalbox} component="div">
+                {mappedLogs}
+              </StayScrolled>
+              {/* <div className={styles.terminalbox}>{mappedLogs}</div> */}
             </div>
           </div>
           <div>
