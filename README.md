@@ -85,7 +85,7 @@ to work. The upgarde script is meant to be run from a linux machine. It will run
 a script on the control card that replaces binaries with upgraded versions, and
 then flashes lights to indicate success or failure.
 
-## Building the Privisioning Firmware
+## Building the Provisioning Firmware
 
 To build everything from scratch, run 'make full'. This operation can take
 several hours. Future builds only require calling `make`, which can take a few
