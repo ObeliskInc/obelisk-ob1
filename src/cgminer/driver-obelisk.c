@@ -823,15 +823,12 @@ static void handleFanChange(ob_chain* ob) {
 	}
 
 	// Check for conditions where we change the fan speed.
-	bool allHot = true;
 	bool anyHot = false;
 	bool allBelowIdeal = true;
 	bool anyCool = false;
 	for (int i = 0; i < ob->staticTotalBoards; i++) {
 		double chainTemp = chains[i].hotChipTemp;
-		if (chainTemp <= chains[i].staticBoardModel.boardHotTemp) {
-			allHot = false;
-		} else {
+		if (chainTemp > chains[i].staticBoardModel.boardHotTemp) {
 			anyHot = true;
 		}
 		if (chainTemp >= chains[i].staticBoardModel.boardIdealTemp) {
@@ -845,11 +842,7 @@ static void handleFanChange(ob_chain* ob) {
 	uint64_t maxSpeed = ob->staticRigModel.fanSpeedMax;
 	uint64_t minSpeed = ob->staticRigModel.fanSpeedMin;
 	uint64_t increment = ob->staticRigModel.fanSpeedIncrement;
-	if (allHot && ob->fanSpeed != maxSpeed) {
-		ob->fanSpeed = maxSpeed;
-		ob1SetFanSpeeds(ob->fanSpeed);
-		ob->fanAdjustmentInterval = 20;
-	} else if (anyHot && ob->fanSpeed != maxSpeed) {
+	if (anyHot && ob->fanSpeed != maxSpeed) {
 		ob->fanSpeed += increment;
 		ob1SetFanSpeeds(ob->fanSpeed);
 		ob->fanAdjustmentInterval = 5;  // Check again sooner to see if we need to crank it up again
