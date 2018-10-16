@@ -1192,7 +1192,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 				if (nonceResult == 2) {
 					// TODO: Should turn these into separate functions with ptrs
 					if (gBoardModel == MODEL_SC1) {
-						applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						applog(LOG_ERR, "Submitting SC nonce=0x%016llx  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
 						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
 					} else {
 						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
