@@ -30,6 +30,22 @@ function validateIP(ip: string) {
   return false
 }
 
+
+function compareIp(miner1: Miner, miner2: Miner) {
+  const ipParts1 = miner1.ip.split(".");
+  const ipParts2 = miner2.ip.split(".");
+  for (let i=0; i<ipParts1.length; i++) {
+    const ipPartNum1 = parseInt(ipParts1[i])
+    const ipPartNum2 = parseInt(ipParts2[i])
+
+    if (ipPartNum1 !== ipPartNum2) {
+      return ipPartNum1 - ipPartNum2
+    }
+    // else continue to next number
+  }
+  return 0;  // They must be the same
+}
+
 export default class Home extends React.Component<IProps> {
   state = {
     subnetChecked: false,
@@ -40,7 +56,9 @@ export default class Home extends React.Component<IProps> {
     sshpass: "",
     customip: ""
   }
+
   componentDidMount() {}
+
   startScan = () => {
     const { subnetChecked, subnet, bitmask } = this.state
     if (subnetChecked && validateIP(subnet) && parseInt(bitmask, 10) != NaN) {
@@ -52,27 +70,47 @@ export default class Home extends React.Component<IProps> {
       this.props.startScan({})
     }
   }
+
   spawnServer = () => {
     this.props.spawnMDNS()
   }
+
   handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({
       [e.target.name]: e.target.value
     })
   }
+
   onCheck = () => {
     this.setState({
       subnetChecked: !this.state.subnetChecked
     })
   }
+
   onSSHCheck = () => {
     this.setState({
       sshChecked: !this.state.sshChecked
     })
   }
+
   upgradeSingle = (ip: string, model: string) => () => {
-    const sshuser = this.state.sshChecked ? this.state.sshuser : "root"
-    const sshpass = this.state.sshChecked ? this.state.sshpass : "obelisk"
+    let sshuser = "root";
+    let sshpass = "obelisk";
+
+    if (this.state.sshChecked) {
+      sshuser = this.state.sshuser
+      sshpass = this.state.sshpass
+
+      // Some users click the checkbox, but then don't enter credentials - fallback to defaults if so
+      if (!sshuser || sshuser.length === 0) {
+        sshuser = "root"
+      }
+
+      if (!sshpass || sshpass.length === 0) {
+        sshuser = "obelisk"
+      }
+    }
+
     this.props.startUpgrade({
       host: ip,
       sshuser,
@@ -80,11 +118,19 @@ export default class Home extends React.Component<IProps> {
       model
     })
   }
+
+  reinstallSingle = (ip: string, model: string) => () => {
+    if (confirm("Are you sure you want to reinstall the same firmware version?  This is not normally necessary")) {
+      this.upgradeSingle(ip, model)()
+    }
+  }
+
   upgradeAll = () => {
     this.props.miners.forEach(m => {
       this.upgradeSingle(m.ip, m.model)()
     })
   }
+
   startManualUpdate = () => {
     const { customip } = this.state
     console.log("custom", customip, validateIP(customip))
@@ -92,7 +138,9 @@ export default class Home extends React.Component<IProps> {
       this.upgradeSingle(customip, "deprecated")()
     }
   }
+
   render() {
+    const newVersion = "v1.2.0"
     const mappedLogs = this.props.logs.map((l, i) => {
       return (
         <Message
@@ -105,26 +153,46 @@ export default class Home extends React.Component<IProps> {
         />
       )
     })
-    const oneUpgrade = (m: Miner) => (
+
+    const upgradeButton = (m: Miner) => (
       <button
         onClick={this.upgradeSingle(m.ip, m.model)}
         className={styles.upgradeButton}
       >
-        Upgrade
+        UPGRADE TO {newVersion}
       </button>
     )
-    const mappedMiners = this.props.miners.map((m, i) => {
+
+    const sortedMiners = this.props.miners.sort(compareIp);
+    const sc1Count = sortedMiners.reduce((count: number, miner: Miner) => {return count + ((miner.model === "SC1") ? 1 : 0)}, 0)
+    const dcr1Count = sortedMiners.reduce((count: number, miner: Miner) => {return count + ((miner.model === "DCR1") ? 1 : 0)}, 0)
+    const otherCount = sortedMiners.length - sc1Count - dcr1Count
+    let upgradableMinersExist = false
+    let mappedMiners = sortedMiners.map((m, i) => {
+      let firmwareVersion = m.firmwareVersion
+      if (!firmwareVersion || firmwareVersion.length === 0) {
+        firmwareVersion = "v1.0.0"
+      } else {
+        const parts = firmwareVersion.split(" ")
+        if (parts.length === 1) {
+          firmwareVersion = parts[0]
+        } else if (parts.length >= 2) {
+          firmwareVersion = parts[1]
+        }
+      }
+      const upgradable = firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
+      if (upgradable) {
+        upgradableMinersExist = true
+      }
+
       return (
         <tr key={i}>
-          <td>{m.ip}</td>
+          <td><a href={`http://${m.ip}`} target="_blank">{m.ip}</a></td>
           <td>{m.mac}</td>
           <td>{m.model}</td>
+          <td>{firmwareVersion}</td>
           <td>
-            {m.firmwareVersion
-              ? m.firmwareVersion.includes("v1.1.0")
-                ? m.firmwareVersion
-                : oneUpgrade(m)
-              : oneUpgrade(m)}
+              {upgradable ? upgradeButton(m) :  undefined}
           </td>
         </tr>
       )
@@ -138,7 +206,7 @@ export default class Home extends React.Component<IProps> {
           checked={this.state.sshChecked}
           onChange={this.onSSHCheck}
         />
-        <span>Custom SSH Login (default root/obelisk)</span>
+        <span>Custom SSH Login (Default: root/obelisk)</span>
         <div
           className={`${styles.input} ${this.state.sshChecked &&
             styles.active}`}
@@ -160,33 +228,27 @@ export default class Home extends React.Component<IProps> {
         </div>
       </div>
     )
-    const oldMinersExist =
-      this.props.miners.filter(m => !m.firmwareVersion).length > 1
+
     let renderLoadingOrResults = (
-      <div>
+      <div className={styles.resultsContainer}>
         <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>IP Address</th>
-              <th>MAC</th>
-              <th>Model</th>
-              <th>Firmware</th>
-            </tr>
-          </thead>
-          <tbody>{mappedMiners}</tbody>
+         <tbody>{mappedMiners}</tbody>
         </table>
-        {oldMinersExist && (
-          <div className={styles.upgradeAll}>
-            <button
-              onClick={this.upgradeAll}
-              className={styles.upgradeAllButton}
-            >
-              Upgrade All
-            </button>
-          </div>
-        )}
       </div>
     )
+
+    const upgradeAll = (
+        <div className={styles.upgradeAll}>
+          <button onClick={this.upgradeAll} className={styles.upgradeAllButton} disabled={!upgradableMinersExist}>
+            UPGRADE ALL TO {newVersion}
+          </button>
+          <div className={styles.minerCounts}>
+            <div className={styles.totalCount}>{sortedMiners.length} OBELISKS FOUND</div>
+            <div className={styles.typeCounts}>{sc1Count} x SC1, {dcr1Count} x DCR1, {otherCount} x OTHER</div>
+          </div>
+        </div>
+      )
+
     switch (this.props.loading) {
       case "started":
         renderLoadingOrResults = (
@@ -206,7 +268,7 @@ export default class Home extends React.Component<IProps> {
                 <h3>No Obelisks Found.</h3>
                 <span>
                   It's possible our subnet detector used the wrong subnet to
-                  scan, or it didn't scan enough ips. Try modifying the subnet
+                  scan, or it didn't scan enough IP addresses. Try modifying the subnet
                   range or changing the subnet.
                 </span>
               </div>
@@ -217,95 +279,105 @@ export default class Home extends React.Component<IProps> {
     }
 
     return (
-      <div>
-        <div className={styles.container} data-tid="container">
-          <div className={styles.left}>
-            <h2>Obelisk Scanner</h2>
-            <span className={styles.subheading}>
-              Find & Update Obelisk Machines on your subnet.
-            </span>
-            <Tabs selectedTabClassName={styles.tabactive}>
-              <TabList className={styles.tablist}>
-                <Tab>Scanner</Tab>
-                <Tab>Manual Updater</Tab>
-              </TabList>
-              <div className={styles.tabwrap}>
-                <TabPanel>
-                  <div>
-                    <button onClick={this.startScan} className={styles.button}>
-                      Start Smart Scan
-                    </button>
-                    <button
-                      onClick={this.spawnServer}
-                      className={styles.button2}
-                    >
-                      IP Reporter mDNS
-                    </button>
-                  </div>
-                  <div className={styles.settings}>
-                    <input
-                      type="checkbox"
-                      name="override"
-                      value="subnet"
-                      checked={this.state.subnetChecked}
-                      onChange={this.onCheck}
-                    />
-                    <span>Enable Manual Subnet Override (For Colos)</span>
-                    <div
-                      className={`${styles.input} ${this.state.subnetChecked &&
-                        styles.active}`}
-                    >
-                      <input
-                        type="text"
-                        placeholder="Subnet (192.168.0.1)"
-                        value={this.state.subnet}
-                        name="subnet"
-                        onChange={this.handleChange}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Bitmask (24)"
-                        name="bitmask"
-                        onChange={this.handleChange}
-                        value={this.state.bitmask}
-                      />
-                    </div>
-                    {renderSSH}
-                  </div>
-                </TabPanel>
-                <TabPanel>
-                  <div className={styles.manual}>
+      <div className={styles.container} data-tid="container">
+        <div className={styles.left}>
+          <h2>Obelisk Scanner</h2>
+          <span className={styles.subheading}>
+            Find & Update Obelisk Machines on your subnet
+          </span>
+          <Tabs selectedTabClassName={styles.tabactive}>
+            <TabList className={styles.tablist}>
+              <Tab>SCANNER</Tab>
+              <Tab>DIRECT IP ENTRY</Tab>
+            </TabList>
+            <div className={styles.tabwrap}>
+              <TabPanel>
+                <div className={styles.buttonsRow}>
+                  <button onClick={this.startScan} className={styles.button}>
+                    START SMART SCAN
+                  </button>
+                  <button onClick={this.spawnServer} className={styles.button2}>
+                    IP REPORTER (mDNS)
+                  </button>
+                </div>
+                <div className={styles.settings}>
+                  <input
+                    type="checkbox"
+                    name="override"
+                    value="subnet"
+                    checked={this.state.subnetChecked}
+                    onChange={this.onCheck}
+                  />
+                  <span>Enable Manual Subnet Override</span>
+                  <div
+                    className={`${styles.input} ${this.state.subnetChecked &&
+                      styles.active}`}
+                  >
                     <input
                       type="text"
-                      placeholder="Obelisk IP"
-                      name="customip"
+                      placeholder="Subnet (192.168.0.1)"
+                      value={this.state.subnet}
+                      name="subnet"
                       onChange={this.handleChange}
-                      value={this.state.customip}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Bitmask (24)"
+                      name="bitmask"
+                      onChange={this.handleChange}
+                      value={this.state.bitmask}
                     />
                   </div>
                   {renderSSH}
-                  <button
-                    onClick={this.startManualUpdate}
-                    className={styles.button}
-                  >
-                    Start Manual Update
-                  </button>
-                </TabPanel>
-              </div>
-            </Tabs>
-            <div className={styles.terminal}>
-              <span>
-                <strong>Logging</strong>
-              </span>
-
-              <StayScrolled className={styles.terminalbox} component="div">
-                {mappedLogs}
-              </StayScrolled>
-              {/* <div className={styles.terminalbox}>{mappedLogs}</div> */}
+                </div>
+              </TabPanel>
+              <TabPanel>
+                <div className={styles.manual}>
+                  <input
+                    type="text"
+                    placeholder="Obelisk IP"
+                    name="customip"
+                    onChange={this.handleChange}
+                    value={this.state.customip}
+                  />
+                </div>
+                {renderSSH}
+                <button
+                  onClick={this.startManualUpdate}
+                  className={styles.button}
+                >
+                  UPGRADE
+                </button>
+              </TabPanel>
             </div>
+          </Tabs>
+          <div className={styles.terminal}>
+            <span>
+              <strong>Logging</strong>
+            </span>
+
+            <StayScrolled className={styles.terminalbox} component="div">
+              {mappedLogs}
+            </StayScrolled>
+            {/* <div className={styles.terminalbox}>{mappedLogs}</div> */}
           </div>
-          <div>
-            <div className={styles.card}>{renderLoadingOrResults}</div>
+        </div>
+        <div className={styles.right}>
+          <div className={styles.card}>
+            <table className={styles.tableHeader}>
+              <thead>
+               <tr>
+                  <th>IP ADDRESS</th>
+                 <th>MAC</th>
+                  <th>MODEL</th>
+                  <th>CURR. VERSION</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+            </table>
+  
+            {renderLoadingOrResults}
+            {upgradeAll}
           </div>
         </div>
       </div>

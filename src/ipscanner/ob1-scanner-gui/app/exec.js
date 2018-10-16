@@ -10,6 +10,7 @@ const execPath = isProd
   ? join(process.resourcesPath, "bin")
   : join(appRootDir.get(), "bin", getPlatform())
 
+
 const cmd = `${join(execPath, "ob1-scanner")}`
 
 function obscannerExec(args, webContents) {

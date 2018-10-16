@@ -7,6 +7,15 @@ import './app.global.scss'
 const { configureStore, history } = require('./store/configureStore')
 export const store = configureStore()
 
+// Open all links in external browser
+let shell = require('electron').shell
+document.addEventListener('click', function (event: any) {
+  if (event && event.target.tagName === 'A' && event.target.href.startsWith('http')) {
+    event.preventDefault()
+    shell.openExternal(event.target.href)
+  }
+})
+
 render(
   <AppContainer>
     <Root store={store} history={history} />
