@@ -46,6 +46,21 @@ function compareIp(miner1: Miner, miner2: Miner) {
   return 0;  // They must be the same
 }
 
+function getFirmwareVersion(miner: Miner) {
+  let firmwareVersion = miner.firmwareVersion
+  if (!firmwareVersion || firmwareVersion.length === 0) {
+    firmwareVersion = "v1.0.0"
+  } else {
+    const parts = firmwareVersion.split(" ")
+    if (parts.length === 1) {
+      firmwareVersion = parts[0]
+    } else if (parts.length >= 2) {
+      firmwareVersion = parts[1]
+    }
+  }
+  return firmwareVersion
+}
+
 export default class Home extends React.Component<IProps> {
   state = {
     subnetChecked: false,
@@ -127,7 +142,11 @@ export default class Home extends React.Component<IProps> {
 
   upgradeAll = () => {
     this.props.miners.forEach(m => {
-      this.upgradeSingle(m.ip, m.model)()
+      const firmwareVersion = getFirmwareVersion(m)
+      const upgradable = firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
+      if (upgradable) {
+        this.upgradeSingle(m.ip, m.model)()
+      }
     })
   }
 
@@ -169,17 +188,7 @@ export default class Home extends React.Component<IProps> {
     const otherCount = sortedMiners.length - sc1Count - dcr1Count
     let upgradableMinersExist = false
     let mappedMiners = sortedMiners.map((m, i) => {
-      let firmwareVersion = m.firmwareVersion
-      if (!firmwareVersion || firmwareVersion.length === 0) {
-        firmwareVersion = "v1.0.0"
-      } else {
-        const parts = firmwareVersion.split(" ")
-        if (parts.length === 1) {
-          firmwareVersion = parts[0]
-        } else if (parts.length >= 2) {
-          firmwareVersion = parts[1]
-        }
-      }
+      const firmwareVersion = getFirmwareVersion(m)
       const upgradable = firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
       if (upgradable) {
         upgradableMinersExist = true
