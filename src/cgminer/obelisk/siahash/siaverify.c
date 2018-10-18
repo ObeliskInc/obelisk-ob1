@@ -49,7 +49,7 @@ bool siaHeaderMeetsProvidedTarget(uint8_t header[80], uint8_t target[32]) {
 // which is different from a Sia difficulty.
 bool siaHeaderMeetsProvidedDifficulty(uint8_t header[80], double difficulty) {
 	uint64_t baseDifficulty = 0xffff000000000000;
-	uint64_t adjustedDifficulty = baseDifficulty/difficulty;
+	uint64_t adjustedDifficulty = baseDifficulty/(uint64_t)difficulty;
 	uint8_t target[32] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 	int i = 0;
 	for( i = 0; i < 8; i++) {
@@ -66,7 +66,7 @@ bool siaHeaderMeetsProvidedDifficulty(uint8_t header[80], double difficulty) {
 int siaHeaderMeetsChipTargetAndPoolDifficulty(uint8_t header[80], uint8_t chipTarget[32], double poolDifficulty) {
 	// Calculate the target based on the pool difficulty.
 	uint64_t baseDifficulty = 0xffff000000000000;
-	uint64_t adjustedDifficulty = baseDifficulty/poolDifficulty;
+	uint64_t adjustedDifficulty = baseDifficulty/(uint64_t)poolDifficulty;
 	uint8_t poolTarget[32] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 	int i = 0;
 	for( i = 0; i < 8; i++) {
