@@ -292,12 +292,12 @@ export default class Home extends React.Component<IProps> {
         <div className={styles.left}>
           <h2>Obelisk Scanner</h2>
           <span className={styles.subheading}>
-            Find & Update Obelisk Machines on your subnet
+            Find & Upgrade Obelisk Machines on your subnet
           </span>
           <Tabs selectedTabClassName={styles.tabactive}>
             <TabList className={styles.tablist}>
               <Tab>SCANNER</Tab>
-              <Tab>DIRECT IP ENTRY</Tab>
+              <Tab>MANUAL IP ENTRY</Tab>
             </TabList>
             <div className={styles.tabwrap}>
               <TabPanel>
@@ -355,7 +355,7 @@ export default class Home extends React.Component<IProps> {
                   onClick={this.startManualUpdate}
                   className={styles.button}
                 >
-                  UPGRADE
+                  UPGRADE TO {newVersion}
                 </button>
               </TabPanel>
             </div>
