@@ -134,12 +134,6 @@ export default class Home extends React.Component<IProps> {
     })
   }
 
-  reinstallSingle = (ip: string, model: string) => () => {
-    if (confirm("Are you sure you want to reinstall the same firmware version?  This is not normally necessary")) {
-      this.upgradeSingle(ip, model)()
-    }
-  }
-
   upgradeAll = () => {
     this.props.miners.forEach(m => {
       const firmwareVersion = getFirmwareVersion(m)
