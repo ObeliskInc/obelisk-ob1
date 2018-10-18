@@ -8,6 +8,8 @@ const appRootDir = require("app-root-dir")
 const { join, dirname } = require("path")
 // var log = require('electron-log')
 
+// require("electron-debug")({ enabled: true, showDevTools: true }) // eslint-disable-line global-require
+
 if (process.env.NODE_ENV === "production") {
   const sourceMapSupport = require("source-map-support") // eslint-disable-line
   sourceMapSupport.install()
