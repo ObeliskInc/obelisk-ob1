@@ -30,6 +30,12 @@ void dcrMidstateChecksum(uint8_t* checksum, uint8_t midstate[64], uint8_t header
 // This function will not modify the arguments that get passed in.
 bool dcrMidstateMeetsMinimumTarget(uint8_t midstate[64], uint8_t headerTail[52]);
 
+// Compute a target from a difficulty.
+void computeTarget(uint8_t* target, double difficulty);
+
+// checksumMeetsTarget checks that the checksum meets the target.
+bool checksumMeetsTarget(uint8_t* checksum, uint8_t* target);
+
 // dcrMidstateMeetsProvidedTarget checks whether the provided midstate and
 // header tail hash to the provided target.
 bool dcrMidstateMeetsProvidedTarget(uint8_t midstate[64], uint8_t headerTail[52], uint8_t target[32]);
