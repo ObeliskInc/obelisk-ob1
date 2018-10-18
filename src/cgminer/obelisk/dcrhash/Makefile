@@ -1,4 +1,4 @@
-CC = gcc
+CC = gcc -std=c11
 CFLAGS = -ggdb -s -Os -Wformat=2 -Werror -Wall -Wextra -Wswitch-default -Wswitch-enum -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn -Wno-unused-variable
 
 DEPS = blake256.h dcrverify.h

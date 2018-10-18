@@ -99,7 +99,31 @@ bool dcrMidstateMeetsProvidedTarget(uint8_t midstate[64], uint8_t headerTail[52]
 		swap[i] = ((swap[i] >> 24) & 0xff) | ((swap[i] << 8) & 0xff0000 ) | ((swap[i] >> 8) & 0xff00) | ((swap[i] << 24) & 0xff000000);
 	}
 
-	for(i = 0; i < 32; i++) {
+	return checksumMeetsTarget(checksum, target);
+}
+
+// computeTarget coverts a difficulty into a target.
+void computeTarget(uint8_t* target, double difficulty) {
+	uint64_t baseDifficulty = 0xffffffffffffffff;
+	uint64_t adjustedDifficulty = baseDifficulty/(uint64_t)difficulty;
+	for(int i = 0; i < 4; i++) {
+		target[i] = 0x00;
+	}
+	for(int i = 4; i < 32; i++) {
+		target[i] = 0xff;
+	}
+
+	for(int i = 0; i < 8; i++) {
+		target[11-i] = adjustedDifficulty % 256;
+		adjustedDifficulty /= 256;
+	}
+	return;
+}
+
+// checksumMeetsTarget determines whether the checksum meets the provided
+// target.
+bool checksumMeetsTarget(uint8_t* checksum, uint8_t* target) {
+	for(int i = 0; i < 32; i++) {
 		if(checksum[31-i] > target[i]) {
 			return false;
 		}
@@ -113,27 +137,14 @@ bool dcrMidstateMeetsProvidedTarget(uint8_t midstate[64], uint8_t headerTail[52]
 // dcrMidstateMeetsProvidedDifficulty checks whether the provided midstate and
 // header tail hash to the provided target.
 bool dcrMidstateMeetsProvidedDifficulty(uint8_t midstate[64], uint8_t headerTail[52], double difficulty) {
-	uint64_t baseDifficulty = 0xffff000000000000;
-	uint64_t adjustedDifficulty = baseDifficulty/difficulty;
 	uint8_t target[32] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	int i = 0;
-	for( i = 0; i < 8; i++) {
-		target[11-i] = adjustedDifficulty % 256;
-		adjustedDifficulty /= 256;
-	}
+	computeTarget(target, difficulty);
 	return dcrMidstateMeetsProvidedTarget(midstate, headerTail, target);
 }
 
 int dcrHeaderMeetsChipTargetAndPoolDifficulty(uint8_t midstate[64], uint8_t headerTail[52], uint8_t chipTarget[32], double difficulty) {
-	// Convert the difficulty into a poolTarget.
-	uint64_t baseDifficulty = 0xffff000000000000;
-	uint64_t adjustedDifficulty = baseDifficulty/difficulty;
 	uint8_t poolTarget[32] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	int i = 0;
-	for( i = 0; i < 8; i++) {
-		poolTarget[11-i] = adjustedDifficulty % 256;
-		adjustedDifficulty /= 256;
-	}
+	computeTarget(poolTarget, difficulty);
 
 	// Get the checksum of midstate and headerTail.
 	uint32_t compressionState[8];
@@ -148,31 +159,15 @@ int dcrHeaderMeetsChipTargetAndPoolDifficulty(uint8_t midstate[64], uint8_t head
 
 	// Perform an endianness conversion on the checksum.
 	uint32_t *swap = (uint32_t*)checksum;
-	for(i = 0; i < 8; i++) {
+	for(int i = 0; i < 8; i++) {
 		swap[i] = ((swap[i] >> 24) & 0xff) | ((swap[i] << 8) & 0xff0000 ) | ((swap[i] >> 8) & 0xff00) | ((swap[i] << 24) & 0xff000000);
 	}
 
-	// Compare to the pool target.
-	for(i = 0; i < 32; i++) {
-		if(checksum[31-i] > poolTarget[i]) {
-			// Break out to compare to the chip target.
-			break;
-		}
-		if(checksum[31-i] < poolTarget[i]){
-			return 2;
-		}
+	if (checksumMeetsTarget(checksum, poolTarget)) {
+		return 2;
 	}
-
-	// Compare to the chip target.
-	for(i = 0; i < 32; i++) {
-		if(checksum[31-i] > chipTarget[i]) {
-			return 0;
-		}
-		if(checksum[31-i] < chipTarget[i]){
-			return 1;
-		}
+	if (checksumMeetsTarget(checksum, chipTarget)) {
+		return 1;
 	}
-
-	// Header exactly meets the chip target. Unlikely, but we count it.
-	return 1;
+	return 0;
 }
