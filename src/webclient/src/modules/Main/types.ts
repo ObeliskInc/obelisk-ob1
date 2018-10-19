@@ -46,7 +46,12 @@ export interface PoolConfig {
 }
 
 export interface MiningConfig {
-  optimizationMode: string
+  optimizationMode: number
+  minFanSpeedPercent: number
+  maxHotChipTempC: number
+  rebootIntervalMins: number
+  rebootMinHashrate: number
+  disableGeneticAlgo: boolean
 }
 
 export const MAX_POOLS = 3
@@ -57,7 +62,6 @@ export interface UserInfo {
 
 export interface SystemConfig {
   timezone?: string
-  ntpServer?: string
 
   // These are here just to satisfy Formik type handling - never send them with SystemConfig
   oldPassword?: string
@@ -98,6 +102,7 @@ export interface HashboardStatus {
   rejected: number
   boardTemp: number
   chipTemp: number
+  hotChipTemp: number
   powerSupplyTemp: number
   mhsAvg: number
   mhs1m: number
@@ -150,7 +155,10 @@ export interface FormState {
   poolForm: string
   systemForm: string
   passwordForm: string
+  networkForm: string
+  miningForm: string
 }
+
 // Module State
 export interface State {
   showSidebar: boolean
@@ -187,6 +195,9 @@ export interface State {
 
   // UI forms
   forms: FormState
+
+  // Diagnostics
+  diagnostics?: string
 }
 
 export interface RunUpgradeResp {

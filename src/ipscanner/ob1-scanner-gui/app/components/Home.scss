@@ -1,6 +1,5 @@
 :local {
   .tabwrap {
-    height: 150px;
   }
   .tablist {
     padding-left: 0;
@@ -8,7 +7,8 @@
       display: inline-block;
       margin-left: 15px;
       font-weight: 900;
-      font-size: 16px;
+      font-size: 20px;
+      font-family: KarbonRegular;
       cursor: pointer;
     }
     li:first-child {
@@ -24,15 +24,25 @@
     border-bottom: 1px solid lighten(#940d21, 10%);
   }
   .container {
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-column-gap: 30px;
-    height: 100vh;
-    justify-content: center;
-    align-items: center;
-    padding-left: 40px;
-    padding-right: 40px;
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    padding: 40px;
+  }
+
+  .left {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-right: 40px;
+    margin-bottom: 80px;
+  }
+
+  .right {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-bottom: 80px;
   }
 
   .subheading {
@@ -41,6 +51,7 @@
   }
 
   .button {
+    flex: 1;
     padding: 15px 40px;
     border: none;
     font-size: 14px;
@@ -54,7 +65,12 @@
     }
   }
 
+  .buttonsRow {
+    display: flex;
+  }
+
   .upgradeButton {
+    flex: 1;
     padding: 3px 10px;
     color: #680b22;
     border: none;
@@ -64,6 +80,9 @@
     color: #ffffff;
     &:hover {
       background: lighten(#680b22, 10%);
+    }
+    &.reinstall {
+      background: rgb(238, 155, 2);
     }
   }
 
@@ -87,11 +106,25 @@
   }
 
   .upgradeAll {
-    width: 100%;
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 20px;
+    padding-right: 20px;
     background: #f5f5f5;
-    position: absolute;
-    bottom: 0;
-    left: 0;
+    border-top: 1px solid #B0B0B0;
+
+    .minerCounts {
+      .totalCount {
+        font-size: 18px;
+        font-family: KarbonRegular;
+      }
+
+      .typeCounts {
+        font-size: 16px;
+      }
+    }
   }
 
   .upgradeAllButton {
@@ -110,6 +143,7 @@
   }
 
   .button2 {
+    flex: 1;
     padding: 15px 40px;
     border: none;
     font-size: 14px;
@@ -125,19 +159,28 @@
   }
 
   .terminal {
-    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
     pre {
       white-space: pre-wrap;
       word-wrap: break-word;
     }
 
     .terminalbox {
-      height: 200px;
+      flex: 1;
       overflow-y: scroll;
       background: #232c39;
       margin-top: 10px;
       padding: 10px;
     }
+  }
+
+  .resultsContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: scroll;
   }
 
   .container h2 {
@@ -150,36 +193,47 @@
   }
 
   .card {
-    position: relative;
+    display: flex;
+    flex-direction: column;
     background: #ffffff;
     color: #000000;
-    height: 560px;
     width: 100%;
-    // border-radius: 5px;
-    overflow-x: hidden;
-    overflow-y: scroll;
+    height: 100%;
+    overflow: hidden;
   }
 
-  .table {
-    padding-top: 30px;
-    padding-bottom: 30px;
+  .tableHeader {
+    padding-top: 20px;
     table-layout: fixed;
     width: 100%;
     text-align: center;
+    background: #f5f5f5;
+    border-bottom: 1px solid #B0B0B0;
     th {
-      padding-bottom: 20px;
+      padding-bottom: 10px;
       font-weight: bold;
     }
+  }
+
+  .table {
+    table-layout: fixed;
+    width: 100%;
+    text-align: center;
     td {
       padding-top: 10px;
       font-size: 18px;
+
+      a {
+        color: black;
+        font-size: 18px;
+      }
     }
   }
-}
 
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 500px;
+  .loading {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+  }
 }

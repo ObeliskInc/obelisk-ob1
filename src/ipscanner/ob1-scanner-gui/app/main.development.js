@@ -8,6 +8,8 @@ const appRootDir = require("app-root-dir")
 const { join, dirname } = require("path")
 // var log = require('electron-log')
 
+// require("electron-debug")({ enabled: true, showDevTools: true }) // eslint-disable-line global-require
+
 if (process.env.NODE_ENV === "production") {
   const sourceMapSupport = require("source-map-support") // eslint-disable-line
   sourceMapSupport.install()
@@ -94,8 +96,8 @@ app.on("ready", () =>
         ? join(process.resourcesPath, "firmware")
         : join(appRootDir.get(), "bin", "firmware")
       const detectpath = join(execPath, "detect")
-      const scpath = join(execPath, "sc1-v1.1.0.tar.gz")
-      const dcrpath = join(execPath, "dcr1-v1.1.0.tar.gz")
+      const scpath = join(execPath, "sc1-v1.2.0.tar.gz")
+      const dcrpath = join(execPath, "dcr1-v1.2.0.tar.gz")
 
       const cmd = [
         "upgrade",

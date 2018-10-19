@@ -157,25 +157,11 @@ void pollForHashrate() {
 
 void getInventoryVersions(string path, query_string &urlParams, const crow::request &req,
                           crow::response &resp) {
-  sendCgMinerCmd("version", "", [&](CgMiner::Response cgMinerResp) {
-    if (cgMinerResp.error) {
-      sendError(cgMinerResp.errorMsg, HttpStatus_InternalServerError, resp);
-      return;
-    }
+    json::wvalue jsonResp;
+    jsonResp["cgminerVersion"] = "4.10.0";
+    jsonResp["firmwareVersion"] = getFirmwareVersion();
 
-    // No error, so build up the response that the user is expecting
-    try {
-      json::rvalue cgMinerJson = json::load(cgMinerResp.json);
-      json::wvalue jsonResp;
-      jsonResp["cgminerVersion"] = cgMinerJson["VERSION"];
-      jsonResp["firmwareVersion"] = getFirmwareVersion();
-
-      sendJson(json::dump(jsonResp), resp);
-    } catch (...) {
-      sendError("Invalid JSON object", HttpStatus_InternalServerError, resp);
-      return;
-    }
-  });
+    sendJson(json::dump(jsonResp), resp);
 }
 
 void getInventorySystem(string path, query_string &urlParams, const crow::request &req,
@@ -253,8 +239,49 @@ void getConfigSystem(string path, query_string &urlParams, const crow::request &
 
 void getConfigMining(string path, query_string &urlParams, const crow::request &req,
                      crow::response &resp) {
+  json::rvalue conf = readCgMinerConfig();
+
+  // CROW_LOG_ERROR << json::dump(conf);
+
+  // NOTE: This duplicates the default values as set in cgminer, which is not ideal
   json::wvalue jsonResp = json::load("{}");
-  // jsonResp["optimizationMode"] = getOptimizationMode();
+  if (conf.has("ob-optimization-mode")) {
+    jsonResp["optimizationMode"] = conf["ob-optimization-mode"].i();
+  } else {
+    jsonResp["optimizationMode"] = 2;  // 2 means optimize for best hashrate
+  }
+
+  if (conf.has("ob-min-fan-speed-percent")) {
+    jsonResp["minFanSpeedPercent"] = conf["ob-min-fan-speed-percent"].i();
+  } else {
+    jsonResp["minFanSpeedPercent"] = 100;
+  }
+
+  if (conf.has("ob-max-hot-chip-temp-c")) {
+    jsonResp["maxHotChipTempC"] = conf["ob-max-hot-chip-temp-c"].i();
+  } else {
+    jsonResp["maxHotChipTempC"] = 105;
+  }
+  
+  if (conf.has("ob-reboot-interval-mins")) {
+    jsonResp["rebootIntervalMins"] = conf["ob-reboot-interval-mins"].i();
+  } else {
+    jsonResp["rebootIntervalMins"] = 60 * 8;
+  }
+  
+  if (conf.has("ob-reboot-min-hashrate")) {
+    jsonResp["rebootMinHashrate"] = conf["ob-reboot-min-hashrate"].i();
+  } else {
+    jsonResp["rebootMinHashrate"] = 150; // TODO: Need to make this default depend on the model
+    // DCR: 300, SC1: 150
+  }
+
+  if (conf.has("ob-disable-genetic-algo")) {
+    jsonResp["disableGeneticAlgo"] = conf["ob-disable-genetic-algo"].i() == 1;
+  } else {
+    jsonResp["disableGeneticAlgo"] = false;
+  }
+  
   string jsonStr = json::dump(jsonResp);
 
   sendJson(jsonStr, resp);
@@ -366,10 +393,29 @@ void setConfigMining(string path, json::rvalue &args, const crow::request &req,
     return;
   }
 
-  // TODO: Implement setConfigMining()
+  // Read .cgminer/cgminer.conf
+  json::rvalue conf = readCgMinerConfig();
+  // Create a wvalue from the rvalue
+  json::wvalue newConf;
+  try {
+    newConf = conf;
+  } catch (...) {
+    newConf = json::load("{}");
+  }
 
-  resp.end();
-  return;
+  // cgminer needs its integers in strings in the config file
+  newConf["ob-min-fan-speed-percent"] = to_string(args["minFanSpeedPercent"].i());
+  newConf["ob-max-hot-chip-temp-c"] = to_string(args["maxHotChipTempC"].i());
+  newConf["ob-optimization-mode"] = to_string(args["optimizationMode"].i());
+  newConf["ob-reboot-interval-mins"] = to_string(args["rebootIntervalMins"].i());
+  newConf["ob-reboot-min-hashrate"] = to_string(args["rebootMinHashrate"].i());
+  newConf["ob-disable-genetic-algo"] = args["disableGeneticAlgo"].b() ? "1" : "0";
+
+  // Write out config file
+  writeCgMinerConfig(newConf);
+
+  CROW_LOG_ERROR << "setConfigMining() - Resetting cgminer!";
+  sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
 void setConfigAsic(string path, json::rvalue &args, const crow::request &req,
@@ -405,42 +451,93 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
                         crow::response &resp) {
 
   sendCgMinerCmd("dashpools+dashstats+dashdevs", "", [&](CgMiner::Response cgMinerResp) {
-    if (cgMinerResp.error) {
-      sendError("Unable to connect to cgminer", HttpStatus_InternalServerError, resp);
-      return;
-    }
-
-    // CROW_LOG_DEBUG << "RESP=========================================";
-    // CROW_LOG_DEBUG << cgMinerResp.json;
-
-    json::rvalue cgJsonResp = json::load(cgMinerResp.json);
-    if (!cgJsonResp.has("dashpools") || !cgJsonResp.has("dashstats") || !cgJsonResp.has("dashdevs")) {
-      sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
-      return;
-    }
-
-    json::rvalue poolsResp = cgJsonResp["dashpools"][0];
-    json::rvalue statsResp = cgJsonResp["dashstats"][0];
-    json::rvalue devsResp = cgJsonResp["dashdevs"][0];
-
-    // TODO: See why isCgMinerError() is failing
-    // Ensure that all requests succeeded
-    // if (isCgMinerError(poolsResp) || isCgMinerError(statsResp) || isCgMinerError(devsResp)) {
-    //   CROW_LOG_DEBUG << "Dashboard Error 1";
-    //   // sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
-    //   return;
-    // }
-
     // Prepare our JSON response outline
     json::wvalue jsonResp = json::load("{}");
     json::wvalue hashrateArr = json::load("[]");
     json::wvalue hashboardArr = json::load("[]");
     json::wvalue systemArr = json::load("[]");
 
-    // Handle the pools array - direct copy since it's a custom method in cgminer with just
-    // the info we want in the format we want.
-    jsonResp["poolStatus"] = poolsResp["POOLS"];
+    // Fan speeds
+    int fanSpeed0 = 0;
+    int fanSpeed1 = 0;
 
+    if (!cgMinerResp.error) {
+      json::rvalue cgJsonResp = json::load(cgMinerResp.json);
+      if (!cgJsonResp.has("dashpools") || !cgJsonResp.has("dashstats") || !cgJsonResp.has("dashdevs")) {
+        sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+        return;
+      }
+
+      // CROW_LOG_DEBUG << "RESP=========================================";
+      // CROW_LOG_DEBUG << cgMinerResp.json;
+
+      json::rvalue poolsResp = cgJsonResp["dashpools"][0];
+      json::rvalue statsResp = cgJsonResp["dashstats"][0];
+      json::rvalue devsResp = cgJsonResp["dashdevs"][0];
+
+      // TODO: See why isCgMinerError() is failing
+      // Ensure that all requests succeeded
+      // if (isCgMinerError(poolsResp) || isCgMinerError(statsResp) || isCgMinerError(devsResp)) {
+      //   CROW_LOG_DEBUG << "Dashboard Error 1";
+      //   // sendError("Invalid response from mining app", HttpStatus_InternalServerError, resp);
+      //   return;
+      // }
+
+      // Handle the pools array - direct copy since it's a custom method in cgminer with just
+      // the info we want in the format we want.
+      jsonResp["poolStatus"] = poolsResp["POOLS"];
+
+      // Handle the hashboardStatus array
+      json::rvalue stats = statsResp["STATS"];
+      json::rvalue devs = devsResp["DEVS"];
+      json::wvalue hashStatus = json::load("[]");
+      int hashboardIndex = 0;
+      for (int i = 0; i < stats.size(); i++) {
+        json::rvalue statsEntry = stats[i];
+        if (statsEntry.has("boardId")) {
+          int boardId = statsEntry["boardId"].i();
+          json::wvalue entry = json::load("{}");
+
+          entry["numChips"] = statsEntry["numChips"].i();
+          entry["numCores"] = statsEntry["numCores"].i();
+          entry["boardTemp"] = statsEntry["boardTemp"].d();
+          entry["chipTemp"] = statsEntry["chipTemp"].d();
+          entry["hotChipTemp"] = statsEntry["hotChipTemp"].d();
+          entry["powerSupplyTemp"] = statsEntry["powerSupplyTemp"].d();
+          entry["fanSpeed0"] = statsEntry["fanSpeed0"].i();
+          entry["fanSpeed1"] = statsEntry["fanSpeed1"].i();
+
+          // Extract fan speed entry for system info
+          if (statsEntry.has("fanSpeed0")) {
+            fanSpeed0 = statsEntry["fanSpeed0"].i();
+          }
+          if (statsEntry.has("fanSpeed1")) {
+            fanSpeed1 = statsEntry["fanSpeed1"].i();
+          }
+
+          // Try to get corresponding entries from the 
+          int devIndex = findIndexByFieldValue(devs, "ASC", i);
+          if (devIndex >= 0) {
+            json::rvalue devEntry = devs[devIndex];
+            entry["status"] = devEntry["status"].s();
+            entry["mhsAvg"] = devEntry["mhsAvg"].d();
+            entry["mhs1m"] = devEntry["mhs1m"].d();
+            entry["mhs5m"] = devEntry["mhs5m"].d();
+            entry["mhs15m"] = devEntry["mhs15m"].d();
+            entry["accepted"] = devEntry["accepted"].i();
+            entry["rejected"] = devEntry["rejected"].i();
+          }
+
+          hashboardArr[i] = to_rvalue(entry);
+        }
+      }
+      jsonResp["hashboardStatus"] = to_rvalue(hashboardArr);
+    } else {
+      jsonResp["poolStatus"] = json::load("[]");
+      jsonResp["hashboardStatus"] = json::load("[]");
+    }
+
+    // Hashrate graph data
     for (int i = 0; i < num_hashrate_entries; i++) {
       json::wvalue entry = json::load("{}");
       entry["time"] = hashrate_history_secs[i].time;
@@ -458,73 +555,31 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     }
     jsonResp["hashrateData"] = to_rvalue(hashrateArr);
 
-    // TODO: Implement hashrate polling and then send the data from here
-
-    // Fan speeds
-    int fanSpeed0 = 0;
-    int fanSpeed1 = 0;
-
-    // Handle the hashboardStatus array
-    json::rvalue stats = statsResp["STATS"];
-    json::rvalue devs = devsResp["DEVS"];
-    json::wvalue hashStatus = json::load("[]");
-    int hashboardIndex = 0;
-    for (int i = 0; i < stats.size(); i++) {
-      json::rvalue statsEntry = stats[i];
-      if (statsEntry.has("boardId")) {
-        int boardId = statsEntry["boardId"].i();
-        json::wvalue entry = json::load("{}");
-
-        entry["numChips"] = statsEntry["numChips"].i();
-        entry["numCores"] = statsEntry["numCores"].i();
-        entry["boardTemp"] = statsEntry["boardTemp"].d();
-        entry["chipTemp"] = statsEntry["chipTemp"].d();
-        entry["powerSupplyTemp"] = statsEntry["powerSupplyTemp"].d();
-        entry["fanSpeed0"] = statsEntry["fanSpeed0"].i();
-        entry["fanSpeed1"] = statsEntry["fanSpeed1"].i();
-
-        // Extract fan speed entry for system info
-        if (statsEntry.has("fanSpeed0")) {
-          fanSpeed0 = statsEntry["fanSpeed0"].i();
-        }
-        if (statsEntry.has("fanSpeed1")) {
-          fanSpeed1 = statsEntry["fanSpeed1"].i();
-        }
-
-        // Try to get corresponding entries from the 
-        int devIndex = findIndexByFieldValue(devs, "ASC", i);
-        if (devIndex >= 0) {
-          json::rvalue devEntry = devs[devIndex];
-          entry["status"] = devEntry["status"].s();
-          entry["mhsAvg"] = devEntry["mhsAvg"].d();
-          entry["mhs1m"] = devEntry["mhs1m"].d();
-          entry["mhs5m"] = devEntry["mhs5m"].d();
-          entry["mhs15m"] = devEntry["mhs15m"].d();
-          entry["accepted"] = devEntry["accepted"].i();
-          entry["rejected"] = devEntry["rejected"].i();
-        }
-
-        hashboardArr[i] = to_rvalue(entry);
-      }
-    }
-
-    jsonResp["hashboardStatus"] = to_rvalue(hashboardArr);
-
-    // Handle the systemInfo array
+    // Local system info
     int i = 0;
-
     systemArr[i++] = makeSystemInfoEntry("Free Memory", to_string(getFreeMemory()));
     systemArr[i++] = makeSystemInfoEntry("Total Memory", to_string(getTotalMemory()));
     systemArr[i++] = makeSystemInfoEntry("Uptime", getUptime());
     systemArr[i++] = makeSystemInfoEntry("Fan 1 Speed", to_string(fanSpeed0) + " RPM");
     systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
     systemArr[i++] = makeSystemInfoEntry("Firmware Version", getFirmwareVersion());
-
     jsonResp["systemInfo"] = to_rvalue(systemArr);
+
+    // Get diagnostic info from file
+    string diagnostics = getDiagnostics();
+    jsonResp["diagnostics"] = diagnostics;
+
     string str = json::dump(jsonResp);
     // CROW_LOG_DEBUG << "jsonStr=" << str;
     sendJson(str, resp);
   });
+}
+
+void getStatusDiagnostics(string path, query_string &urlParams, const crow::request &req,
+                        crow::response &resp) {
+  string diagnostics = getDiagnostics();
+  resp.write(diagnostics);
+  resp.end();
 }
 
 void getStatusDeviceDetails(string path, query_string &urlParams, const crow::request &req,
@@ -751,6 +806,7 @@ map<string, PathHandlerForGet> pathHandlerMapForGet = {
 
     // Status
     {"status/dashboard", getStatusDashboard},
+    {"status/diagnostics", getStatusDiagnostics},
     {"status/memory", getStatusMemory},
     {"status/devDetails", getStatusDeviceDetails},
     {"status/summary", getStatusSummary},

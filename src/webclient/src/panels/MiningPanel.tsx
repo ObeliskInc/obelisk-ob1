@@ -7,17 +7,65 @@ import { Formik, FormikProps } from 'formik'
 import { fetchMiningConfig, setMiningConfig } from 'modules/Main/actions'
 import { getLastError, getMiningConfig } from 'modules/Main/selectors'
 import { MiningConfig } from 'modules/Main/types'
+import { OptimizationModeHashrate, OptimizationModeBalanced, OptimizationModeEfficiency} from 'utils/optmizationMode'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
 import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
-import { Button, Form, Header, Message } from 'semantic-ui-react'
+import { Button, Dimmer, Form, Header, Loader, Message } from 'semantic-ui-react'
 
 interface ConnectProps {
   miningConfig: MiningConfig
   lastError?: string
+  miningForm: string
 }
 
 type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
+
+const fanSpeedOptions = (() => {
+  const result = []
+  for (let i=10; i<=100; i+=5) {
+    result.push(  { text: `${i}%`, value: i, key: i })
+  }
+  return result
+})()
+
+const hotChipTempOptions = (() => {
+  const result = []
+  for (let i=80; i<=105; i++) {
+    result.push(  { text: `${i}° C`, value: i, key: i })
+  }
+  return result
+})()
+
+
+const rebootIntervalOptions = (() => {
+  // First three entries are special
+  const result = [
+    { text: 'NEVER', value: 0, key: 0},
+    { text: '0.5 hours', value: 30, key: 30},
+    { text: '1 hour', value: 60, key: 60}
+  ]
+
+  // Add the rest
+  for (let i=2; i<=24; i++) {
+    const minutes = i * 60
+    result.push(  { text: `${i} hours`, value: minutes, key: minutes })
+  }
+  return result
+})()
+
+const rebootHashrateOptions = (() => {
+  const result = []
+  for (let i=100; i<=400; i += 25) {
+    result.push(  { text: `${i} GH/s`, value: i, key: i })
+  }
+  return result
+})()
+
+const geneticAlgoOptions = [
+  { text: "Enabled", value: false, key: 0 },
+  { text: "Disabled", value: true, key: 1 },
+]
 
 class MiningPanel extends React.PureComponent<CombinedProps> {
   public static styles: InputSheet<{}> = {
@@ -27,13 +75,6 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
     },
   }
 
-  constructor(props: CombinedProps) {
-    super(props)
-    this.state = {
-      optimizationMode: props.miningConfig.optimizationMode,
-    }
-  }
-
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchMiningConfig.started({}))
@@ -41,7 +82,27 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
   }
 
   render() {
-    const { classNames } = this.props
+    const { classNames, miningForm } = this.props
+
+    
+    const renderSave = (dirty: any) => {
+      switch (miningForm) {
+        case 'started':
+          return (
+            <Dimmer active>
+              <Loader />
+            </Dimmer>
+          )
+        case 'failed':
+          return <span>Failed</span>
+        case 'done':
+          return <span>Done</span>
+      }
+      if (dirty) {
+        return <Button type="submit">SAVE</Button>
+      }
+      return undefined
+    }
 
     return (
       <Content>
@@ -74,7 +135,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                   formikProps.setFieldValue(data.name, data.value)
                 }
               },
-              handleOptimizationModeChange: (mode: any) => {
+              handleOptimizationModeChange: (mode: number) => {
                 formikProps.setFieldValue('optimizationMode', mode)
               },
             }
@@ -83,7 +144,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
 
             let optimizationMsg: any
             switch (optimizationMode) {
-              case 'efficiency':
+              case OptimizationModeEfficiency:
                 optimizationMsg = (
                   <Message
                     icon="leaf"
@@ -96,7 +157,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                 )
                 break
 
-              case 'balanced':
+              case OptimizationModeBalanced:
                 optimizationMsg = (
                   <Message
                     icon="balance"
@@ -109,7 +170,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
                 )
                 break
 
-              case 'hashrate':
+              case OptimizationModeHashrate:
                 optimizationMsg = (
                   <Message
                     icon="lightning"
@@ -129,38 +190,97 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
             return (
               <div>
                 <Form onSubmit={formikProps.handleSubmit}>
+                  { /*
                   <Header as="h2">Optimization Mode</Header>
                   {optimizationMsg}
                   <Button.Group className={classNames.buttonGroup}>
-                    {optimizationMode === 'efficiency' ? (
+                    {optimizationMode === OptimizationModeEfficiency ? (
                       <Button color="red">Efficiency</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'efficiency')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(this, OptimizationModeEfficiency)}
                       >
                         Efficiency
                       </Button>
                     )}
-                    {optimizationMode === 'balanced' ? (
+                    {optimizationMode === OptimizationModeBalanced ? (
                       <Button color="red">Balanced</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'balanced')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(this, OptimizationModeBalanced)}
                       >
                         Balanced
                       </Button>
                     )}
-                    {optimizationMode === 'hashrate' ? (
+                    {optimizationMode === OptimizationModeHashrate ? (
                       <Button color="red">Hashrate</Button>
                     ) : (
                       <Button
-                        onClick={formikProps.handleOptimizationModeChange.bind(this, 'hashrate')}
+                        onClick={formikProps.handleOptimizationModeChange.bind(this, OptimizationModeHashrate)}
                       >
                         Hashrate
                       </Button>
                     )}
                   </Button.Group>
-                  <Button type="Submit">SAVE</Button>
+                    */ }
+
+                  <Header as="h2">Advanced Controls</Header>
+                  <Form.Dropdown
+                    options={fanSpeedOptions}
+                    selection={true}
+                    label="MIN. FAN SPEED"
+                    name="minFanSpeedPercent"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.minFanSpeedPercent}
+                    error={formikProps.errors.minFanSpeedPercent}
+                  />
+
+                  <Form.Dropdown
+                    options={hotChipTempOptions}
+                    selection={true}
+                    label="MAX. HOT CHIP TEMP."
+                    name="maxHotChipTempC"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.maxHotChipTempC}
+                    error={formikProps.errors.maxHotChipTempC}
+                  />
+
+                  <Form.Dropdown
+                    options={rebootIntervalOptions}
+                    selection={true}
+                    label="REBOOT EVERY"
+                    name="rebootIntervalMins"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.rebootIntervalMins}
+                    error={formikProps.errors.rebootIntervalMins}
+                  />
+
+                  <Form.Dropdown
+                    options={rebootHashrateOptions}
+                    selection={true}
+                    label="REBOOT IF HASHRATE OF ANY BOARD IS LESS THAN"
+                    name="rebootMinHashrate"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.rebootMinHashrate}
+                    error={formikProps.errors.rebootMinHashrate}
+                  />
+
+                  <Form.Dropdown
+                    options={geneticAlgoOptions}
+                    selection={true}
+                    label="GENETIC ALGORITHM (ATTEMPTS TO OPTIMIZE HASHRATE)"
+                    name="disableGeneticAlgo"
+                    onChange={formikProps.handleChange}
+                    onBlur={formikProps.handleBlur}
+                    value={formikProps.values.disableGeneticAlgo}
+                    error={formikProps.errors.disableGeneticAlgo}
+                  />
+
+                    {renderSave(formikProps.dirty)}
                 </Form>
               </div>
             )
@@ -174,6 +294,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   miningConfig: getMiningConfig(state.Main),
   lastError: getLastError(state.Main),
+  miningForm: state.Main.forms.miningForm,
 })
 
 const miningPanel = withStyles()<any>(MiningPanel)

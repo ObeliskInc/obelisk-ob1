@@ -26,6 +26,7 @@ DCR1:
 #include "driver-obelisk.h"
 #include "obelisk/gpio_bsp.h"
 #include "obelisk/multicast.h"
+#include "obelisk/Ob1Utils.h"
 #include "compat.h"
 #include "config.h"
 #include "klist.h"
@@ -37,6 +38,9 @@ DCR1:
 
 // HACK:
 extern void dump(unsigned char* p, int len, char* label);
+
+extern int opt_ob_reboot_min_hashrate;
+extern int opt_ob_disable_genetic_algo;
 
 #include "obelisk/siahash/siaverify.h"
 #include "obelisk/dcrhash/dcrverify.h"
@@ -99,8 +103,8 @@ static struct work* wq_dequeue(ob_chain* ob, bool sig)
         // Discard stale work - this will cause us to loop around and dequeue work until
         // we either run out of work or find non-stale work.
         if (work && work->id < work->pool->stale_share_id) {
-            applog(LOG_ERR, "HB%u: DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)",
-                ob->chain_id, work->job_id, work->id, work->pool->stale_share_id);
+            applog(LOG_ERR, "HB%d: DISCARDING STALE WORK: job_id=%s  work->id=%llu  (stale_share_id=%llu)",
+                ob->chain_id + 1, work->job_id, work->id, work->pool->stale_share_id);
             free_work(work);
             work = NULL;
             retry = true;
@@ -147,6 +151,11 @@ static void* ob_gen_work_thread(void* arg)
 // pool difficulty but is valid under the chip difficulty, and '2' if the nonce
 // is valid under both the pool difficulty and the chip difficulty.
 int siaValidNonce(struct ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce) {
+	// Nonces should be divisible by the step size
+	if (nonce % SC1_STEP_VAL != 0) {
+		return 0;
+	}
+
 	// Create the header with the nonce set up correctly.
 	struct work* engine_work = ob->chipWork[chipNum];
 	uint8_t header[ob->staticBoardModel.headerSize];
@@ -305,6 +314,10 @@ ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
 		Nonce nonceStart = (chipNum * ob->staticBoardModel.enginesPerChip * ob->staticBoardModel.nonceRange) + (engineNum * ob->staticBoardModel.nonceRange);
 		Nonce nonceEnd = nonceStart + ob->staticBoardModel.nonceRange-1;
 
+		// Take step size into account
+		nonceStart *= SC1_STEP_VAL;
+		nonceEnd *= SC1_STEP_VAL;
+
 		// Try each engine several times. If the engine is not set correctly on
 		// the first try, try again.
 		for (uint8_t i = 0; i < tries; i++) {
@@ -411,10 +424,32 @@ static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
 
+		// Remove the old diagnostics file
+		logClearDiagnostics();
+
 	// Basic initialization.
-    applog(LOG_ERR, "Initializing Obelisk\n");
     ob1Initialize();
-	gBoardModel = eGetBoardType(0);
+    gBoardModel = eGetBoardType(0);
+
+		// Check to make sure that we are not running the wrong firmware!
+		// If it is wrong, we sleep for a minute and clear the diagnostics log,
+		// because cgminer restarts immediately after detect fails, and we
+		// otherwise end up with a spammed log.
+		// TODO: Should probably have a more generic way to prevent log spamming
+		//       with errors from cgminer that cause it to exit.
+		#if (MODEL == SC1)
+			if (gBoardModel != MODEL_SC1) {
+				logDiagnostic("ERROR: Running SC1 firmware on a DCR1 miner!");
+				cgsleep_ms(60 * 1000);
+				return;
+			}
+		#elif (MODEL == DCR1)
+			if (gBoardModel != MODEL_DCR1) {
+				logDiagnostic("ERROR: Running DCR1 firmware on an SC1 miner!");
+				cgsleep_ms(60 * 1000);
+				return;
+			}
+		#endif
 
     // Set the initial fan speed - control loop will take over shortly
     ob1SetFanSpeeds(100);
@@ -438,7 +473,8 @@ static void obelisk_detect(bool hotplug)
 		ob->staticBoardNumber = i;
 		ob->staticTotalBoards = numHashboards;
 		ob->fanSpeed = 100;
-        cgtimer_time(&ob->startTime);
+		ob->fanAdjustmentInterval = 20;
+		cgtimer_time(&ob->startTime);
 
 		// Determine the type of board.
 		//
@@ -452,11 +488,16 @@ static void obelisk_detect(bool hotplug)
 			initDCR1ABoard(ob);
 		}
 
-        cgtime(&cgpu->dev_start_tv);
+		// Apply user overrides
+		ob->staticBoardModel.hotChipTargetTemp = opt_ob_max_hot_chip_temp_c;
+
+		cgtime(&cgpu->dev_start_tv);
 
 		ob->control_loop_state.currentTime = time(0);
 		ob->control_loop_state.initTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
+		ob->control_loop_state.bootTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.stringAdjustmentTime = ob->control_loop_state.currentTime+60;
 		ob->control_loop_state.prevVoltageChangeTime = ob->control_loop_state.currentTime;
 		ob->control_loop_state.hasReset = false;
@@ -684,6 +725,7 @@ static void updateControlState(ob_chain* ob) {
 
 	// Sanity check - exit with error if the voltage is at unsafe levels.
 	if (ob->control_loop_state.currentStringVoltage < 6) {
+		applog(LOG_ERR, "REBOOTING DUE TO LOW VOLTAGE on HB%d", ob->chain_id + 1);
 		exit(-1);
 	}
 }
@@ -707,7 +749,7 @@ static void displayControlState(ob_chain* ob) {
 
 	// Display some string-wide stats.
 	applog(LOG_ERR, "");
-	applog(LOG_ERR, "HB%u:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
+	applog(LOG_ERR, "HB%d:  Temp: %-5.1f  VString: %2.02f  Time: %ds - %ds Current Hashrate: %lld GH/s - %lld GH/s  VLevel: %u",
 		ob->staticBoardNumber,
 		ob->hotChipTemp,
 		ob->control_loop_state.currentStringVoltage,
@@ -776,18 +818,18 @@ static void handleFanChange(ob_chain* ob) {
 
 	// Check that enough time has elapsed since the last fan speed adjustment,
 	// only happens once every 20 seconds.
-	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastFanAdjustmentTime < 20) {
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastFanAdjustmentTime < ob->fanAdjustmentInterval) {
 		return;
 	}
 
 	// Check for conditions where we change the fan speed.
-	bool allHot = true;
+	bool anyHot = false;
 	bool allBelowIdeal = true;
 	bool anyCool = false;
 	for (int i = 0; i < ob->staticTotalBoards; i++) {
 		double chainTemp = chains[i].hotChipTemp;
-		if (chainTemp <= chains[i].staticBoardModel.boardHotTemp) {
-			allHot = false;
+		if (chainTemp > chains[i].staticBoardModel.boardHotTemp) {
+			anyHot = true;
 		}
 		if (chainTemp >= chains[i].staticBoardModel.boardIdealTemp) {
 			allBelowIdeal = false;
@@ -800,10 +842,14 @@ static void handleFanChange(ob_chain* ob) {
 	uint64_t maxSpeed = ob->staticRigModel.fanSpeedMax;
 	uint64_t minSpeed = ob->staticRigModel.fanSpeedMin;
 	uint64_t increment = ob->staticRigModel.fanSpeedIncrement;
-	if (allHot && ob->fanSpeed != maxSpeed) {
-		ob->fanSpeed = maxSpeed;
+	if (anyHot && ob->fanSpeed != maxSpeed) {
+		ob->fanSpeed += increment;
 		ob1SetFanSpeeds(ob->fanSpeed);
+		ob->fanAdjustmentInterval = 5;  // Check again sooner to see if we need to crank it up again
+	} else {
+		ob->fanAdjustmentInterval = 20;
 	}
+
 	if ((allBelowIdeal || anyCool) && ob->fanSpeed >= (minSpeed + increment)) {
 		ob->fanSpeed -= increment;
 		ob1SetFanSpeeds(ob->fanSpeed);
@@ -812,18 +858,34 @@ static void handleFanChange(ob_chain* ob) {
 	ob->control_loop_state.lastFanAdjustmentTime = ob->control_loop_state.currentTime;
 }
 
-// handleLowHashrateExit will exit if the hashrate of a board drops below 150GH/s.
+// handleLowHashrateExit will exit if the hashrate of a board drops below the specified amount.
 // We do this, because sometimes the hashrate drops for an unknown reason (perhaps we have lost
 // some chips). This check is done every 30 minutes. The watchdog should revive cgminer.
 static void handleLowHashrateExit(ob_chain* ob) {
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {
-		// If after at least 30 minutes, any board has fallen below the hashrate limit, then exit
-		if (computeHashRate(ob) < 150LL) {
+		uint64_t actualHashrate = ob->cgpu->rolling5;
+		uint64_t hashrateLimit = ((uint64_t)opt_ob_reboot_min_hashrate) * 1000LL;
+		if (actualHashrate < hashrateLimit) {
+			applog(LOG_ERR, "$$$$$$$$$$ REBOOTING BECAUSE HASHRATE OF HB%d IS %lld, WHICH IS BELOW THE LIMIT OF=%lld",
+				ob->chain_id + 1, actualHashrate, hashrateLimit);
 			exit(0);
 		}
 
 		// Reset the time so we check again in another 30 minutes
 		ob->control_loop_state.lastHashrateCheckTime = ob->control_loop_state.currentTime;
+	}
+}
+
+// Reboot the miner if it has been running for the user-specified interval in minutes
+static void handlePeriodicReboot(ob_chain* ob) {
+	// If user has set interval to zero, then periodic reboots are disabled
+	if (ob->chain_id != 0 || opt_ob_reboot_interval_mins == 0) {
+		return;
+	}
+
+	if (ob->control_loop_state.currentTime - ob->control_loop_state.bootTime > opt_ob_reboot_interval_mins * 60) {
+		applog(LOG_ERR, "$$$$$$$$$$ REBOOTING BECAUSE USER CONFIGURED INTERVAL OF %d MINUTES HAS ELAPSED", opt_ob_reboot_interval_mins);
+		doReboot();
 	}
 }
 
@@ -865,7 +927,10 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 
 	// Run the genetic algorithm, recording the performance of the current
 	// settings and breeding the population to produce new settings.
-	geneticAlgoIter(&ob->control_loop_state);
+	// Only run the genetic algo if the user has not disabled it
+	if (opt_ob_disable_genetic_algo == 0) {
+		geneticAlgoIter(&ob->control_loop_state);
+	}
 
 	// Commit the new settings and mark that an adjustment has taken place.
 	setVoltageLevel(ob, ob->control_loop_state.currentVoltageLevel);
@@ -875,9 +940,6 @@ static void handleVoltageAndBiasTuning(ob_chain* ob) {
 	// changed to by any no-ops that occurred after the voltage was updated.
 	ob->control_loop_state.curChild.voltageLevel = ob->control_loop_state.currentVoltageLevel;
 	ob->control_loop_state.hasReset = false;
-
-	// Exit if hashrate drops too low, as this usually means we have lost several chips.
-	handleLowHashrateExit(ob);
 }
 
 // control_loop runs the hashing boards and attempts to work towards an optimal
@@ -896,6 +958,11 @@ static void control_loop(ob_chain* ob) {
 
 	// Perform any adjustments to the voltage and bias that may be required.
 	handleVoltageAndBiasTuning(ob);
+
+	// Exit if hashrate drops too low, as this usually means we have lost several chips.
+	handleLowHashrateExit(ob);
+
+	handlePeriodicReboot(ob);
 }
 
 ///////////////////////////////////////////////////
@@ -913,7 +980,7 @@ static bool bufferedWorkReady(ob_chain* ob) {
 	// Buffer a new job.
 	ApiError error = bufferGlobalChipJob(ob);
 	if (error != SUCCESS || ob->bufferedWork == NULL) {
-		applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
+		// applog(LOG_ERR, "Board %u: error buffering a global chip job.", ob->staticBoardNumber);
 		cgsleep_ms(25);
 		return false;
 	}
@@ -1028,6 +1095,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 		}
 		ob->chipsStarted = true;
 	}
+
 	// We wait at least a little bit between each iteration to make sure we
 	// aren't blasting the SPI and blocking the other boards from getting access
 	// to global resources.
@@ -1124,7 +1192,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 				if (nonceResult == 2) {
 					// TODO: Should turn these into separate functions with ptrs
 					if (gBoardModel == MODEL_SC1) {
-						applog(LOG_ERR, "Submitting SC nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						applog(LOG_ERR, "Submitting SC nonce=0x%016llx  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
 						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
 					} else {
 						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
@@ -1183,6 +1251,7 @@ static struct api_data* obelisk_api_stats(struct cgpu_info* cgpu)
     stats = api_add_uint16(stats, "numCores", &ob->num_cores, false);
     stats = api_add_double(stats, "boardTemp", &ob->board_temp.curr, false);
     stats = api_add_double(stats, "chipTemp", &ob->chip_temp.curr, false);
+    stats = api_add_double(stats, "hotChipTemp", &ob->hotChipTemp, false);
     stats = api_add_double(stats, "powerSupplyTemp", &ob->psu_temp.curr, false);
 
     // These stats are per-cgpu, but the fans are global.  cgminer has

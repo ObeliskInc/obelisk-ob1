@@ -60,6 +60,7 @@ typedef struct ControlLoopState {
 	uint8_t currentVoltageLevel;
 	time_t initTime;
 	time_t lastHashrateCheckTime;
+	time_t bootTime;
 	time_t lastFanAdjustmentTime;
 	time_t lastStatusOutput;
 	uint64_t stringTimeouts;
@@ -116,5 +117,7 @@ void getIpV4(char* intfName, char* ipBuffer, int bufferSize);
 void sendMDNSResponse();
 void resetAllUserConfig();
 void doReboot();
+void logDiagnostic(char* msg);
+void logClearDiagnostics();
 
 #endif

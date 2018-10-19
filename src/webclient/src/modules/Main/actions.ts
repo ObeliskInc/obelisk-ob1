@@ -57,6 +57,7 @@ export const fetchMiningConfig = actionCreator.async<any, MiningConfig, ApiError
 export const fetchDashboardStatus = actionCreator.async<any, DashboardStatus, ApiError>(
   'FETCH_DASHBOARD_STATUS',
 )
+export const fetchDiagnostics = actionCreator.async<any, string, ApiError>('FETCH_DIAGNOSTICS')
 
 export const setNetworkConfig = actionCreator.async<NetworkConfig, ApiOK, ApiError>(
   'SET_NETWORK_CONFIG',

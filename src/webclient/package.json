@@ -27,6 +27,7 @@
     "moment": "2.22.2",
     "query-string": "5.1.0",
     "react": "16.3.1",
+    "react-copy-to-clipboard": "5.0.1",
     "react-dom": "16.3.1",
     "react-dropzone": "4.2.13",
     "react-redux": "5.0.6",
@@ -57,7 +58,7 @@
   },
   "proxy": {
     "/api": {
-      "target": "http://192.168.10.67"
+      "target": "http://192.168.1.163"
     }
   }
 }

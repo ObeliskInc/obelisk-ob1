@@ -15,6 +15,7 @@ import {
   fetchCurrUser,
   fetchVersions,
   fetchDashboardStatus,
+  fetchDiagnostics,
   fetchMiningConfig,
   fetchNetworkConfig,
   fetchPoolsConfig,
@@ -174,6 +175,23 @@ export const fetchDashboardStatusLogic = createLogic({
     // }
 
     const result: any = await axios.get('/api/status/dashboard')
+    done()
+    return result
+  },
+})
+
+export const fetchDiagnosticsLogic = createLogic({
+  type: fetchDiagnostics.started,
+
+  processOptions: {
+    dispatchReturn: true,
+    successType: fetchDiagnostics.done,
+    failType: fetchDiagnostics.failed,
+  },
+
+  async process(deps: LogicDeps, dispatch: any, done: () => void) {
+    const { axios } = deps
+    const result: any = await axios.get('/api/status/diagnostics')
     done()
     return result
   },
@@ -517,8 +535,10 @@ export default [
   fetchNetworkConfigLogic,
   fetchSystemConfigLogic,
   fetchPoolsConfigLogic,
+  fetchMiningConfigLogic,
 
   fetchDashboardStatusLogic,
+  fetchDiagnosticsLogic,
   resetSystemConfigLogic,
   setNetworkConfigLogic,
   setPoolsConfigLogic,

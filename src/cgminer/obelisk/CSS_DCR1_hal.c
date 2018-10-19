@@ -48,6 +48,7 @@
 #include "CSS_DCR1Defines.h"
 #include "CSS_DCR1_hal.h"
 #include "EMCTest.h"
+#include "Ob1Utils.h"
 
 #else
 // Initialization/declarations for ATSAMG55
@@ -253,7 +254,6 @@ int iDCR1StringStartup(uint8_t uiBoard)
 #endif
 
 #define ASIC_TEST_FLAGS_PASS 0x7FFF
-
     bool bDone;
     uint8_t ixJ;
     uint8_t uiRetryCnt;
@@ -271,6 +271,7 @@ int iDCR1StringStartup(uint8_t uiBoard)
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d hash clock disable Error\r\n", uiUUT + 1);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+            logDiagnostic(caStringVar);
         } else {
             // Set initial string voltage
             // #TODO; for now just set it to a fixed voltage close to what we want until we get the voltage monitor and
@@ -280,11 +281,13 @@ int iDCR1StringStartup(uint8_t uiBoard)
             if (ERR_NONE != iResult) {
                 (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply control error\r\n", uiUUT + 1);
                 CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                logDiagnostic(caStringVar);
             } else {
                 iResult = iSetPSEnable(uiUUT, true); // turn on the string
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply enable error\r\n", uiUUT + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                logDiagnostic(caStringVar);
                 }
             } // if (ERR_NONE != iResult)
         } // if (ERR_NONE != iResult)
@@ -424,11 +427,14 @@ int iDCR1StringStartup(uint8_t uiBoard)
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_ERROR "HB%d: %d of %d chips FAILED write/read test (0x%x)\r\n",
                         uiUUT + 1, (MAX_DCR1_CHIPS_PER_STRING - uiAsicAwakeCnt), MAX_DCR1_CHIPS_PER_STRING, uiAsicTestFlags);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                    logDiagnostic(caStringVar);
+
                     for (ixJ = 0; ixJ <= LAST_DCR1_CHIP; ixJ++) {
                         uiTestData = 0x1 << ixJ;
                         if (uiTestData != (uiAsicTestFlags & uiTestData)) {
                             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "Chip %d failed readback\r\n", ixJ + 1);
                             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                            logDiagnostic(caStringVar);
                         }
                     } // for (ixJ = 0; ixJ <= LAST_DCR1_CHIP; ixJ++)
                 }
@@ -788,18 +794,6 @@ int iDCR1DeviceInit(uint8_t uiBoard)
                 sDCR1XferBuf.uiData = DCR1_LIMITS_VAL;
                 iResult = iDCR1SpiTransfer(&sDCR1XferBuf);
             } // if (ERR_NONE == iResult)
-
-            // *************
-            // Unlike the SC1 asic, the DCR1 seems to have no step register
-            //             if (ERR_NONE == iResult) {
-            //                 iConfigStep++;
-            //                 sSC1XferBuf.eMode     = E_SC1_MODE_MULTICAST; // global write to all chips and engines
-            //                 sSC1XferBuf.uiChip    = 0; // chip and core is don't care (set to 0's)
-            //                 sSC1XferBuf.uiCore    = 0;
-            //                 sSC1XferBuf.uiReg = E_SC1_REG_STEP;
-            //                 sSC1XferBuf.uiData    = SC1_STEP_VAL;
-            //                 iResult = iSC1SpiTransfer(&sSC1XferBuf);
-            //             }   // if (ERR_NONE == iResult)
 
             // *************
             // 7) Set lower bound register to 0x0

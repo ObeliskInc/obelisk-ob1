@@ -361,6 +361,15 @@ char* opt_kernel_path;
 char* cgminer_path;
 bool opt_gen_stratum_work;
 
+
+// Obelisk options
+int opt_ob_min_fan_speed_percent = 10;
+int opt_ob_max_hot_chip_temp_c = 105;
+int opt_ob_optimization_mode = OBELISK_OPTIMIZATION_MODE_MAX_HASHRATE;
+int opt_ob_reboot_interval_mins = 60 * 8;  // 8 hours by default
+int opt_ob_reboot_min_hashrate = 150;  // DCR1 should be higher - user can override
+int opt_ob_disable_genetic_algo = false;
+
 #if defined(USE_BITFORCE)
 bool opt_bfl_noncerange;
 #endif
@@ -1258,6 +1267,7 @@ static char* set_null(const char __maybe_unused* arg)
 
 /* These options are available from config file or commandline */
 static struct opt_table opt_config_table[] = {
+
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--anu-freq",
         set_float_125_to_500, &opt_show_floatval, &opt_anu_freq,
@@ -1515,9 +1525,6 @@ static struct opt_table opt_config_table[] = {
         opt_set_bool, &opt_avalonm_autof,
         "Automatic adjust frequency base on chip HW"),
 #endif
-    OPT_WITH_ARG("--obelisk-options",
-        opt_set_charp, NULL, &opt_obelisk_options,
-        "Set obelisk options ???"),
 
     OPT_WITHOUT_ARG("--balance",
         set_balance, &pool_strategy,
@@ -1835,6 +1842,28 @@ static struct opt_table opt_config_table[] = {
     OPT_WITHOUT_ARG("--no-submit-stale",
         opt_set_invbool, &opt_submit_stale,
         "Don't submit shares if they are detected as stale"),
+
+
+    // Obelisk option definitions
+    OPT_WITH_ARG("--ob-min-fan-speed-percent",
+        opt_set_intval, NULL, &opt_ob_min_fan_speed_percent,
+        "Maximum fan speed in percent: 10-100, default: 10"),
+    OPT_WITH_ARG("--ob-max-hot-chip-temp-c",
+        opt_set_intval, NULL, &opt_ob_max_hot_chip_temp_c,
+        "Maximum temperature for the hottest chip in the board (in degrees C), default: 105"),
+    OPT_WITH_ARG("--ob-optimization-mode",
+        opt_set_intval, NULL, &opt_ob_optimization_mode,
+        "Optimization mode: 0=Max hashrate, 1=Balanced, 2=Efficient, default: 0"),
+    OPT_WITH_ARG("--ob-reboot-interval-mins",
+        opt_set_intval, NULL, &opt_ob_reboot_interval_mins,
+        "Number of minutes after which to reboot the miner: 30-1440, default: 480"),
+    OPT_WITH_ARG("--ob-reboot-min-hashrate",
+        opt_set_intval, NULL, &opt_ob_reboot_min_hashrate,
+        "Min. hashrate in GH/s below which to reboot the miner (measured per board), default: 300 for DCR1, 150 for SC1"),
+    OPT_WITH_ARG("--ob-disable-genetic-algo",
+        opt_set_intval, NULL, &opt_ob_disable_genetic_algo,
+        "Disable attempts to optimize hashrate with the built-in genetic algo, default: 0"),
+
 #ifdef USE_BITFURY
     OPT_WITH_ARG("--osm-led-mode",
         set_int_0_to_4, opt_show_intval, &opt_osm_led_mode,
@@ -1953,6 +1982,7 @@ static struct opt_table opt_config_table[] = {
     OPT_WITHOUT_ARG("--worktime",
         opt_set_bool, &opt_worktime,
         "Display extra work time debug information"),
+
     OPT_ENDTABLE
 };
 
@@ -1994,6 +2024,8 @@ static char* parse_config(json_t* config, bool fileconf)
             val = json_object_get(config, p + 2);
             if (!val)
                 continue;
+
+            printf("Found in JSON config file: %s\n", p);
 
             if ((opt->type & (OPT_HASARG | OPT_PROCESSARG)) && json_is_string(val)) {
                 str = json_string_value(val);

@@ -19,7 +19,7 @@ import { SystemConfig, UploadStatus } from 'modules/Main/types'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
 import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
-import { Button, Form, Header, Message, Progress } from 'semantic-ui-react'
+import { Button, Dimmer, Form, Header, Loader, Message, Progress } from 'semantic-ui-react'
 import { getHistory } from 'utils'
 
 const history = getHistory()
@@ -87,24 +87,46 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 
   render() {
     const { classNames, lastError, systemForm, passwordForm, upgradeMessage } = this.props
-    const renderTimeSave = () => {
-      if (systemForm != '') {
-        return <span>{systemForm}</span>
-      } else {
+
+    const renderSave = (dirty: any) => {
+      switch (systemForm) {
+        case 'started':
+          return (
+            <Dimmer active>
+              <Loader />
+            </Dimmer>
+          )
+        case 'failed':
+          return <span>Failed</span>
+        case 'done':
+          return <span>Done</span>
+      }
+      if (dirty) {
         return <Button type="submit">SAVE</Button>
       }
+      return undefined
     }
-    const renderPasswordSave = (formikProps: any) => {
-      if (passwordForm != '') {
-        return <span>{passwordForm}</span>
-      } else {
-        return (
-          <Button type="button" onClick={formikProps.handleChangePassword}>
-            CHANGE PASSWORD
-          </Button>
-        )
+
+    const renderChangePassword = (formikProps: any) => {
+      switch (passwordForm) {
+        case 'started':
+          return (
+            <Dimmer active>
+              <Loader />
+            </Dimmer>
+          )
+        case 'failed':
+          return <span>Failed</span>
+        case 'done':
+          return <span>Done</span>
       }
+      return (
+        <Button type="button" onClick={formikProps.handleChangePassword}>
+          CHANGE PASSWORD
+        </Button>
+      )
     }
+
     return (
       <Content>
         <Header as="h1">System Config</Header>
@@ -118,7 +140,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
           onSubmit={(values: SystemConfig, formikBag: FormikProps<SystemConfig>) => {
             if (this.props.dispatch) {
               const valuesToSend = {
-                ntpServer: values.ntpServer,
                 timezone: values.timezone,
               }
               this.props.dispatch(setSystemConfig.started(valuesToSend))
@@ -243,17 +264,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     options={timezoneOptions}
                     value={formikProps.values.timezone}
                   />
-                  <Form.Input
-                    label="NTP SERVER"
-                    name="ntpServer"
-                    placeholder="NTP Server Address"
-                    onChange={formikProps.handleChange}
-                    onBlur={formikProps.handleBlur}
-                    value={formikProps.values.ntpServer}
-                    error={!!_.get(formikProps.errors, ['ntpServer'], '')}
-                    disabled={true}
-                  />
-                  {renderTimeSave()}
+                  {renderSave(formikProps.dirty)}
                 </Form>
 
                 <Form onSubmit={formikProps.handleSubmit}>
@@ -277,7 +288,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                     value={formikProps.values.newPassword}
                     error={!!_.get(formikProps.errors, ['newPassword'], '')}
                   />
-                  {renderPasswordSave(formikProps)}
+                  {renderChangePassword(formikProps)}
                 </Form>
 
                 <Form>

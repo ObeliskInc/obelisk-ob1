@@ -42,3 +42,5 @@ export const getLastRequest = (state: State): string | undefined => state.lastRe
 export const getFirmwareVersion = (state: State): string | undefined => state.firmwareVersion
 
 export const getCgMinerVersions = (state: State): string | undefined => state.cgminerVersions
+
+export const getDiagnostics = (state: State): string | undefined => state.diagnostics

@@ -5,6 +5,7 @@ import { isType, Action } from 'typescript-fsa'
 const updeep = require('updeep')
 
 import { NetworkConfig, State, VersionInfo } from './types'
+import { OptimizationModeHashrate } from 'utils/optmizationMode'
 
 import {
   clearLastErrorAC,
@@ -12,6 +13,7 @@ import {
   fetchCurrUser,
   fetchVersions,
   fetchDashboardStatus,
+  fetchDiagnostics,
   fetchMiningConfig,
   fetchNetworkConfig,
   fetchPoolsConfig,
@@ -31,9 +33,11 @@ import {
   toggleSidebarAC,
   setPoolsConfig,
   clearFormStatusAC,
+  setMiningConfig,
   setSystemConfig,
   changePassword,
   runUpgrade,
+  setNetworkConfig,
 } from './actions'
 import { version } from 'react'
 
@@ -79,14 +83,20 @@ const initialState: State = {
     poolForm: '',
     passwordForm: '',
     systemForm: '',
+    networkForm: '',
+    miningForm: '',
   },
   miningConfig: {
-    optimizationMode: 'efficiency',
+    optimizationMode: OptimizationModeHashrate,
+    minFanSpeedPercent: 100,
+    maxHotChipTempC: 105,
+    rebootIntervalMins: 6 * 80,
+    rebootMinHashrate: 150,
+    disableGeneticAlgo: false,
   },
 
   systemConfig: {
     timezone: 'America/New_York',
-    ntpServer: 'pool.ntp.org',
   },
 
   activeRequestType: undefined,
@@ -100,6 +110,8 @@ const initialState: State = {
 
   nextRouteOnFail: undefined,
   nextRouteOnSuccess: undefined,
+
+  diagnostics: undefined,
 }
 
 // console.log(JSON.stringify(initialState.dashboardStatus, null, 0))
@@ -290,6 +302,13 @@ export const reducer = (state: State = initialState, action: Action<any>): State
     newState = updeep({ dashboardStatus: payload.data }, newState)
 
     // -------------------------------------------------------------------------------------------
+    // Diagnostics
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, fetchDiagnostics.done)) {
+    const payload = action.payload as any
+    newState = updeep({ diagnostics: payload.data }, newState)
+
+    // -------------------------------------------------------------------------------------------
     // Upload status
     // -------------------------------------------------------------------------------------------
   } else if (isType(action, setUploadFilenameAC)) {
@@ -317,6 +336,7 @@ export const reducer = (state: State = initialState, action: Action<any>): State
     newState = updeep({ forms: { poolForm: 'done' } }, newState)
   } else if (isType(action, clearFormStatusAC)) {
     newState = updeep({ forms: initialState.forms }, newState)
+
     // -------------------------------------------------------------------------------------------
     // System form
     // -------------------------------------------------------------------------------------------
@@ -332,6 +352,28 @@ export const reducer = (state: State = initialState, action: Action<any>): State
     newState = updeep({ forms: { passwordForm: 'failed' } }, newState)
   } else if (isType(action, changePassword.done)) {
     newState = updeep({ forms: { passwordForm: 'done' } }, newState)
+
+    // -------------------------------------------------------------------------------------------
+    // Mining form
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, setMiningConfig.started)) {
+    newState = updeep({ forms: { miningForm: 'started' } }, newState)
+  } else if (isType(action, setMiningConfig.failed)) {
+    newState = updeep({ forms: { miningForm: 'failed' } }, newState)
+  } else if (isType(action, setMiningConfig.done)) {
+    newState = updeep({ forms: { miningForm: 'done' } }, newState)
+
+    // -------------------------------------------------------------------------------------------
+    // Network form
+    // -------------------------------------------------------------------------------------------
+  } else if (isType(action, setNetworkConfig.started)) {
+    newState = updeep({ forms: { networkForm: 'started' } }, newState)
+  } else if (isType(action, setNetworkConfig.failed)) {
+    newState = updeep({ forms: { networkForm: 'failed' } }, newState)
+  } else if (isType(action, setNetworkConfig.done)) {
+    newState = updeep({ forms: { networkForm: 'done' } }, newState)
+  } else if (isType(action, clearFormStatusAC)) {
+    newState = updeep({ forms: initialState.forms }, newState)
   }
 
   return newState

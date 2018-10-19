@@ -48,6 +48,7 @@
 #include "CSS_SC1Defines.h"
 #include "CSS_SC1_hal.h"
 #include "EMCTest.h"
+#include "Ob1Utils.h"
 
 /***    LOCAL DEFINITIONS     ***/
 #define SC1_TRANSFER_CONTROL_BYTES (3) // SPI transfer has 3 bytes of control
@@ -219,7 +220,6 @@ int iSC1StringStartup(uint8_t uiBoard)
 #endif
 
 #define ASIC_TEST_FLAGS_PASS 0x7FFF
-
     bool bDone;
     uint8_t ixJ;
     uint8_t uiRetryCnt;
@@ -237,6 +237,7 @@ int iSC1StringStartup(uint8_t uiBoard)
         if (ERR_NONE != iResult) {
             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d hash clock disable Error\r\n", uiUUT + 1);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+            logDiagnostic(caStringVar);
         } else {
             // Set initial string voltage
             // #TODO; for now just set it to a fixed voltage close to what we want until we get the voltage monitor and
@@ -246,11 +247,13 @@ int iSC1StringStartup(uint8_t uiBoard)
             if (ERR_NONE != iResult) {
                 (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply control error\r\n", uiUUT + 1);
                 CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                logDiagnostic(caStringVar);
             } else {
                 iResult = iSetPSEnable(uiUUT, true); // turn on the string
                 if (ERR_NONE != iResult) {
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply enable error\r\n", uiUUT + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                    logDiagnostic(caStringVar);
                 }
             } // if (ERR_NONE != iResult)
         } // if (ERR_NONE != iResult)
@@ -390,11 +393,13 @@ int iSC1StringStartup(uint8_t uiBoard)
                     (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_ERROR "HB%d: %d of %d chips FAILED write/read test (0x%x)\r\n",
                         uiUUT + 1, (MAX_SC1_CHIPS_PER_STRING - uiAsicAwakeCnt), MAX_SC1_CHIPS_PER_STRING, uiAsicTestFlags);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                    logDiagnostic(caStringVar);
                     for (ixJ = 0; ixJ <= LAST_SC1_CHIP; ixJ++) {
                         uiTestData = 0x1 << ixJ;
                         if (uiTestData != (uiAsicTestFlags & uiTestData)) {
                             (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "Chip %d failed readback\r\n", ixJ + 1);
                             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
+                            logDiagnostic(caStringVar);
                         }
                     } // for (ixJ = 0; ixJ <= LAST_SC1_CHIP; ixJ++)
                 }

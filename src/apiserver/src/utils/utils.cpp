@@ -340,6 +340,32 @@ string getOSVersion() {
   return runCmd(cmd.str());
 }
 
+#define NUM_CMDS 11
+string getDiagnostics() {
+  string cmds[NUM_CMDS] = {
+    "cat /var/log/diagnostics.log",
+    "cat /root/.version",
+    "cat /root/.cgminer/cgminer.conf",
+    "cat /etc/hostname",
+    "ifconfig",
+    "cat /etc/network/interfaces",
+    "cat /etc/resolv.conf",
+    "ls -la /usr/sbin",
+    "ls -la /etc/init.d",
+    "cat /etc/timezone",
+    "ps aux"
+  };
+  string divider = "--------------------------------------------------------------------------------";
+  ostringstream output;
+
+  for (int i=0; i<NUM_CMDS; i++) {
+    string result = runCmd(cmds[i]);
+    output << divider << "\n> " << cmds[i] << "\n" << result << "\n" << divider << "\n\n\n";
+  }
+
+  return output.str();
+}
+
 void doReboot() { runCmd("reboot"); }
 
 // Network utils
@@ -491,10 +517,8 @@ string getSubnetMaskV4(string intfName) {
 }
 
 string getDefaultGateway(string intfName) {
-  // OLD COMMAND:
-  // cmd << "cat /etc/network/interfaces | sed -En 's/\s+gateway([ ]+)(.*)/\2/p'";
   ostringstream cmd;
-  cmd << "cat /root/config/interfaces | sed -En 's/\\s+gateway([ ]+)(.*)/\\2/p'";
+  cmd << "route -n | awk '/^0.0.0.0/ {print $2}'";
   string result = runCmd(cmd.str());
   if (result.length() > 0) {
     result.pop_back(); // Remove trailing newline
