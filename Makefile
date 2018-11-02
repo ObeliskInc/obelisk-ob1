@@ -6,7 +6,7 @@ common: initial-build build-patches sd-utils control-utils apiserver ee2mac webc
 dcr: common cgminer-dcr create-image-dcr
 sia: common cgminer-sia create-image-sia
 
-full: clean dependencies configs all
+full: clean-all dependencies configs all
 
 clean: 
 	@rm -rf $(IMAGEROOT)/usr/sbin/apiserver
@@ -178,7 +178,7 @@ apiserver:
 ee2mac:
 	# Create ee2mac
 	mkdir -p src/ee2mac/bin
-	cd src/ee2mac && make OBELISK_OB1_DIR=$(shell pwd)
+	cd src/ee2mac && make OBELISK_OB1_DIR=$(shell pwd) TOOLCHAIN_PATH=$(shell pwd)/controlCardImage/host
 	cp src/ee2mac/bin/ee2mac $(IMAGEROOT)/usr/sbin/
 
 webclient:
