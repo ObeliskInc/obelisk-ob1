@@ -229,6 +229,7 @@ create-image-dcr: create-image-common
 	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.dcr $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
+	cp -rf ./src/.version.dcr $(IMAGEROOT)/root/.version
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
@@ -242,6 +243,7 @@ create-image-sia: create-image-common
 	mkdir -p $(IMAGEROOT)/root/.cgminer/
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/cgminer.conf
 	cp -rf ./src/cgminer/config/cgminer.conf.sc $(IMAGEROOT)/root/.cgminer/default_cgminer.conf
+	cp -rf ./src/.version.sc $(IMAGEROOT)/root/.version
 	# Build the sd card image.
 	cd sdCardImage && make OBELISK_OB1_DIR=$(shell pwd)
 	# Copy the sd card image to the images/ folder.
