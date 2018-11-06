@@ -122,3 +122,4 @@ upgrade
 src/upgrades/releases
 src/ee2mac/bin
 src/hello
+src/obconfig/node_modules
