@@ -861,6 +861,11 @@ static void handleFanChange(ob_chain* ob) {
 // We do this, because sometimes the hashrate drops for an unknown reason (perhaps we have lost
 // some chips). This check is done every 30 minutes. The watchdog should revive cgminer.
 static void handleLowHashrateExit(ob_chain* ob) {
+	// Zero means the check is disabled
+	if (opt_ob_reboot_min_hashrate == 0) {
+		return
+	}
+
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {
 		uint64_t actualHashrate = ob->cgpu->rolling5;
 		uint64_t hashrateLimit = ((uint64_t)opt_ob_reboot_min_hashrate) * 1000LL;
