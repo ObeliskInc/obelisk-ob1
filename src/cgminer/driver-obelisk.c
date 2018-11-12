@@ -486,9 +486,6 @@ static void obelisk_detect(bool hotplug)
 			initDCR1ABoard(ob);
 		}
 
-		// Apply user overrides
-		ob->staticBoardModel.hotChipTargetTemp = opt_ob_max_hot_chip_temp_c;
-
 		cgtime(&cgpu->dev_start_tv);
 
 		ob->control_loop_state.currentTime = time(0);
@@ -942,7 +939,7 @@ static void control_loop(ob_chain* ob) {
 
 	// Determine the target temperature for the temperature chip.
 	double hottestDelta = getHottestDelta(ob);
-	double targetTemp = ob->staticBoardModel.hotChipTargetTemp - ob->staticBoardModel.chipTempVariance - hottestDelta;
+	double targetTemp = opt_ob_max_hot_chip_temp_c - ob->staticBoardModel.chipTempVariance - hottestDelta;
 	handleOvertemps(ob, targetTemp);
 	handleUndertemps(ob, targetTemp);
 	handleFanChange(ob);
