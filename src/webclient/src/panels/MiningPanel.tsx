@@ -55,7 +55,7 @@ const rebootIntervalOptions = (() => {
 })()
 
 const rebootHashrateOptions = (() => {
-  const result = []
+  const result = [{ text: 'NEVER', value: 0, key: 0}]
   for (let i=100; i<=400; i += 25) {
     result.push(  { text: `${i} GH/s`, value: i, key: i })
   }
