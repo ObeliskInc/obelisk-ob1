@@ -1125,7 +1125,6 @@ extern pthread_mutex_t lockstat_lock;
 extern int opt_ob_min_fan_speed_percent;
 extern int opt_ob_max_hot_chip_temp_c;
 extern int opt_ob_optimization_mode;
-extern int opt_ob_reboot_interval_mins;
 extern int opt_ob_reboot_min_hashrate;
 extern int opt_ob_disable_genetic_algo;
 

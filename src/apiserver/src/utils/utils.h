@@ -73,4 +73,8 @@ void writeCgMinerConfig(json::wvalue &json);
 
 string readFile(string path);
 
+
+int getRebootInterval();
+void setRebootInterval(int mins);
+
 #endif
