@@ -269,7 +269,7 @@ int iDCR1StringStartup(uint8_t uiBoard)
 
         iResult = iSetHashClockEnable(uiUUT, false); // ensure clock enable is off
         if (ERR_NONE != iResult) {
-            (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d hash clock disable Error\r\n", uiUUT + 1);
+            (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u hash clock disable Error\r\n", uiUUT + 1);
             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
             logDiagnostic(caStringVar);
         } else {
@@ -279,15 +279,15 @@ int iDCR1StringStartup(uint8_t uiBoard)
             uiEpotCount = EPOT_STARTUP_VALUE;
             iResult = iSetPSControl(uiUUT, uiEpotCount);
             if (ERR_NONE != iResult) {
-                (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply control error\r\n", uiUUT + 1);
+                (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u power supply control error\r\n", uiUUT + 1);
                 CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                 logDiagnostic(caStringVar);
             } else {
                 iResult = iSetPSEnable(uiUUT, true); // turn on the string
                 if (ERR_NONE != iResult) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "HB%d power supply enable error\r\n", uiUUT + 1);
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u power supply enable error\r\n", uiUUT + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
-                logDiagnostic(caStringVar);
+                    logDiagnostic(caStringVar);
                 }
             } // if (ERR_NONE != iResult)
         } // if (ERR_NONE != iResult)
@@ -421,10 +421,10 @@ int iDCR1StringStartup(uint8_t uiBoard)
 #endif
                 // Report results to console
                 if (MAX_DCR1_CHIPS_PER_STRING <= uiAsicAwakeCnt) { // if we passed the above initialization...
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_INFO "HB%d string communications PASSED\r\n", uiUUT + 1);
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_INFO "HB%u string communications PASSED\r\n", uiUUT + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                 } else {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "\r\n" MSG_TKN_ERROR "HB%d: %d of %d chips FAILED write/read test (0x%x)\r\n",
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u - %d of %d chips FAILED write/read test (0x%x)\r\n",
                         uiUUT + 1, (MAX_DCR1_CHIPS_PER_STRING - uiAsicAwakeCnt), MAX_DCR1_CHIPS_PER_STRING, uiAsicTestFlags);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
@@ -432,7 +432,7 @@ int iDCR1StringStartup(uint8_t uiBoard)
                     for (ixJ = 0; ixJ <= LAST_DCR1_CHIP; ixJ++) {
                         uiTestData = 0x1 << ixJ;
                         if (uiTestData != (uiAsicTestFlags & uiTestData)) {
-                            (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_INDENT4 "Chip %d failed readback\r\n", ixJ + 1);
+                            (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u - Chip %d failed readback\r\n", uiUUT + 1, ixJ + 1);
                             CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                             logDiagnostic(caStringVar);
                         }
