@@ -875,19 +875,6 @@ static void handleLowHashrateExit(ob_chain* ob) {
 	}
 }
 
-// Reboot the miner if it has been running for the user-specified interval in minutes
-static void handlePeriodicReboot(ob_chain* ob) {
-	// If user has set interval to zero, then periodic reboots are disabled
-	if (ob->chain_id != 0 || opt_ob_reboot_interval_mins == 0) {
-		return;
-	}
-
-	if (ob->control_loop_state.currentTime - ob->control_loop_state.bootTime > opt_ob_reboot_interval_mins * 60) {
-		applog(LOG_ERR, "$$$$$$$$$$ REBOOTING BECAUSE USER CONFIGURED INTERVAL OF %d MINUTES HAS ELAPSED", opt_ob_reboot_interval_mins);
-		doReboot();
-	}
-}
-
 // handleVoltageAndBiasTuning will adjust the voltage of the string and the
 // biases of the chips as deemed beneficial to the overall hashrate.
 static void handleVoltageAndBiasTuning(ob_chain* ob) {
@@ -960,8 +947,6 @@ static void control_loop(ob_chain* ob) {
 
 	// Exit if hashrate drops too low, as this usually means we have lost several chips.
 	handleLowHashrateExit(ob);
-
-	handlePeriodicReboot(ob);
 }
 
 ///////////////////////////////////////////////////
