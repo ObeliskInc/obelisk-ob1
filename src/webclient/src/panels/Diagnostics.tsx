@@ -59,6 +59,7 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
 
         <TextArea className={classNames.diagnostics} rows={40}  value={diagnostics} disabled={true}/>
         <CopyToClipboard text={diagnostics}>
+        <CopyToClipboard text={'[CopyToClipboard]\n' + info}>
           <Button>COPY TO CLIPBOARD</Button>
         </CopyToClipboard>
       </Content>
