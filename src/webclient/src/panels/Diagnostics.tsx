@@ -63,7 +63,7 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
           value={diagnostics}
           disabled={true}
         />
-        <CopyToClipboard text={'[CopyToClipboard]\n' + info}>
+        <CopyToClipboard text={'[CopyToClipboard]\n' + diagnostics}>
           <Button>COPY TO CLIPBOARD</Button>
         </CopyToClipboard>
       </Content>
