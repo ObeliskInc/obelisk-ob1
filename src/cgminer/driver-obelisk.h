@@ -66,6 +66,7 @@ typedef struct stringSettings stringSettings;
 
 typedef Job      (*prepareNextChipJobFn)(ob_chain* ob);
 typedef ApiError (*setChipNonceRangeFn)(ob_chain* ob, uint16_t chipNum, uint8_t tries);
+typedef bool (*areEnginesDoneFn)(ob_chain* ob, uint16_t chipNum);
 typedef ApiError (*startNextEngineJobFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum);
 typedef ApiError (*validNonceFn)(ob_chain* ob, uint16_t chipNum, uint16_t engineNum, Nonce nonce);
 
@@ -145,6 +146,7 @@ struct ob_chain {
 	// Chip specific function pointers.
 	prepareNextChipJobFn prepareNextChipJob;
 	setChipNonceRangeFn  setChipNonceRange;
+	areEnginesDoneFn  areEnginesDone;
 	startNextEngineJobFn startNextEngineJob;
 	validNonceFn         validNonce;
 
