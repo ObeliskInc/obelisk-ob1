@@ -263,11 +263,7 @@ void getConfigMining(string path, query_string &urlParams, const crow::request &
     jsonResp["maxHotChipTempC"] = 105;
   }
   
-  if (conf.has("ob-reboot-interval-mins")) {
-    jsonResp["rebootIntervalMins"] = conf["ob-reboot-interval-mins"].i();
-  } else {
-    jsonResp["rebootIntervalMins"] = 60 * 8;
-  }
+  jsonResp["rebootIntervalMins"] = getRebootInterval();
   
   if (conf.has("ob-reboot-min-hashrate")) {
     jsonResp["rebootMinHashrate"] = conf["ob-reboot-min-hashrate"].i();
@@ -403,19 +399,46 @@ void setConfigMining(string path, json::rvalue &args, const crow::request &req,
     newConf = json::load("{}");
   }
 
+  setRebootInterval(args["rebootIntervalMins"].i());
+
   // cgminer needs its integers in strings in the config file
   newConf["ob-min-fan-speed-percent"] = to_string(args["minFanSpeedPercent"].i());
   newConf["ob-max-hot-chip-temp-c"] = to_string(args["maxHotChipTempC"].i());
   newConf["ob-optimization-mode"] = to_string(args["optimizationMode"].i());
-  newConf["ob-reboot-interval-mins"] = to_string(args["rebootIntervalMins"].i());
   newConf["ob-reboot-min-hashrate"] = to_string(args["rebootMinHashrate"].i());
   newConf["ob-disable-genetic-algo"] = args["disableGeneticAlgo"].b() ? "1" : "0";
 
   // Write out config file
   writeCgMinerConfig(newConf);
 
+
   CROW_LOG_ERROR << "setConfigMining() - Resetting cgminer!";
-  sendCgMinerCmd("restart", "", [&](CgMiner::Response cgMinerResp) { resp.end(); });
+  CgMiner::Commands cmds;
+
+  // NOTE: The spaces in the format strings below are required so sscanf works on the other side
+  // Fan speed
+  char fanSpeedParam[100];
+  snprintf(fanSpeedParam, 100, "ob-min-fan-speed-percent = %d", (int)args["minFanSpeedPercent"].i());
+  cmds.push_back({"setconfig", fanSpeedParam});
+
+  // Max hot chip temp
+  char maxHotChipParam[100];
+  snprintf(maxHotChipParam, 100, "ob-max-hot-chip-temp-c = %d", (int)args["maxHotChipTempC"].i());
+  cmds.push_back({"setconfig", maxHotChipParam});
+
+  // Reboot for low hashrate
+  char rebootMinHashrateParam[100];
+  snprintf(rebootMinHashrateParam, 100, "ob-reboot-min-hashrate = %d", (int)args["rebootMinHashrate"].i());
+  cmds.push_back({"setconfig", rebootMinHashrateParam});
+
+  // Enable/disable genetic algo
+  char disableGeneticAlgoParam[100];
+  snprintf(disableGeneticAlgoParam, 100, "ob-disable-genetic-algo = %d", (int)args["disableGeneticAlgo"].b() ? 1 : 0);
+  cmds.push_back({"setconfig", disableGeneticAlgoParam});
+
+  // No need to restart now, because parameters take effect immediately (or whenever they are next
+  // referenced in the code).
+  sendCgMinerCmds(cmds, [&](CgMiner::Response cgMinerResp) { resp.end(); });
 }
 
 void setConfigAsic(string path, json::rvalue &args, const crow::request &req,
@@ -564,10 +587,6 @@ void getStatusDashboard(string path, query_string &urlParams, const crow::reques
     systemArr[i++] = makeSystemInfoEntry("Fan 2 Speed", to_string(fanSpeed1) + " RPM");
     systemArr[i++] = makeSystemInfoEntry("Firmware Version", getFirmwareVersion());
     jsonResp["systemInfo"] = to_rvalue(systemArr);
-
-    // Get diagnostic info from file
-    string diagnostics = getDiagnostics();
-    jsonResp["diagnostics"] = diagnostics;
 
     string str = json::dump(jsonResp);
     // CROW_LOG_DEBUG << "jsonStr=" << str;

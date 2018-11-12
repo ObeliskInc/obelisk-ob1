@@ -611,3 +611,17 @@ string readFile(string path) {
   buffer << stream.rdbuf();
   return buffer.str();
 }
+
+int getRebootInterval() {
+  string result = runCmd("cat /reboot_interval");
+  if (result.length() == 0) {
+    return 0;
+  }
+  return stoi(result);
+}
+
+void setRebootInterval(int mins) {
+  ostringstream cmd1;
+  cmd1 << "echo " << mins << " > /reboot_interval";
+  runCmd(cmd1.str());
+}
