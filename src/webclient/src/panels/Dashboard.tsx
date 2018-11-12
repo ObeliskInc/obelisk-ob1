@@ -24,6 +24,7 @@ import { fetchDashboardStatus } from 'modules/Main/actions'
 import { getDashboardStatus } from 'modules/Main/selectors'
 import { DashboardStatus, HashboardStatus, HashrateEntry, PoolStatus, StatsEntry } from 'modules/Main/types'
 import { formatTime } from 'utils'
+import { isDate } from 'util';
 
 interface ConnectProps {
   dashboardStatus: DashboardStatus
@@ -197,7 +198,12 @@ class Dashboard extends React.PureComponent<CombinedProps> {
     // Add lines based on how many board entries are in the data
     // Filter entries with no board data, because sometimes cgminer is not ready when apiserver polls (e.g., when a pool is down).
     let areas = undefined
-    const hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry["Board 1"] !== undefined)
+    let hashrateEntries = _.filter(dashboardStatus.hashrateData, (entry: HashrateEntry) => entry["Board 1"] !== undefined)
+    hashrateEntries = _.map(hashrateEntries, (entry: HashrateEntry) => {
+      const d = new Date(0) // The 0 there is the key, which sets the date to the epoch
+      const offsetMins = d.getTimezoneOffset()
+      return {...entry, time: entry.time - offsetMins * 60}
+    })
     if (hashrateEntries.length > 0) {
       const firstEntry = hashrateEntries[hashrateEntries.length - 1]
       let keys = _.keys(firstEntry)
