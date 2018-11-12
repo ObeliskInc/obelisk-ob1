@@ -37,6 +37,7 @@ DCR1:
 #include <stdlib.h>
 #include <time.h>
 
+
 // HACK:
 extern void dump(unsigned char* p, int len, char* label);
 
@@ -307,6 +308,54 @@ Job dcrPrepareNextChipJob(ob_chain* ob) {
 	return job;
 }
 
+int numSetBits64(uint64_t value) {
+	int bitCount = 0;
+	for (int i=0; i< 64; i++) {
+		if ((value & 1ULL)) {
+			bitCount++;
+		}
+		value >>= 1;
+	}
+	return bitCount;
+}
+
+// siaAreEnginesDone will determine whether enough engines have completed for us to start
+// checking for nonces.
+bool siaAreEnginesDone(ob_chain* ob, uint16_t chipNum) {
+	uint64_t doneBitmask;
+	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, &doneBitmask);
+	if (error != SUCCESS) {
+		return true;  // Something is wrong, so by returning true, we force the nonce read and trigger a new job
+	}
+
+	// Check to see if at least 25% of the engines are done.  We assume those are the fast ones, and we don't
+	// want to wait around for the slow ones, so we will just stop here and see what nonces were found.
+	int numDoneEngines = 64 - numSetBits64(doneBitmask);
+	return numDoneEngines >= 16;
+}
+
+// dcrAreEnginesDone will determine whether enough engines have completed for us to start
+// checking for nonces.
+bool dcrAreEnginesDone(ob_chain* ob, uint16_t chipNum) {
+	uint64_t doneBitmasks[2];
+	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, doneBitmasks);
+	if (error != SUCCESS) {
+		return true;  // Something is wrong, so by returning true, we force the nonce read and trigger a new job
+	}
+
+	int numDoneEngines = 64 - numSetBits64(doneBitmasks[0]);
+	if (numDoneEngines <= 32) {
+		// applog(LOG_ERR, "Chip %d: %u engines are DONE", chipNum, numDoneEngines);
+		return true;
+	}
+
+	numDoneEngines += 64 - numSetBits64(doneBitmasks[1]);
+	// if (numDoneEngines >= 32) {
+	// 	applog(LOG_ERR, "Chip %d: %u engines are DONE", chipNum, numDoneEngines);
+	// }
+	return numDoneEngines >= 32;
+}
+
 // siaSetChipNonceRange will set the nonce range of every engine on the chip to
 // a different value, offset by the nonce range of the board model.
 ApiError siaSetChipNonceRange(ob_chain* ob, uint16_t chipNum, uint8_t tries) {
@@ -399,6 +448,7 @@ void initSC1ABoard(ob_chain* ob) {
 
 	// Functions.
 	ob->prepareNextChipJob = siaPrepareNextChipJob;
+	ob->areEnginesDone = siaAreEnginesDone;
 	ob->setChipNonceRange = siaSetChipNonceRange;
 	ob->startNextEngineJob = siaStartNextEngineJob;
 	ob->validNonce = siaValidNonce;
@@ -416,6 +466,7 @@ void initDCR1ABoard(ob_chain* ob) {
 
 	// Functions.
 	ob->prepareNextChipJob = dcrPrepareNextChipJob;
+	ob->areEnginesDone = dcrAreEnginesDone;
 	ob->setChipNonceRange = dcrSetChipNonceRange;
 	ob->startNextEngineJob = dcrStartNextEngineJob;
 	ob->validNonce = dcrValidNonce;
@@ -630,7 +681,7 @@ static void update_temp(temp_stats_t* temps, double curr_temp)
 #define StatusOutputFrequency 60 
 
 // Overtemp variables.
-#define TempDeviationAcceptable 5.0 // The amount the temperature is allowed to vary from the target temperature.
+#define TempDeviationAcceptable 2.0 // The amount the temperature is allowed to vary from the target temperature.
 #define TempDeviationUrgent 3.0 // Temp above acceptable where rapid bias reductions begin.
 #define OvertempCheckFrequency 1
 
@@ -1115,28 +1166,15 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 
 		cgtimer_time(&doneStart);
 
-		// Check whether the chip is done by looking at the 'GetDoneEngines'
-		// read. If the first engines are reporting done, scan through the whole
-		// chip. The idea behind only checking the first engines is that by the
-		// time we get through them, the later engines will also be done.
-		uint8_t doneBitmask[ob->staticBoardModel.enginesPerChip/8];
-		ApiError error = ob1GetDoneEngines(ob->chain_id, chipNum, (uint64_t*)doneBitmask);
-		if (error != SUCCESS) {
-			applog(LOG_ERR, "error from GetDoneEngines: %u.%u", ob->staticBoardNumber, chipNum);
-		cgtimer_time(&doneEnd);
-		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
-		doneTotal += cgtimer_to_ms(&doneDuration);
-			continue;
-		}
-		// Check the first 16 engines. If 16 engines are done, all engines
-		// should finish as we get to them.
-		if (doneBitmask[0] != 0xff || doneBitmask[1] != 0xff) {
+		// See if engines are "done" and ready to be checked for nonces
+		if (!ob->areEnginesDone(ob, chipNum)) {
 			cgtimer_time(&ob->chipCheckTimes[chipNum]);
-		cgtimer_time(&doneEnd);
-		cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
-		doneTotal += cgtimer_to_ms(&doneDuration);
+			cgtimer_time(&doneEnd);
+			cgtimer_sub(&doneEnd, &doneStart, &doneDuration);
+			doneTotal += cgtimer_to_ms(&doneDuration);
 			continue;
 		}
+
 		cgtimer_t lastCheck;
 		cgtimer_sub(&currentTime, &ob->chipCheckTimes[chipNum], &lastCheck);
 		int msLastCheck = cgtimer_to_ms(&lastCheck);
@@ -1157,7 +1195,7 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 			// Read any nonces that the engine found.
 			NonceSet nonceSet;
 			nonceSet.count = 0;
-			error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
+			ApiError error = ob1ReadNonces(ob->chain_id, chipNum, engineNum, &nonceSet);
 			if (error != SUCCESS) {
 				applog(LOG_ERR, "error reading nonces: %u.%u.%u", ob->staticBoardNumber, chipNum, engineNum);
 				continue;
@@ -1165,10 +1203,19 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 
 			// Check the nonces and submit them to a pool if valid.
 			for (uint8_t i = 0; i < nonceSet.count; i++) {
+				Nonce nonce = nonceSet.nonces[i];
+				if (nonce == 0x0000000000000000 || nonce == 0xFFFFFFFFFFFFFFFF) {
+					// Skip these bad nonces - no need to do all the hashing to check if they are valid, because
+					// engines 0 and 1 on all chips seem to return these values 99% of the time (and 8 of them at
+					// a time as well!)
+					continue;
+				}
+
 				// Check that the nonce is valid
-				int nonceResult = ob->validNonce(ob, chipNum, engineNum, nonceSet.nonces[i]);
+				int nonceResult = ob->validNonce(ob, chipNum, engineNum, nonce);
 				if (nonceResult == 0) {
 					ob->chipBadNonces[chipNum]++;
+					applog(LOG_ERR, "HB%u: %u:%u: BAD NONCE = 0x%016llX", ob->chain_id, chipNum, engineNum, nonce);
 				}
 				if (nonceResult > 0) {
 					ob->goodNoncesFound++;
@@ -1178,12 +1225,12 @@ static int64_t obelisk_scanwork(__maybe_unused struct thr_info* thr) {
 				if (nonceResult == 2) {
 					// TODO: Should turn these into separate functions with ptrs
 					if (gBoardModel == MODEL_SC1) {
-						applog(LOG_ERR, "Submitting SC nonce=0x%016llx  en2=0x%08x", nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
-						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], ob->chipWork[chipNum]->nonce2);
+						applog(LOG_ERR, "Submitting SC nonce=0x%016llX  en2=0x%08X", nonce, ob->chipWork[chipNum]->nonce2);
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonce, ob->chipWork[chipNum]->nonce2);
 					} else {
-						applog(LOG_ERR, "Submitting DCR nonce=0x%08x  en2=0x%08x", nonceSet.nonces[i], ob->decredEN2[chipNum][engineNum]);
+						applog(LOG_ERR, "Submitting DCR nonce=0x%08X  en2=0x%08X", nonce, ob->decredEN2[chipNum][engineNum]);
 						// NOTE: We byte-reverse the extranonce2 here, but not the nonce, because...who wouldn't?
-						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonceSet.nonces[i], htonl(ob->decredEN2[chipNum][engineNum]));
+						submit_nonce(cgpu->thr[0], ob->chipWork[chipNum], nonce, htonl(ob->decredEN2[chipNum][engineNum]));
 					}
 				}
 			}
