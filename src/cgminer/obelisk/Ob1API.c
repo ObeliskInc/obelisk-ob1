@@ -300,7 +300,6 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
             }
         }
         nonceSet->count = n;
-        // applog(LOG_ERR, "nonceSet->count=%u", nonceSet->count);
 
         pulseSC1ReadComplete(boardNum, chipNum, engineNum);
         break;
@@ -325,9 +324,6 @@ ApiError ob1ReadNonces(uint8_t boardNum, uint8_t chipNum, uint8_t engineNum, Non
                     if (error != SUCCESS) {
                         return error;
                     }
-                    // applog(LOG_ERR, "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-                    // applog(LOG_ERR, "readnonce: 0x%08lX", nonce);
-                    // applog(LOG_ERR, "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                     nonceSet->nonces[n] = nonce;
                     n++;
                 }

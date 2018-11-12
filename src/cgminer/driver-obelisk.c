@@ -31,6 +31,7 @@ DCR1:
 #include "config.h"
 #include "klist.h"
 #include "sha2.h"
+#include "obelisk/Console.h" // development console/uart support
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -424,9 +425,6 @@ static void obelisk_detect(bool hotplug)
 {
     pthread_t pth;
 
-		// Remove the old diagnostics file
-		logClearDiagnostics();
-
 	// Basic initialization.
     ob1Initialize();
     gBoardModel = eGetBoardType(0);
@@ -725,7 +723,8 @@ static void updateControlState(ob_chain* ob) {
 
 	// Sanity check - exit with error if the voltage is at unsafe levels.
 	if (ob->control_loop_state.currentStringVoltage < 6) {
-		applog(LOG_ERR, "REBOOTING DUE TO LOW VOLTAGE on HB%d", ob->chain_id + 1);
+		(void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u LOW VOLTAGE: %f", ob->chain_id + 1, ob->control_loop_state.currentStringVoltage);
+		logDiagnostic(caStringVar);
 		exit(-1);
 	}
 }

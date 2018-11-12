@@ -945,6 +945,6 @@ void logDiagnostic(char* msg) {
     applog(LOG_ERR, msg);
 }
 
-void logClearDiagnostics() {
+void clearDiagnosticsLog() {
     remove("/var/log/diagnostics.log");
 }

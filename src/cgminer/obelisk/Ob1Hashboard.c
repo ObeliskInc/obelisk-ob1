@@ -616,21 +616,21 @@ static int iHashBoardConfigure(uint8_t uiBoard)
                 if (ERR_NONE == iResult2) {
                     if ((MIN_VIN_MV > psVMonData->iaDataAsmV[VMON_VIN]) || (MAX_VIN_MV < psVMonData->iaDataAsmV[VMON_VIN])) {
                         iResult2 = VMON_IN_FAULT;
-                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR Input voltage out of range\r\n");
+                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u Input voltage out of range", uiBoard + 1);
                         CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                         logDiagnostic(caStringVar);
                     } else if (1000 <= psVMonData->iaDataAsmV[VMON_V1]) { // Expecting other voltages to be less than 1V
-                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR V1 1 voltage out of range\r\n");
+                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u V1 1 voltage out of range", uiBoard + 1);
                         CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                         logDiagnostic(caStringVar);
                         iResult2 = ERR_FAILURE;
                     } else if (1000 <= psVMonData->iaDataAsmV[VMON_V15]) {
-                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR Vstring voltage out of range\r\n");
+                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u Vstring voltage out of range", uiBoard + 1);
                         CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                         logDiagnostic(caStringVar);
                         iResult2 = ERR_FAILURE;
                     } else if (1000 <= psVMonData->iaDataAsmV[VMON_V15IO]) {
-                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR V15IO voltage out of range\r\n");
+                        (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u V15IO voltage out of range", uiBoard + 1);
                         CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                         logDiagnostic(caStringVar);
                         iResult2 = ERR_FAILURE;
@@ -653,9 +653,9 @@ static int iHashBoardConfigure(uint8_t uiBoard)
                 iResult = iSetPSControl(uiUUT, MAX_MCP4017_VALUE);
 
                 if (ERR_NONE == iResult) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "String power 1 control: pass\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u String power 1 control: pass\r\n", uiBoard + 1);
                 } else {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "String power 1 control: FAIL\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u String power 1 control: FAIL\r\n", uiBoard + 1);
                 }
                 CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
             } // if (ERR_NONE == iResult)
@@ -665,7 +665,7 @@ static int iHashBoardConfigure(uint8_t uiBoard)
             if (ERR_NONE == iResult) {
                 iResult = iSetPSEnable(uiUUT, true); // turn on the string
                 if (ERR_NONE != iResult) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR power supply enable\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u  power supply enable\r\n", uiBoard + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
                 }
@@ -677,21 +677,21 @@ static int iHashBoardConfigure(uint8_t uiBoard)
                 // Expecting VIN to be approx 12V nom; others should be within expected ranges.
                 if ((MIN_VIN_MV > psVMonData->iaDataAsmV[VMON_VIN]) || (MAX_VIN_MV < psVMonData->iaDataAsmV[VMON_VIN])) {
                     iResult = VMON_IN_FAULT;
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR Input voltage out of range\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u Input voltage out of range\r\n", uiBoard + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
                 } else if ((MIN_V15_MV > psVMonData->iaDataAsmV[VMON_V15]) || (MAX_V15_MV < psVMonData->iaDataAsmV[VMON_V15])) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR Vstring voltage out of range\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u Vstring voltage out of range\r\n", uiBoard + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
                     iResult = ERR_FAILURE;
                 } else if ((MIN_V15IO_MV > psVMonData->iaDataAsmV[VMON_V15IO]) || (MAX_V15IO_MV < psVMonData->iaDataAsmV[VMON_V15IO])) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR V15IO voltage out of range\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u V15IO voltage out of range\r\n", uiBoard + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
                     iResult = ERR_FAILURE;
                 } else if ((START_V1_MV > psVMonData->iaDataAsmV[VMON_V1]) || (MAX_V1_MV < psVMonData->iaDataAsmV[VMON_V1])) {
-                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, MSG_TKN_ERROR "ERROR V1 1 voltage out of range\r\n");
+                    (void)snprintf(caStringVar, CONSOLE_LINE_SIZE, "ERROR: HB%u V1 1 voltage out of range\r\n", uiBoard + 1);
                     CONSOLE_OUTPUT_IMMEDIATE(caStringVar);
                     logDiagnostic(caStringVar);
                     iResult = ERR_FAILURE;
