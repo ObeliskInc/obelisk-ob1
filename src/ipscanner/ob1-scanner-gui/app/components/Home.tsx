@@ -1,3 +1,4 @@
+import * as _ from "lodash"
 import * as React from "react"
 import StayScrolled from "react-stay-scrolled"
 import Message from "./messages"
@@ -9,6 +10,8 @@ import { Link, RouteComponentProps } from "react-router-dom"
 import { Log, Miner, BeforeScan, BeforeUpdate } from "../reducers/bridge"
 const LogoSVG = require("../assets/svg/logo.svg")
 let styles = require("./Home.scss")
+
+const GEN1_LATEST_FIRMWARE_VERSION = "v1.3.0"
 
 export interface IProps extends RouteComponentProps<any> {
   startScan(payload: BeforeScan): void
@@ -30,11 +33,10 @@ function validateIP(ip: string) {
   return false
 }
 
-
 function compareIp(miner1: Miner, miner2: Miner) {
-  const ipParts1 = miner1.ip.split(".");
-  const ipParts2 = miner2.ip.split(".");
-  for (let i=0; i<ipParts1.length; i++) {
+  const ipParts1 = miner1.ip.split(".")
+  const ipParts2 = miner2.ip.split(".")
+  for (let i = 0; i < ipParts1.length; i++) {
     const ipPartNum1 = parseInt(ipParts1[i])
     const ipPartNum2 = parseInt(ipParts2[i])
 
@@ -43,7 +45,7 @@ function compareIp(miner1: Miner, miner2: Miner) {
     }
     // else continue to next number
   }
-  return 0;  // They must be the same
+  return 0 // They must be the same
 }
 
 function getFirmwareVersion(miner: Miner) {
@@ -61,28 +63,57 @@ function getFirmwareVersion(miner: Miner) {
   return firmwareVersion
 }
 
+function isSCModel(model: string): boolean {
+  return model === "SC1" || model == "SC1 Slim"
+}
+
+function isDCRModel(model: string): boolean {
+  return model === "DCR1" || model == "DCR1 Slim"
+}
+
+function isGen1(model: string): boolean {
+  return model === "SC1" || model == "DCR1"
+}
+
+function isGen2(model: string): boolean {
+  return model === "SC1 Slim" || model == "DCR1 Slim"
+}
+
 export default class Home extends React.Component<IProps> {
   state = {
     subnetChecked: false,
-    sshChecked: false,
     subnet: "",
     bitmask: "",
+
+    sshAuthChecked: false,
     sshuser: "",
     sshpass: "",
+
+    uiAuthChecked: false,
+    uiuser: "",
+    uipass: "",
+
     customip: ""
   }
 
   componentDidMount() {}
 
   startScan = () => {
-    const { subnetChecked, subnet, bitmask } = this.state
+    const { subnetChecked, subnet, bitmask, uiuser, uipass } = this.state
     if (subnetChecked && validateIP(subnet) && parseInt(bitmask, 10) != NaN) {
       this.props.startScan({
         subnet,
-        bitmask
+        bitmask,
+        uiuser,
+        uipass
       })
     } else {
-      this.props.startScan({})
+      this.props.startScan({
+        subnet: undefined,
+        bitmask: undefined,
+        uiuser,
+        uipass
+      })
     }
   }
 
@@ -102,64 +133,109 @@ export default class Home extends React.Component<IProps> {
     })
   }
 
-  onSSHCheck = () => {
+  onSSHAuthCheck = () => {
     this.setState({
-      sshChecked: !this.state.sshChecked
+      sshAuthChecked: !this.state.sshAuthChecked
     })
   }
 
-  upgradeSingle = (ip: string, model: string) => () => {
-    let sshuser = "root";
-    let sshpass = "obelisk";
+  onUIAuthCheck = () => {
+    this.setState({
+      uiAuthChecked: !this.state.uiAuthChecked
+    })
+  }
 
-    if (this.state.sshChecked) {
-      sshuser = this.state.sshuser
-      sshpass = this.state.sshpass
+  upgradeSingle = (miner: Miner) => () => {
+    const ip = miner.ip
+    const model = miner.model
+    const firmwareVersion = getFirmwareVersion(miner) || "v1.0.0"
 
-      // Some users click the checkbox, but then don't enter credentials - fallback to defaults if so
-      if (!sshuser || sshuser.length === 0) {
-        sshuser = "root"
-      }
-
-      if (!sshpass || sshpass.length === 0) {
-        sshuser = "obelisk"
-      }
+    if (miner.isUpgradeInProgress) {
+      return
     }
 
-    this.props.startUpgrade({
-      host: ip,
-      sshuser,
-      sshpass,
-      model
-    })
-  }
+    if (isGen1(model)) {
+      let sshuser = "root"
+      let sshpass = "obelisk"
 
-  reinstallSingle = (ip: string, model: string) => () => {
-    if (confirm("Are you sure you want to reinstall the same firmware version?  This is not normally necessary")) {
-      this.upgradeSingle(ip, model)()
+      if (this.state.sshAuthChecked) {
+        sshuser = this.state.sshuser
+        sshpass = this.state.sshpass
+
+        // Some users click the checkbox, but then don't enter credentials - fallback to defaults if so
+        if (!sshuser || sshuser.length === 0) {
+          sshuser = "root"
+        }
+
+        if (!sshpass || sshpass.length === 0) {
+          sshpass = "obelisk"
+        }
+      }
+
+      this.props.startUpgrade({
+        host: ip,
+        sshuser,
+        sshpass,
+        model,
+        uiuser: "",
+        uipass: ""
+      })
+    } else {
+      let uiuser = "admin"
+      let uipass = "admin"
+
+      if (this.state.uiAuthChecked) {
+        uiuser = this.state.uiuser
+        uipass = this.state.uipass
+
+        // Some users click the checkbox, but then don't enter credentials - fallback to defaults if so
+        if (!uiuser || uiuser.length === 0) {
+          uiuser = "admin"
+        }
+
+        if (!uipass || uipass.length === 0) {
+          uipass = "admin"
+        }
+      }
+
+      this.props.startUpgrade({
+        host: ip,
+        sshuser: "",
+        sshpass: "",
+        model,
+        uiuser,
+        uipass
+      })
     }
   }
 
   upgradeAll = () => {
-    this.props.miners.forEach(m => {
-      const firmwareVersion = getFirmwareVersion(m)
-      const upgradable = firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
+    console.log("upgradeAll() called")
+    this.props.miners.forEach(miner => {
+      const firmwareVersion = getFirmwareVersion(miner)
+      const upgradable = firmwareVersion !== GEN1_LATEST_FIRMWARE_VERSION
       if (upgradable) {
-        this.upgradeSingle(m.ip, m.model)()
+        this.upgradeSingle(miner)()
       }
     })
   }
 
+  // ONLY FOR GEN 1!!!!
   startManualUpdate = () => {
     const { customip } = this.state
     console.log("custom", customip, validateIP(customip))
     if (validateIP(customip)) {
-      this.upgradeSingle(customip, "deprecated")()
+      const miner: Miner = {
+        ip: customip,
+        model: "SC1", // This just gets it into the Gen 1 path - works for both SC1 and DCR1
+        firmwareVersion: "v1.0.0",
+        mac: ""
+      }
+      this.upgradeSingle(miner)()
     }
   }
 
   render() {
-    const newVersion = "v1.2.0"
     const mappedLogs = this.props.logs.map((l, i) => {
       return (
         <Message
@@ -173,51 +249,102 @@ export default class Home extends React.Component<IProps> {
       )
     })
 
-    const upgradeButton = (m: Miner) => (
-      <button
-        onClick={this.upgradeSingle(m.ip, m.model)}
-        className={styles.upgradeButton}
-      >
-        UPGRADE TO {newVersion}
-      </button>
-    )
+    const upgradeButton = (miner: Miner) => {
+      if (isGen1(miner.model)) {
+        const firmwareVersion = getFirmwareVersion(miner)
+        if (firmwareVersion === GEN1_LATEST_FIRMWARE_VERSION) {
+          return undefined
+        }
 
-    const sortedMiners = this.props.miners.sort(compareIp);
-    const sc1Count = sortedMiners.reduce((count: number, miner: Miner) => {return count + ((miner.model === "SC1") ? 1 : 0)}, 0)
-    const dcr1Count = sortedMiners.reduce((count: number, miner: Miner) => {return count + ((miner.model === "DCR1") ? 1 : 0)}, 0)
+        if (miner.isUpgradeInProgress) {
+          return <span>Upgrading to {GEN1_LATEST_FIRMWARE_VERSION}...</span>
+        }
+
+        return (
+          <button
+            onClick={this.upgradeSingle(miner)}
+            className={styles.upgradeButton}
+          >
+            UPGRADE TO {GEN1_LATEST_FIRMWARE_VERSION}
+          </button>
+        )
+      } else {
+        const availVersion = miner.firmwareUpdate
+        if (!availVersion) {
+          return undefined
+        }
+
+        if (miner.isUpgradeInProgress) {
+          return <span>Upgrading to {availVersion}...</span>
+        }
+
+        return (
+          <button
+            onClick={this.upgradeSingle(miner)}
+            className={styles.upgradeButton}
+          >
+            UPGRADE TO {availVersion}
+          </button>
+        )
+      }
+    }
+
+    console.log("isArray(this.props.miners) = " + _.isArray(this.props.miners))
+
+    const sortedMiners = this.props.miners.sort(compareIp)
+    console.log("isArray(sortedMiners) = " + _.isArray(sortedMiners))
+    const sc1Count = sortedMiners.reduce((count: number, miner: Miner) => {
+      return count + (isSCModel(miner.model) ? 1 : 0)
+    }, 0)
+    const dcr1Count = sortedMiners.reduce((count: number, miner: Miner) => {
+      return count + (isDCRModel(miner.model) ? 1 : 0)
+    }, 0)
     const otherCount = sortedMiners.length - sc1Count - dcr1Count
+
     let upgradableMinersExist = false
-    let mappedMiners = sortedMiners.map((m, i) => {
-      const firmwareVersion = getFirmwareVersion(m)
-      const upgradable = firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
+    let mappedMiners = sortedMiners.map((miner, i) => {
+      const firmwareVersion = getFirmwareVersion(miner)
+      const upgradable = true
+      // firmwareVersion === "v1.0.0" || firmwareVersion === "v1.1.0"
       if (upgradable) {
         upgradableMinersExist = true
       }
 
       return (
         <tr key={i}>
-          <td><a href={`http://${m.ip}`} target="_blank">{m.ip}</a></td>
-          <td>{m.mac}</td>
-          <td>{m.model}</td>
-          <td>{firmwareVersion}</td>
           <td>
-              {upgradable ? upgradeButton(m) :  undefined}
+            <a href={`http://${miner.ip}`} target="_blank">
+              {miner.ip}
+            </a>
           </td>
+          <td>{miner.mac}</td>
+          <td>{miner.model}</td>
+          <td>{firmwareVersion}</td>
+          <td>{upgradable ? upgradeButton(miner) : undefined}</td>
         </tr>
       )
     })
-    const renderSSH = (
+
+    const renderSSHAuth = (
       <div>
+        <div className={styles.infoMessage}>
+          If you have modified the default SSH login credentials, ensure that
+          you enter the new username and password below.
+        </div>
+
         <input
           type="checkbox"
           name="override"
           value="ssh"
-          checked={this.state.sshChecked}
-          onChange={this.onSSHCheck}
+          checked={this.state.sshAuthChecked}
+          onChange={this.onSSHAuthCheck}
+          className={styles.indent}
         />
-        <span>Custom SSH Login (Default: root/obelisk)</span>
+        <span className={styles.checkboxLabel}>
+          Custom SSH Login (Default: root/obelisk)
+        </span>
         <div
-          className={`${styles.input} ${this.state.sshChecked &&
+          className={`${styles.input} ${this.state.sshAuthChecked &&
             styles.active}`}
         >
           <input
@@ -226,6 +353,7 @@ export default class Home extends React.Component<IProps> {
             value={this.state.sshuser}
             name="sshuser"
             onChange={this.handleChange}
+            className={styles.indent}
           />
           <input
             type="text"
@@ -233,6 +361,49 @@ export default class Home extends React.Component<IProps> {
             name="sshpass"
             onChange={this.handleChange}
             value={this.state.sshpass}
+            className={styles.indent}
+          />
+        </div>
+      </div>
+    )
+
+    const renderUIAuth = (
+      <div>
+        <div className={styles.infoMessage}>
+          If you have modified the default web GUI login credentials, ensure
+          that you enter the new username and password below. (Only applies to
+          Gen 2 Obelisks)
+        </div>
+        <input
+          type="checkbox"
+          name="override"
+          value="ssh"
+          checked={this.state.uiAuthChecked}
+          onChange={this.onUIAuthCheck}
+          className={styles.indent}
+        />
+        <span className={styles.checkboxLabel}>
+          Custom GUI Login (Default: admin/admin)
+        </span>
+        <div
+          className={`${styles.input} ${this.state.uiAuthChecked &&
+            styles.active}`}
+        >
+          <input
+            type="text"
+            name="uiuser"
+            placeholder="User (admin)"
+            value={this.state.uiuser}
+            onChange={this.handleChange}
+            className={styles.indent}
+          />
+          <input
+            type="text"
+            name="uipass"
+            placeholder="Password (admin)"
+            value={this.state.uipass}
+            onChange={this.handleChange}
+            className={styles.indent}
           />
         </div>
       </div>
@@ -241,22 +412,30 @@ export default class Home extends React.Component<IProps> {
     let renderLoadingOrResults = (
       <div className={styles.resultsContainer}>
         <table className={styles.table}>
-         <tbody>{mappedMiners}</tbody>
+          <tbody>{mappedMiners}</tbody>
         </table>
       </div>
     )
 
     const upgradeAll = (
-        <div className={styles.upgradeAll}>
-          <button onClick={this.upgradeAll} className={styles.upgradeAllButton} disabled={!upgradableMinersExist}>
-            UPGRADE ALL TO {newVersion}
-          </button>
-          <div className={styles.minerCounts}>
-            <div className={styles.totalCount}>{sortedMiners.length} OBELISKS FOUND</div>
-            <div className={styles.typeCounts}>{sc1Count} x SC1, {dcr1Count} x DCR1, {otherCount} x OTHER</div>
+      <div className={styles.upgradeAll}>
+        <button
+          onClick={this.upgradeAll}
+          className={styles.upgradeAllButton}
+          disabled={!upgradableMinersExist}
+        >
+          UPGRADE ALL
+        </button>
+        <div className={styles.minerCounts}>
+          <div className={styles.totalCount}>
+            {sortedMiners.length} OBELISKS FOUND
+          </div>
+          <div className={styles.typeCounts}>
+            {sc1Count} x SC1, {dcr1Count} x DCR1, {otherCount} x OTHER
           </div>
         </div>
-      )
+      </div>
+    )
 
     switch (this.props.loading) {
       case "started":
@@ -266,6 +445,7 @@ export default class Home extends React.Component<IProps> {
           </div>
         )
         break
+
       case "finished":
         if (this.props.miners.length < 1) {
           renderLoadingOrResults = (
@@ -277,8 +457,8 @@ export default class Home extends React.Component<IProps> {
                 <h3>No Obelisks Found.</h3>
                 <span>
                   It's possible our subnet detector used the wrong subnet to
-                  scan, or it didn't scan enough IP addresses. Try modifying the subnet
-                  range or changing the subnet.
+                  scan, or it didn't scan enough IP addresses. Try modifying the
+                  subnet range or changing the subnet.
                 </span>
               </div>
             </div>
@@ -297,7 +477,7 @@ export default class Home extends React.Component<IProps> {
           <Tabs selectedTabClassName={styles.tabactive}>
             <TabList className={styles.tablist}>
               <Tab>SCANNER</Tab>
-              <Tab>MANUAL IP ENTRY</Tab>
+              <Tab>FORCED UPGRADE</Tab>
             </TabList>
             <div className={styles.tabwrap}>
               <TabPanel>
@@ -310,14 +490,24 @@ export default class Home extends React.Component<IProps> {
                   </button>
                 </div>
                 <div className={styles.settings}>
+                  <div className={styles.infoMessage}>
+                    If your network is not detected automatically or you are
+                    connecting over a VPN, click the Enable Manual Subnet
+                    Override checkbox and enter your base network address and the
+                    subnet mask.
+                  </div>
                   <input
                     type="checkbox"
                     name="override"
                     value="subnet"
                     checked={this.state.subnetChecked}
                     onChange={this.onCheck}
+                    className={styles.indent}
                   />
-                  <span>Enable Manual Subnet Override</span>
+
+                  <span className={styles.checkboxLabel}>
+                    Enable Manual Subnet Override
+                  </span>
                   <div
                     className={`${styles.input} ${this.state.subnetChecked &&
                       styles.active}`}
@@ -328,6 +518,7 @@ export default class Home extends React.Component<IProps> {
                       value={this.state.subnet}
                       name="subnet"
                       onChange={this.handleChange}
+                      className={styles.indent}
                     />
                     <input
                       type="text"
@@ -335,27 +526,38 @@ export default class Home extends React.Component<IProps> {
                       name="bitmask"
                       onChange={this.handleChange}
                       value={this.state.bitmask}
+                      className={styles.indent}
                     />
                   </div>
-                  {renderSSH}
+                  {renderSSHAuth}
+                  {renderUIAuth}
                 </div>
               </TabPanel>
               <TabPanel>
                 <div className={styles.manual}>
+                  <div className={styles.infoMessage}>
+                    If your Gen 1 Obelisk does not appear in the Scanner, or you
+                    want to reinstall the latest firmware version, you can
+                    perform a Forced Upgrade by entering the miner's IP address
+                    below, and clicking the FORCED UPGRADE button.
+                  </div>
+                  <div className={styles.manualWarning}>
+                    NOTE: FORCED UPGRADE IS FOR GEN 1 OBELISKS ONLY!
+                  </div>
                   <input
                     type="text"
-                    placeholder="Obelisk IP"
+                    placeholder="Gen 1 Obelisk IP"
                     name="customip"
                     onChange={this.handleChange}
                     value={this.state.customip}
                   />
                 </div>
-                {renderSSH}
+                {renderSSHAuth}
                 <button
                   onClick={this.startManualUpdate}
                   className={styles.button}
                 >
-                  UPGRADE TO {newVersion}
+                  FORCED UPGRADE TO {GEN1_LATEST_FIRMWARE_VERSION}
                 </button>
               </TabPanel>
             </div>
@@ -375,16 +577,16 @@ export default class Home extends React.Component<IProps> {
           <div className={styles.card}>
             <table className={styles.tableHeader}>
               <thead>
-               <tr>
+                <tr>
                   <th>IP ADDRESS</th>
-                 <th>MAC</th>
+                  <th>MAC</th>
                   <th>MODEL</th>
                   <th>CURR. VERSION</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
             </table>
-  
+
             {renderLoadingOrResults}
             {upgradeAll}
           </div>

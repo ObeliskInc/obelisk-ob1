@@ -3,6 +3,7 @@
   }
   .tablist {
     padding-left: 0;
+    margin-bottom: 0 !important;
     li {
       display: inline-block;
       margin-left: 15px;
@@ -10,18 +11,32 @@
       font-size: 20px;
       font-family: KarbonRegular;
       cursor: pointer;
+      color: #808080;
     }
     li:first-child {
       margin-left: 0;
     }
   }
   .manual {
-    padding-top: 20px;
+    padding-top: 10px;
     padding-bottom: 10px;
   }
+
+  .manualWarning {
+    color: #b10015;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  .infoMessage {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  .indent {
+    margin-left: 20px;
+  }
   .tabactive {
-    color: lighten(#940d21, 10%);
-    border-bottom: 1px solid lighten(#940d21, 10%);
+    color: white !important;
+    border-bottom: 4px solid #b10015;
   }
   .container {
     display: flex;
@@ -55,13 +70,13 @@
     padding: 15px 40px;
     border: none;
     font-size: 14px;
-    background: #680b22;
+    background: #b10015;
     cursor: pointer;
     color: #ffffff;
     margin-top: 20px;
     margin-bottom: 20px;
     &:hover {
-      background: lighten(#680b22, 10%);
+      background: darken(#b10015, 10%);
     }
   }
 
@@ -72,14 +87,13 @@
   .upgradeButton {
     flex: 1;
     padding: 3px 10px;
-    color: #680b22;
     border: none;
-    font-size: 10px;
-    background: #680b22;
+    font-size: 12px;
+    background: #b10015;
     cursor: pointer;
     color: #ffffff;
     &:hover {
-      background: lighten(#680b22, 10%);
+      background: darken(#b10015, 10%);
     }
     &.reinstall {
       background: rgb(238, 155, 2);
@@ -113,7 +127,7 @@
     padding-left: 20px;
     padding-right: 20px;
     background: #f5f5f5;
-    border-top: 1px solid #B0B0B0;
+    border-top: 1px solid #b0b0b0;
 
     .minerCounts {
       .totalCount {
@@ -123,6 +137,7 @@
 
       .typeCounts {
         font-size: 16px;
+        color: #606060;
       }
     }
   }
@@ -131,14 +146,14 @@
     padding: 10px 30px;
     border: none;
     font-size: 14px;
-    background: #940d21;
+    background: #b10015;
     cursor: pointer;
     color: #ffffff;
     margin-top: 20px;
     margin-bottom: 20px;
     margin-left: 20px;
     &:hover {
-      background: lighten(#940d21, 10%);
+      background: darken(#b10015, 10%);
     }
   }
 
@@ -147,14 +162,14 @@
     padding: 15px 40px;
     border: none;
     font-size: 14px;
-    background: #940d21;
+    background: #b10015;
     cursor: pointer;
     color: #ffffff;
     margin-top: 20px;
     margin-bottom: 20px;
     margin-left: 20px;
     &:hover {
-      background: lighten(#940d21, 10%);
+      background: darken(#b10015, 10%);
     }
   }
 
@@ -184,7 +199,7 @@
   }
 
   .container h2 {
-    color: #b50e24;
+    color: #b10015;
     font-size: 3rem;
   }
 
@@ -208,7 +223,7 @@
     width: 100%;
     text-align: center;
     background: #f5f5f5;
-    border-bottom: 1px solid #B0B0B0;
+    border-bottom: 1px solid #b0b0b0;
     th {
       padding-bottom: 10px;
       font-weight: bold;
@@ -235,5 +250,11 @@
     flex: 1;
     align-items: center;
     justify-content: center;
+  }
+
+  .checkboxLabel {
+    margin-left: 6px;
+    color: white;
+    font-family: "KarbonRegular";
   }
 }

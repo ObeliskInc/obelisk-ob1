@@ -89,33 +89,41 @@ app.on("ready", () =>
         currScanProc.kill("SIGINT")
       }
       const parseData = JSON.parse(data)
-      const { sshuser, sshpass, host } = parseData
+      const { sshuser, sshpass, uiuser, uipass, host, model } = parseData
 
-      const isProd = process.env.NODE_ENV === "production"
-      const execPath = isProd
-        ? join(process.resourcesPath, "firmware")
-        : join(appRootDir.get(), "bin", "firmware")
-      const detectpath = join(execPath, "detect")
-      const scpath = join(execPath, "sc1-v1.2.0.tar.gz")
-      const dcrpath = join(execPath, "dcr1-v1.2.0.tar.gz")
+      if (model === "SC1" || model === "DCR1") {
+        // Gen 1
+        const isProd = process.env.NODE_ENV === "production"
+        const execPath = isProd
+          ? join(process.resourcesPath, "firmware")
+          : join(appRootDir.get(), "bin", "firmware")
+        const detectpath = join(execPath, "detect")
+        const scpath = join(execPath, "sc1-v1.3.0.tar.gz")
+        const dcrpath = join(execPath, "dcr1-v1.3.0.tar.gz")
 
-      const cmd = [
-        "upgrade",
-        "-z",
-        detectpath,
-        "-s",
-        scpath,
-        "-d",
-        dcrpath,
-        "-u",
-        sshuser,
-        "-p",
-        sshpass,
-        "-i",
-        host
-      ]
-      // This should run until the end
-      obscanner.obscannerSpecialSpawn(cmd, mainWindow.webContents)
+        const cmd = [
+          "upgrade-gen1",
+          "-z",
+          detectpath,
+          "-s",
+          scpath,
+          "-d",
+          dcrpath,
+          "-u",
+          sshuser,
+          "-p",
+          sshpass,
+          "-i",
+          host
+        ]
+        // This should run until the end
+        obscanner.obscannerSpecialSpawn(cmd, mainWindow.webContents)
+      } else {
+        // Gen 2
+        const cmd = ["upgrade-gen2", "-i", host, "-u", uiuser, "-p", uipass]
+        // This should run until the end
+        obscanner.obscannerSpecialSpawn(cmd, mainWindow.webContents)
+      }
     })
 
     if (process.env.NODE_ENV === "development") {
