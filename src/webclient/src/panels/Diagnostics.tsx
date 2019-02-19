@@ -12,7 +12,7 @@ import Content from 'components/Content'
 import { fetchDiagnostics } from 'modules/Main/actions'
 import { getDiagnostics } from 'modules/Main/selectors'
 
-const {CopyToClipboard } = require('react-copy-to-clipboard');
+const { CopyToClipboard } = require('react-copy-to-clipboard')
 
 interface ConnectProps {
   diagnostics?: string
@@ -28,11 +28,11 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
       fontFamily: 'monospace',
       minHeight: 200,
       padding: 12,
-    }
+    },
   }
 
   constructor(props: CombinedProps) {
-    super(props);
+    super(props)
   }
 
   componentWillMount() {
@@ -53,12 +53,17 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
           content={
             'The information below has been collected directly from your miner.  It ' +
             'may contain private information such as wallet addresses and pool passwords. ' +
-            'Please edit the information to remove anything you don\'t want to share.'
+            "Please edit the information to remove anything you don't want to share."
           }
         />
 
-        <TextArea className={classNames.diagnostics} rows={40}  value={diagnostics} disabled={true}/>
-        <CopyToClipboard text={diagnostics}>
+        <TextArea
+          className={classNames.diagnostics}
+          rows={40}
+          value={diagnostics}
+          disabled={true}
+        />
+        <CopyToClipboard text={'[CopyToClipboard]\n' + info}>
           <Button>COPY TO CLIPBOARD</Button>
         </CopyToClipboard>
       </Content>
