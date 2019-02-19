@@ -49,6 +49,9 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
         case 'failed':
           return <span>Failed</span>
         case 'done':
+          if (dirty) {
+            return <Button type="submit">SAVE</Button>
+          }
           return <span>Done</span>
       }
       if (dirty) {
@@ -68,6 +71,7 @@ class PoolsPanel extends React.PureComponent<CombinedProps> {
               // Convert from objects to arrays
               const poolConfigs = _.map(values, (value: PoolConfig, index: number) => value)
               this.props.dispatch(setPoolsConfig.started(poolConfigs))
+              this.props.dispatch(fetchPoolsConfig.started({}))
             }
           }}
           validateOnChange={true}

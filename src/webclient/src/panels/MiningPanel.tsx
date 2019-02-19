@@ -96,6 +96,9 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
         case 'failed':
           return <span>Failed</span>
         case 'done':
+          if (dirty) {
+            return <Button type="submit">SAVE</Button>
+          }
           return <span>Done</span>
       }
       if (dirty) {
@@ -113,6 +116,7 @@ class MiningPanel extends React.PureComponent<CombinedProps> {
           onSubmit={(values: MiningConfig, formikBag: FormikProps<MiningConfig>) => {
             if (this.props.dispatch) {
               this.props.dispatch(setMiningConfig.started(values))
+              this.props.dispatch(fetchMiningConfig.started({}))
             }
           }}
           validateOnChange={true}

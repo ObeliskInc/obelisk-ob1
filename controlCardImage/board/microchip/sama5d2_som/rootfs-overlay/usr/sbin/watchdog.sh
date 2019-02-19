@@ -87,7 +87,7 @@ while true; do
 		fi
 	fi
 
-	# Reboot check - interval is written to /tmp/reboot_interval
+	# Reboot check - interval is written to /reboot_interval in integer minutes
 	# Do not reboot if that file does not exist.
 	if [ -f /reboot_interval ]; then
 		REBOOT_INTERVAL=$(cat /reboot_interval)
