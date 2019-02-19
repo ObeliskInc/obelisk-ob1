@@ -66,7 +66,7 @@ export const common: any = {
     background: 'transparent',
     border: 'none',
     paddingLeft: 10,
-    fontFamily: 'Karbon Thin',
+    fontFamily: 'Karbon Regular',
     fontSize: 20,
     marginRight: 15,
     flex: 1,
@@ -84,7 +84,7 @@ export const common: any = {
     border: 'none',
     paddingLeft: 2,
     fontSize: 20,
-    fontFamily: 'Karbon Thin',
+    fontFamily: 'Karbon Regular',
     maxWidth: 400,
     $nest: {
       '&:disabled': {

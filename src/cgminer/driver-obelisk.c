@@ -322,34 +322,29 @@ int numSetBits64(uint64_t value) {
 // siaAreEnginesDone will determine whether enough engines have completed for us to start
 // checking for nonces.
 bool siaAreEnginesDone(ob_chain* ob, uint16_t chipNum) {
-	uint64_t doneBitmask;
-	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, &doneBitmask);
+	uint64_t busyBitmask;
+	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, &busyBitmask);
 	if (error != SUCCESS) {
 		return true;  // Something is wrong, so by returning true, we force the nonce read and trigger a new job
 	}
 
 	// Check to see if at least 25% of the engines are done.  We assume those are the fast ones, and we don't
 	// want to wait around for the slow ones, so we will just stop here and see what nonces were found.
-	int numDoneEngines = 64 - numSetBits64(doneBitmask);
+	int numDoneEngines = 64 - numSetBits64(busyBitmask);
 	return numDoneEngines >= 16;
 }
 
 // dcrAreEnginesDone will determine whether enough engines have completed for us to start
 // checking for nonces.
 bool dcrAreEnginesDone(ob_chain* ob, uint16_t chipNum) {
-	uint64_t doneBitmasks[2];
-	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, doneBitmasks);
+	uint64_t busyBitmasks[2];
+	ApiError error = ob1GetBusyEngines(ob->chain_id, chipNum, busyBitmasks);
 	if (error != SUCCESS) {
 		return true;  // Something is wrong, so by returning true, we force the nonce read and trigger a new job
 	}
 
-	int numDoneEngines = 64 - numSetBits64(doneBitmasks[0]);
-	if (numDoneEngines <= 32) {
-		// applog(LOG_ERR, "Chip %d: %u engines are DONE", chipNum, numDoneEngines);
-		return true;
-	}
-
-	numDoneEngines += 64 - numSetBits64(doneBitmasks[1]);
+	int numDoneEngines = 64 - numSetBits64(busyBitmasks[0]);
+	numDoneEngines += 64 - numSetBits64(busyBitmasks[1]);
 	// if (numDoneEngines >= 32) {
 	// 	applog(LOG_ERR, "Chip %d: %u engines are DONE", chipNum, numDoneEngines);
 	// }
@@ -911,7 +906,7 @@ static void handleFanChange(ob_chain* ob) {
 static void handleLowHashrateExit(ob_chain* ob) {
 	// Zero means the check is disabled
 	if (opt_ob_reboot_min_hashrate == 0) {
-		return
+		return;
 	}
 
 	if (ob->control_loop_state.currentTime - ob->control_loop_state.lastHashrateCheckTime > 1800) {

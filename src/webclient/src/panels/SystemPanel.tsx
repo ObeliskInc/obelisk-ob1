@@ -10,12 +10,11 @@ import {
   fetchSystemConfig,
   rebootMiner,
   setSystemConfig,
-  uploadFirmwareFile,
   clearFormStatus,
   resetConfig,
 } from 'modules/Main/actions'
-import { getLastError, getSystemConfig, getUploadStatus, getUpgradeMessage } from 'modules/Main/selectors'
-import { SystemConfig, UploadStatus } from 'modules/Main/types'
+import { getLastError, getSystemConfig, getUpgradeMessage } from 'modules/Main/selectors'
+import { SystemConfig } from 'modules/Main/types'
 import * as React from 'react'
 import { connect, DispatchProp } from 'react-redux'
 import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
@@ -29,7 +28,6 @@ const Dropzone = require('react-dropzone').default
 
 interface ConnectProps {
   systemConfig: SystemConfig
-  uploadStatus: UploadStatus
   upgradeMessage?: string
   lastError?: string
   systemForm: string
@@ -51,30 +49,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
   public static styles: InputSheet<{}> = {
     buttonGroup: {
       width: '100%',
-    },
-    upload: {
-      width: '100%',
-      height: 'auto',
-      padding: 20,
-      border: '2px dashed #808080',
-      borderRadius: 0,
-      cursor: 'pointer',
-      marginBottom: 20,
-    },
-    uploadDesc: {
-      textAlign: 'center',
-    },
-    uploadFilename: {
-      paddingTop: 20,
-      textAlign: 'center',
-      fontFamily: 'Karbon Regular',
-      color: 'white',
-    },
-    uploadError: {
-      paddingTop: 20,
-      textAlign: 'center',
-      fontFamily: 'Karbon Regular',
-      color: 'red',
     },
   }
 
@@ -99,6 +73,9 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
         case 'failed':
           return <span>Failed</span>
         case 'done':
+          if (dirty) {
+            return <Button type="submit">SAVE</Button>
+          }
           return <span>Done</span>
       }
       if (dirty) {
@@ -143,6 +120,7 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                 timezone: values.timezone,
               }
               this.props.dispatch(setSystemConfig.started(valuesToSend))
+              this.props.dispatch(fetchSystemConfig.started({}))
             }
           }}
           validateOnChange={true}
@@ -215,38 +193,10 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
                 }
               },
 
-              handleDrop: (files: any[]) => {
-                const { dispatch } = this.props
-
-                if (dispatch) {
-                  dispatch(uploadFirmwareFile.started({ file: files[0] }))
-                }
-              },
-
               handleOpenFirmwareLink: () => {
                 const win: any = window.open('http://obelisk.tech/downloads.html', '_blank')
                 win.focus()
               },
-            }
-
-            const { filename, percent } = this.props.uploadStatus
-            let uploadError
-
-            // Set upload title
-            let uploadTitle
-            if (filename) {
-              if (lastError) {
-                uploadTitle = 'Error Uploading File'
-                uploadError = lastError
-              } else if (percent === 100) {
-                uploadTitle = 'Uploading Complete'
-              } else {
-                uploadTitle = 'Uploading File...'
-              }
-            } else {
-              uploadTitle =
-                'Drag and drop a firmware file here, or click to select ' +
-                'a file to start uploading.'
             }
 
             return (
@@ -293,25 +243,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 
                 <Form>
                   <Header as="h2">Firmware</Header>
-                    <Dropzone className={classNames.upload} onDrop={formikProps.handleDrop}>
-                      <div className={classNames.uploadDesc}>{upgradeMessage || uploadTitle}</div>
-                      {filename
-                        ? [
-                            <div key="filename" className={classNames.uploadFilename}>
-                              {filename}
-                            </div>,
-                            <div key="uploadError" className={classNames.uploadError}>
-                              {uploadError}
-                            </div>,
-                            <Progress
-                              key="progress"
-                              percent={percent}
-                              inverted={true}
-                              progress={true}
-                            />,
-                          ]
-                        : undefined}
-                    </Dropzone>
                   <Button
                     icon="cloud download"
                     onClick={formikProps.handleOpenFirmwareLink}
@@ -347,7 +278,6 @@ class SystemPanel extends React.PureComponent<CombinedProps> {
 
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   systemConfig: getSystemConfig(state.Main),
-  uploadStatus: getUploadStatus(state.Main),
   upgradeMessage: getUpgradeMessage(state.Main),
   lastError: getLastError(state.Main),
   systemForm: state.Main.forms.systemForm,
