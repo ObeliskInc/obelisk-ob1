@@ -85,6 +85,7 @@ class NetworkPanel extends React.PureComponent<CombinedProps> {
                 )
               ) {
                 this.props.dispatch(setNetworkConfig.started(values))
+                this.props.dispatch(fetchNetworkConfig.started({}))
                 history.push('/login')
               }
             }

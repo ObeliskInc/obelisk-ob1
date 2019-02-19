@@ -118,6 +118,6 @@ void sendMDNSResponse();
 void resetAllUserConfig();
 void doReboot();
 void logDiagnostic(char* msg);
-void logClearDiagnostics();
+void clearDiagnosticsLog();
 
 #endif

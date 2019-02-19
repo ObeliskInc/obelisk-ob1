@@ -27,6 +27,10 @@ CGMINER_ARGS="--default-config /root/.cgminer/cgminer.conf --api-listen --api-al
 
 NET_CHECK_CNT=0
 
+# Ensure there is a default reboot_interval - matches the GUI default
+if [ ! -f /reboot_interval ]; then
+	echo 480 > /reboot_interval
+fi
 
 ################################################################################
 # Run Watchdog
@@ -83,32 +87,17 @@ while true; do
 		fi
 	fi
 
-	# Every 5 minutes, check that the default gateway is still accessible, otherwise it probably
-	# means that our network interface is down, so reboot to try to recover.
-	NET_CHECK_CNT=$((NET_CHECK_CNT+1))
-	if [ $NET_CHECK_CNT -ge 300 ]
-	then
-		DEFAULT_GATEWAY=`route -n | awk '/^0.0.0.0/ {print $2}'`
-		if [ -z $DEFAULT_GATEWAY ]
-		then
-			# No gateway means no network
-			echo "Unable to determine IP address of default gateway...Rebooting!"
-			reboot
-			exit 1
+	# Reboot check - interval is written to /reboot_interval in integer minutes
+	# Do not reboot if that file does not exist.
+	if [ -f /reboot_interval ]; then
+		REBOOT_INTERVAL=$(cat /reboot_interval)
+		if [ $REBOOT_INTERVAL -gt 0 ]; then
+			MINS_SINCE_BOOT=$(awk '{print $0/60;}' /proc/uptime)
+			if [ ${MINS_SINCE_BOOT%.*} -ge $REBOOT_INTERVAL ]; then
+				/sbin/reboot
+				exit 1
+			fi
 		fi
-
-		echo "Pinging $DEFAULT_GATEWAY"
-		PING_CNT=`ping -c 1 $DEFAULT_GATEWAY  | awk '/transmitted/ {print $4}'`
-		echo "C=$PING_CNT"
-		if [ $PING_CNT -ne 1 ]; then
-			echo "Unable to ping default gateway...Rebooting!"
-			reboot
-			exit 1
-		else
-			echo "SUCCESSFUL REPLY: PING_CNT=$PING_CNT"
-		fi
-
-		NET_CHECK_CNT=0
 	fi
 
 	# Sleep for a second before trying again

@@ -22,6 +22,17 @@ if (!IS_PRODUCTION) {
   log.enableAll()
 }
 
+// The Diagnostics tab copies the text with HTML styling, which we do not want.
+// This bit of code converts it to plain text.
+document.addEventListener('copy', (e: any) => {
+  const textContent = e.target.textContent
+  const filterText = '[CopyToClipboard]\n'
+  if (textContent.startsWith(filterText)) {
+    e.clipboardData.setData('text/plain', textContent.replace(filterText, ''))
+    e.preventDefault()
+  }
+})
+
 const store = configureStore()
 
 const rootElement = document.getElementById('root')

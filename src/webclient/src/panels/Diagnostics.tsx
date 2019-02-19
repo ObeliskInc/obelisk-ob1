@@ -9,13 +9,15 @@ import withStyles, { InjectedProps, InputSheet } from 'react-typestyle'
 import { Button, Header, Message, TextArea } from 'semantic-ui-react'
 
 import Content from 'components/Content'
-import { fetchDiagnostics } from 'modules/Main/actions'
-import { getDiagnostics } from 'modules/Main/selectors'
+import { fetchDashboardStatus, fetchDiagnostics } from 'modules/Main/actions'
+import { getDiagnostics, getDashboardStatus } from 'modules/Main/selectors'
+import { DashboardStatus } from 'modules/Main/types';
 
 const {CopyToClipboard } = require('react-copy-to-clipboard');
 
 interface ConnectProps {
   diagnostics?: string
+  dashboardStatus: DashboardStatus
 }
 
 type CombinedProps = ConnectProps & InjectedProps & DispatchProp<any>
@@ -38,11 +40,19 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
   componentWillMount() {
     if (this.props.dispatch) {
       this.props.dispatch(fetchDiagnostics.started({}))
+      this.props.dispatch(fetchDashboardStatus.started({}))
     }
   }
 
   render() {
-    const { classNames, diagnostics } = this.props
+    const { classNames, diagnostics, dashboardStatus } = this.props
+
+    // Make a single string from all the info
+    let info: string = ""
+    if (diagnostics && dashboardStatus.hashboardStatus.length > 0) {
+      const dashInfo = JSON.stringify(dashboardStatus, null, 2)
+      info = diagnostics + "--------------------------------------------------------------------------------\nDashboardStatus = " + dashInfo
+    }
 
     return (
       <Content>
@@ -57,8 +67,8 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
           }
         />
 
-        <TextArea className={classNames.diagnostics} rows={40}  value={diagnostics} disabled={true}/>
-        <CopyToClipboard text={diagnostics}>
+        <TextArea className={classNames.diagnostics} rows={40}  value={info} disabled={true}/>
+        <CopyToClipboard text={'[CopyToClipboard]\n' + info}>
           <Button>COPY TO CLIPBOARD</Button>
         </CopyToClipboard>
       </Content>
@@ -68,6 +78,7 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
 
 const mapStateToProps = (state: any, props: any): ConnectProps => ({
   diagnostics: getDiagnostics(state.Main),
+  dashboardStatus: getDashboardStatus(state.Main),
 })
 
 const diagnostics = withStyles()<any>(Diagnostics)

@@ -3821,8 +3821,33 @@ static void debugstate(struct io_data *io_data, __maybe_unused SOCKETTYPE c, cha
 
 static void setconfig(struct io_data *io_data, __maybe_unused SOCKETTYPE c, char *param, bool isjson, __maybe_unused char group)
 {
-	if (!strcasecmp(param, "queue") || ! strcasecmp(param, "scantime") || !strcasecmp(param, "expiry"))
-		message(io_data, MSG_DEPRECATED, 0, param, isjson);
+	char paramName[128];
+	int paramValue;
+	sscanf(param, "%s = %d", paramName, &paramValue);
+
+	applog(LOG_ERR, "setconfig: param='%s'  paramName='%s'  paramValue=%d", param, paramName, paramValue);
+
+	// Set various config settings (does NOT update config file)
+	if (strcasecmp(paramName, "ob-min-fan-speed-percent") == 0) {
+		opt_ob_min_fan_speed_percent = paramValue;
+		applog(LOG_ERR, "Setting min fan speed to %d%%", paramValue);
+
+	} else if (strcasecmp(paramName, "ob-max-hot-chip-temp-c") == 0) {
+		opt_ob_max_hot_chip_temp_c = paramValue;
+		applog(LOG_ERR, "Setting max hot chip temp to %dC", paramValue);
+
+	} else if (strcasecmp(paramName, "ob-reboot-min-hashrate") == 0) {
+		opt_ob_reboot_min_hashrate = paramValue;
+		applog(LOG_ERR, "Setting reboot min. hashrate to %dGH/s", paramValue);
+
+	} else if (strcasecmp(paramName, "ob-disable-genetic-algo") == 0) {
+		opt_ob_disable_genetic_algo = paramValue;
+		if (opt_ob_disable_genetic_algo) {
+			applog(LOG_ERR, "Disabling genetic algo");
+		} else {
+			applog(LOG_ERR, "Enabling genetic algo");
+		}
+	}
 
 	message(io_data, MSG_UNKCON, 0, param, isjson);
 }
