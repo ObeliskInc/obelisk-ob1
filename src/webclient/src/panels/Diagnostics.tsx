@@ -11,9 +11,9 @@ import { Button, Header, Message, TextArea } from 'semantic-ui-react'
 import Content from 'components/Content'
 import { fetchDashboardStatus, fetchDiagnostics } from 'modules/Main/actions'
 import { getDiagnostics, getDashboardStatus } from 'modules/Main/selectors'
-import { DashboardStatus } from 'modules/Main/types';
+import { DashboardStatus } from 'modules/Main/types'
 
-const {CopyToClipboard } = require('react-copy-to-clipboard');
+const { CopyToClipboard } = require('react-copy-to-clipboard')
 
 interface ConnectProps {
   diagnostics?: string
@@ -30,11 +30,11 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
       fontFamily: 'monospace',
       minHeight: 200,
       padding: 12,
-    }
+    },
   }
 
   constructor(props: CombinedProps) {
-    super(props);
+    super(props)
   }
 
   componentWillMount() {
@@ -48,10 +48,13 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
     const { classNames, diagnostics, dashboardStatus } = this.props
 
     // Make a single string from all the info
-    let info: string = ""
+    let info: string = ''
     if (diagnostics && dashboardStatus.hashboardStatus.length > 0) {
       const dashInfo = JSON.stringify(dashboardStatus, null, 2)
-      info = diagnostics + "--------------------------------------------------------------------------------\nDashboardStatus = " + dashInfo
+      info =
+        diagnostics +
+        '--------------------------------------------------------------------------------\nDashboardStatus = ' +
+        dashInfo
     }
 
     return (
@@ -63,11 +66,11 @@ class Diagnostics extends React.PureComponent<CombinedProps> {
           content={
             'The information below has been collected directly from your miner.  It ' +
             'may contain private information such as wallet addresses and pool passwords. ' +
-            'Please edit the information to remove anything you don\'t want to share.'
+            "Please edit the information to remove anything you don't want to share."
           }
         />
 
-        <TextArea className={classNames.diagnostics} rows={40}  value={info} disabled={true}/>
+        <TextArea className={classNames.diagnostics} rows={40} value={info} disabled={true} />
         <CopyToClipboard text={'[CopyToClipboard]\n' + info}>
           <Button>COPY TO CLIPBOARD</Button>
         </CopyToClipboard>

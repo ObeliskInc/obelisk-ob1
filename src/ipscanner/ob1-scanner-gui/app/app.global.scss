@@ -1,8 +1,14 @@
-@import '~font-awesome/css/font-awesome.css';
-@import 'mixins.scss';
+@import "~font-awesome/css/font-awesome.css";
+@import "mixins.scss";
 
-@include font-face(KarbonRegular, 'assets/fonts/Karbon-Regular', null, null, ttf);
-@include font-face(KarbonThin, 'assets/fonts/Karbon-Thin', null, null, ttf);
+@include font-face(
+  KarbonRegular,
+  "assets/fonts/Karbon-Regular",
+  null,
+  null,
+  ttf
+);
+@include font-face(KarbonThin, "assets/fonts/Karbon-Thin", null, null, ttf);
 
 html {
   width: 100%;
@@ -32,7 +38,7 @@ body {
     rgba(20, 14, 20, 0.5) 10%,
     rgba(0, 1, 0, 0.7)
   );
-  font-family: KarbonThin, Helvetica, Helvetica Neue, serif;
+  font-family: KarbonRegular, Helvetica, Helvetica Neue, serif;
   overflow-y: hidden;
   ::-webkit-scrollbar {
     width: 5px;

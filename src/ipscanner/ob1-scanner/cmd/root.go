@@ -30,6 +30,8 @@ const (
 type ScanConfig struct {
 	subnet  string
 	timeout string
+	uiuser  string
+	uipass  string
 }
 
 type UpgradeConfig struct {
@@ -39,6 +41,9 @@ type UpgradeConfig struct {
 	decredFirmwarePath string
 	detectPath         string
 	host               string
+	ipAddr             string
+	uiuser             string
+	uipass             string
 }
 
 var FlagJSON bool
@@ -66,7 +71,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version of ob1-scanner",
 	Long:  "Prints the current binary version of ob1-scanner you are using.",
 	Run: func(cmd *cobra.Command, _ []string) {
-		logrus.Infof("ob1-scanner Version 0.0.3 %s / %s\n", runtime.GOOS, runtime.GOARCH)
+		logrus.Infof("ob1-scanner Version 0.1.0 %s / %s\n", runtime.GOOS, runtime.GOARCH)
 	},
 }
 
@@ -84,25 +89,39 @@ var mdnsCmd = &cobra.Command{
 	Run:   wrap(mdnsHandler),
 }
 
-var upgradeCmd = &cobra.Command{
-	Use:   "upgrade",
-	Short: "Upgrades an Obelisk with passed in firmware.",
+var upgradeGen1Cmd = &cobra.Command{
+	Use:   "upgrade-gen1",
+	Short: "Upgrades a Gen 1 Obelisk with passed in firmware.",
 	Long:  "SSHs into the Obelisk, and attempts to upgrade the new firmware.",
-	Run:   wrap(upgradeHandler),
+	Run:   wrap(upgradeGen1Handler),
+}
+
+var upgradeGen2Cmd = &cobra.Command{
+	Use:   "upgrade-gen2 [ip]",
+	Short: "Triggers a software update on the specified Gen 2 Obelisk.",
+	Long:  "Sends a POST to /api/softwareUpdate to trigger the machine to install any available updates.  The Obelisk downloads the update files.",
+	Run:   wrap(upgradeGen2Handler),
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(mdnsCmd)
-	rootCmd.AddCommand(upgradeCmd)
-	// Upgrade config
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.host, "host", "i", "", "set host")
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.siaFirmwarePath, "siaFirmware", "s", "", "firmware path")
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.decredFirmwarePath, "decredFirmware", "d", "", "firmware path")
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.detectPath, "detect", "z", "", "detect path")
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.sshuser, "user", "u", "root", "ssh user")
-	upgradeCmd.PersistentFlags().StringVarP(&UpgradeConf.sshpass, "password", "p", "obelisk", "ssh password")
+	rootCmd.AddCommand(upgradeGen1Cmd)
+	rootCmd.AddCommand(upgradeGen2Cmd)
+
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.host, "host", "i", "", "set host")
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.siaFirmwarePath, "siaFirmware", "s", "", "firmware path")
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.decredFirmwarePath, "decredFirmware", "d", "", "firmware path")
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.detectPath, "detect", "z", "", "detect path")
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.sshuser, "user", "u", "root", "ssh user")
+	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.sshpass, "password", "p", "obelisk", "ssh password")
+
+	upgradeGen2Cmd.PersistentFlags().StringVarP(&UpgradeConf.uiuser, "user", "u", "admin", "GUI user")
+	upgradeGen2Cmd.PersistentFlags().StringVarP(&UpgradeConf.uipass, "password", "p", "admin", "GUI password")
+	upgradeGen2Cmd.PersistentFlags().StringVarP(&UpgradeConf.ipAddr, "ip", "i", "", "IP address")
+
+
 	// scan conf
 	scanCmd.PersistentFlags().StringVarP(&ScanConf.timeout, "timeout", "t", "2s", "timeout for port checks and RPC calls")
 	// Figure out subnet
@@ -117,7 +136,11 @@ func init() {
 	} else {
 		ipString = fmt.Sprintf("%s/%s", ip.String(), "24")
 	}
+
 	scanCmd.PersistentFlags().StringVarP(&ScanConf.subnet, "subnet", "i", ipString, "timeout for port checks and RPC calls")
+	scanCmd.PersistentFlags().StringVarP(&ScanConf.uiuser, "user", "u", "admin", "GUI user")
+	scanCmd.PersistentFlags().StringVarP(&ScanConf.uipass, "password", "p", "admin", "GUI password")
+
 	rootCmd.PersistentFlags().BoolVarP(&FlagJSON, "json", "j", false, "set json output")
 }
 
@@ -178,7 +201,7 @@ func detect() (string, error) {
 	return "", fmt.Errorf("Invalid model: %s", exitCode)
 }
 
-func upgradeHandler() {
+func upgradeGen1Handler() {
 	if FlagJSON {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
@@ -235,6 +258,16 @@ func upgradeHandler() {
 	// finally try reboot
 	executeCmd(cmd[3], UpgradeConf.host, port, config)
 	return
+}
+
+// Trigger an update action on the Obelisk (must login first to get sessionid cookie)
+func upgradeGen2Handler() {
+	if FlagJSON {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	}
+	logrus.Infof("upgradeGen2Handler() called: %s/%s", UpgradeConf.uiuser, UpgradeConf.uipass)
+
+	scanner.TriggerGen2Update(UpgradeConf.ipAddr, UpgradeConf.uiuser, UpgradeConf.uipass)
 }
 
 func moveFile(fileName, fromPath, toPath, hostname, port string, config *ssh.ClientConfig) error {
@@ -317,7 +350,7 @@ func scanHandler() {
 		logrus.Error(err)
 		os.Exit(exitCodeUsage)
 	}
-	machines, err := scanner.Scan(ScanConf.subnet, timeout)
+	machines, err := scanner.Scan(ScanConf.subnet, timeout, ScanConf.uiuser, ScanConf.uipass)
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(exitCodeUsage)

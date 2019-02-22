@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"bytes"
 
 	"github.com/sirupsen/logrus"
 )
@@ -36,6 +37,7 @@ type Obelisk struct {
 	Model    string `json:"model"`
 	MAC      string `json:"mac"`
 	Firmware string `json:"firmwareVersion"`
+	FirmwareUpdate string `json:"firmwareUpdate"`
 }
 
 // ScanJob is a single job for the Prediction Process
@@ -51,6 +53,12 @@ type APIResponseInfo struct {
 	Model      string `json:"model"`
 	Vendor     string `json:"vendor"`
 	Firmware   string `json:"firmwareVersion,omitempty"`
+}
+
+type VersionsInfo struct {
+  CGMinerVersion        string `json:"cgminerVersion"`
+  ActiveFirmwareVersion string `json:"activeFirmwareVersion"`
+  LatestFirmwareVersion string `json:"latestFirmwareVersion"`
 }
 
 // SubnetFromInterface finds the first IPv4 address that is non-loopback. This
@@ -82,7 +90,7 @@ func SubnetFromInterface() (net.IP, error) {
 }
 
 // Scan will go through an ip range and try to ping default ASIC ports.
-func Scan(subnet string, timeout time.Duration) ([]*Obelisk, error) {
+func Scan(subnet string, timeout time.Duration, uiuser string, uipass string) ([]*Obelisk, error) {
 	var (
 		parsedIP net.IP
 		ipnet    *net.IPNet
@@ -106,7 +114,7 @@ func Scan(subnet string, timeout time.Duration) ([]*Obelisk, error) {
 
 	if ipnet == nil {
 		logrus.Infof("Only single ip found - attempting to identify device %s\n", parsedIP)
-		m, err := identify(parsedIP, timeout)
+		m, err := identify(parsedIP, timeout, uiuser, uipass)
 		if err != nil {
 			logrus.Error(err)
 			return nil, err
@@ -128,7 +136,7 @@ func Scan(subnet string, timeout time.Duration) ([]*Obelisk, error) {
 		go func() {
 			defer wg.Done()
 			for job := range jobChan {
-				m, err := identify(job.IP, timeout)
+				m, err := identify(job.IP, timeout, uiuser, uipass)
 				if err != nil {
 					logrus.Error(err)
 					return
@@ -195,7 +203,7 @@ func isAnyOpen(host net.IP, ports []int, timeout time.Duration) bool {
 	return success
 }
 
-func identify(ip net.IP, timeout time.Duration) (*Obelisk, error) {
+func identify(ip net.IP, timeout time.Duration, uiuser string, uipass string) (*Obelisk, error) {
 	portsToCheck := []int{PortWeb}
 	isPortOpen := isAnyOpen(ip, portsToCheck, timeout)
 	if isPortOpen {
@@ -223,7 +231,111 @@ func identify(ip net.IP, timeout time.Duration) (*Obelisk, error) {
 		if o.Model == "" {
 			return nil, nil
 		}
+
+		// For Gen 2 models, request additional information
+		if o.Model == "SC1 Slim" || o.Model == "DCR1 Slim" {
+			// Try to get the firmware versions to see if we can trigger an update
+			versions := getInventoryVersionsGen2(ip, uiuser, uipass)
+
+			// Send up the version
+			if versions != nil {
+				o.Firmware = versions.ActiveFirmwareVersion
+				if versions.ActiveFirmwareVersion != versions.LatestFirmwareVersion {
+					o.FirmwareUpdate = versions.LatestFirmwareVersion
+				}
+			}
+			js, _ := json.Marshal(o)
+			logrus.Infof("Info = %s", string(js))
+		}
+
 		return o, nil
 	}
 	return nil, nil
+}
+
+// Login and return sessionid cookie
+func loginGen2(ip net.IP, user string, pass string) (string, error) {
+	url := fmt.Sprintf("http://%s/api/login", ip)
+	credentials := fmt.Sprintf(`{"username":"%s","password":"%s"}`, user, pass)
+
+	logrus.Infof("url=%s", url )
+	logrus.Infof("credentials=%s", credentials )
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(credentials)))
+	req.Header.Set("Content-Type", "application/json")
+
+	logrus.Infof("loginGen2() 2")
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logrus.Info("No response to login")
+		return "", errors.New("Failed to login")
+	}
+
+	logrus.Infof("loginGen2() 3")
+	var sessionid string = ""
+
+	// Get the session cookie
+	for _, cookie := range resp.Cookies() {
+		logrus.Infof("loginGen2() 4: cookie.Name=%s", cookie.Name)
+		if cookie.Name == "sessionid" {
+			sessionid = cookie.Value
+			logrus.Infof("Found sessionid cookie: %s", sessionid)
+			return sessionid, nil
+		}
+	}
+	logrus.Infof("loginGen2() END without success")
+	return "", errors.New("No sessionid cookie found!")
+}
+
+func TriggerGen2Update(ip string, user string, pass string) {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return
+	}
+
+	sessionid, err := loginGen2(parsedIP, user, pass)
+	if err == nil {
+		url := fmt.Sprintf("http://%s/api/action/softwareUpdate", ip)
+		logrus.Infof("update url=%s", url )
+		logrus.Infof("sessionid=%s", sessionid )
+
+		// Send the action
+		req, _:= http.NewRequest("POST", url, nil)
+		req.AddCookie(&http.Cookie{Name: "sessionid", Value: sessionid})
+
+		client := http.Client{}
+		client.Do(req)
+		logrus.Infof("upgradeGen2Handler() END - Update request sent!")
+		return
+	}
+}
+
+// Returns current version and latest firmware version (the one we can update to)
+func getInventoryVersionsGen2(ip net.IP, user string, pass string) *VersionsInfo {
+	logrus.Infof("getInventoryVersionsGen2() START!")
+	sessionid, err := loginGen2(ip, user, pass)
+	logrus.Infof("Found sessionid cookie: %s,  %s", sessionid, err)
+	if err == nil {
+		url := fmt.Sprintf("http://%s/api/inventory/versions", net.IP.String(ip))
+		logrus.Infof("versions url=%s", url )
+
+		// Send the request
+		req, _:= http.NewRequest("GET", url, nil)
+		req.AddCookie(&http.Cookie{Name: "sessionid", Value: sessionid})
+
+		client := http.Client{}
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+
+			var versions VersionsInfo
+			json.NewDecoder(resp.Body).Decode(&versions)
+			logrus.Infof("versions=%s", versions)
+
+			return &versions
+		}
+	}
+	logrus.Infof("getInventoryVersionsGen2() END - Update request sent!")
+	return nil
 }
