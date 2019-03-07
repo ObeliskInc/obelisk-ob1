@@ -1,7 +1,7 @@
 {
   "name": "obelisk-scanner-gui",
   "productName": "Obelisk Scanner",
-  "version": "0.10.0",
+  "version": "1.3.1",
   "description": "Scanning tool used to discover Obelisks on a network.",
   "main": "main.js",
   "scripts": {
@@ -108,12 +108,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/NebulousLabs"
+    "url": "https://gitlab.com/NebulousLabs/obelisk-ob1"
   },
   "author": {
-    "name": "Eddie Wang",
-    "email": "eddie@sia.tech",
-    "url": "https://github.com/eddiewang"
+    "name": "Obelisk Inc.",
+    "email": "hello@obelisk.tech",
+    "url": "https://gitlab.com/NebulousLabs/obelisk-ob1"
   },
   "license": "MIT",
   "keywords": [

@@ -11,7 +11,7 @@ import { Log, Miner, BeforeScan, BeforeUpdate } from "../reducers/bridge"
 const LogoSVG = require("../assets/svg/logo.svg")
 let styles = require("./Home.scss")
 
-const GEN1_LATEST_FIRMWARE_VERSION = "v1.3.0"
+const GEN1_LATEST_FIRMWARE_VERSION = "v1.3.1"
 
 export interface IProps extends RouteComponentProps<any> {
   startScan(payload: BeforeScan): void
@@ -493,8 +493,8 @@ export default class Home extends React.Component<IProps> {
                   <div className={styles.infoMessage}>
                     If your network is not detected automatically or you are
                     connecting over a VPN, click the Enable Manual Subnet
-                    Override checkbox and enter your base network address and the
-                    subnet mask.
+                    Override checkbox and enter your base network address and
+                    the subnet mask.
                   </div>
                   <input
                     type="checkbox"

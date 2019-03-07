@@ -1,0 +1,4 @@
+#!/bin/sh
+# description: The system is missing NTP, so we use this custom script instead to get the current time and set it into the system.
+
+/usr/sbin/setdatetime.sh
