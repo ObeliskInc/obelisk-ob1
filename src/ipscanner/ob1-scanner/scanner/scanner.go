@@ -33,11 +33,13 @@ const (
 
 // Obelisk defines the fields for a found unit.
 type Obelisk struct {
-	IP       net.IP `json:"ip"`
-	Model    string `json:"model"`
-	MAC      string `json:"mac"`
-	Firmware string `json:"firmwareVersion"`
-	FirmwareUpdate string `json:"firmwareUpdate"`
+	IP               net.IP `json:"ip"`
+	Model            string `json:"model"`
+	MAC              string `json:"mac"`
+	Firmware         string `json:"firmwareVersion"`
+	FirmwareUpdate   string `json:"firmwareUpdate"`
+	FirmwareRollback string `json:"rollbackFirmwareVersion"`
+	BurninStatus     MinerBurninStatus `json:"burninStatus,omitempty"`
 }
 
 // ScanJob is a single job for the Prediction Process
@@ -45,14 +47,29 @@ type ScanJob struct {
 	IP net.IP
 }
 
+type HashboardBurninStatus struct {
+	Type             string `json:"type,omitempty"`
+	Status           string `json:"status,omitempty"`
+	ExpectedHashrate float32 `json:"expectedHashrate,omitempty"`
+	ActualHashrate   float32 `json:"actualHashrate,omitempty"`
+}
+
+type MinerBurninStatus struct {
+	DeviceStatus     string `json:"deviceStatus"`
+	HashboardStatus  []HashboardBurninStatus `json:"hashboardStatus"`
+}
+
 // APIResponseInfo is an open response for the Obelisk miner. We use this
 // endpoint to identify the Obelisk.
 type APIResponseInfo struct {
-	MacAddress string `json:"macAddress"`
-	IP         string `json:"ipAddress"`
-	Model      string `json:"model"`
-	Vendor     string `json:"vendor"`
-	Firmware   string `json:"firmwareVersion,omitempty"`
+	MacAddress       string `json:"macAddress"`
+	IP               string `json:"ipAddress"`
+	Model            string `json:"model"`
+	Vendor           string `json:"vendor"`
+	Firmware         string `json:"firmwareVersion,omitempty"`
+	LatestFirmware   string `json:"latestFirmwareVersion,omitempty"`
+	RollbackFirmware string `json:"rollbackFirmwareVersion,omitempty"`
+	BurninStatus     MinerBurninStatus `json:"burninStatus,omitempty"`
 }
 
 type VersionsInfo struct {
@@ -211,15 +228,19 @@ func identify(ip net.IP, timeout time.Duration, uiuser string, uipass string) (*
 		endpoint := fmt.Sprintf("http://%s/api/info", ip)
 		resp, err := http.Get(endpoint)
 		if err != nil {
+			logrus.Infof("Error getting /api/info")
 			return nil, nil
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			logrus.Infof("Error reading resp.Body in from /api/info response")
 			return nil, err
 		}
+
 		var info APIResponseInfo
 		err = json.Unmarshal(body, &info)
 		if err != nil {
+			logrus.Infof("Error unmarshalling JSON in from /api/info response")
 			return nil, nil
 		}
 		o := &Obelisk{
@@ -227,26 +248,31 @@ func identify(ip net.IP, timeout time.Duration, uiuser string, uipass string) (*
 			MAC:      info.MacAddress,
 			Model:    info.Model,
 			Firmware: info.Firmware,
+			FirmwareUpdate: info.LatestFirmware,
+			FirmwareRollback: info.RollbackFirmware,
+			BurninStatus: info.BurninStatus,
 		}
+
 		if o.Model == "" {
+			logrus.Infof("No Model returned from /api/info")
+
 			return nil, nil
 		}
 
-		// For Gen 2 models, request additional information
-		if o.Model == "SC1 Slim" || o.Model == "DCR1 Slim" {
-			// Try to get the firmware versions to see if we can trigger an update
-			versions := getInventoryVersionsGen2(ip, uiuser, uipass)
+		// Test some errors
+		// o.BurninStatus.DeviceStatus = "FAILED";
+		// var hb HashboardBurninStatus;
+		// hb.Type = "SC";
+		// hb.Status = "PASSED";
+		// hb.ExpectedHashrate = 1234;
+		// hb.ActualHashrate = 2345;
+		// o.BurninStatus.HashboardStatus = append(o.BurninStatus.HashboardStatus, hb);
 
-			// Send up the version
-			if versions != nil {
-				o.Firmware = versions.ActiveFirmwareVersion
-				if versions.ActiveFirmwareVersion != versions.LatestFirmwareVersion {
-					o.FirmwareUpdate = versions.LatestFirmwareVersion
-				}
-			}
-			js, _ := json.Marshal(o)
-			logrus.Infof("Info = %s", string(js))
-		}
+		// hb.Type = "SC";
+		// hb.Status = "FAILED";
+		// hb.ExpectedHashrate = 1234;
+		// hb.ActualHashrate = 869;
+		// o.BurninStatus.HashboardStatus = append(o.BurninStatus.HashboardStatus, hb);
 
 		return o, nil
 	}
@@ -306,7 +332,31 @@ func TriggerGen2Update(ip string, user string, pass string) {
 
 		client := http.Client{}
 		client.Do(req)
-		logrus.Infof("upgradeGen2Handler() END - Update request sent!")
+		logrus.Infof("TriggerGen2Update() END - Update request sent!")
+		return
+	}
+}
+
+func IdentifyObelisk(ip string, user string, pass string) {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		logrus.Infof("Failed to parse IP")
+		return
+	}
+
+	sessionid, err := loginGen2(parsedIP, user, pass)
+	if err == nil {
+		url := fmt.Sprintf("http://%s/api/action/identifyWithLEDs", ip)
+		logrus.Infof("idetnify url=%s", url )
+		logrus.Infof("sessionid=%s", sessionid )
+
+		// Send the action
+		req, _:= http.NewRequest("POST", url, nil)
+		req.AddCookie(&http.Cookie{Name: "sessionid", Value: sessionid})
+
+		client := http.Client{}
+		client.Do(req)
+		logrus.Infof("IdentifyObelisk() END - request sent!")
 		return
 	}
 }

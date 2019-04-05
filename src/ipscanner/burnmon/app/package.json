@@ -1,0 +1,18 @@
+{
+  "name": "obelisk-burnmon",
+  "productName": "Obelisk Burn-in Monitor",
+  "version": "1.0.0",
+  "description": "Monitor app to find Obelisk DCR1 and SC1 Units and monitor their burn-ins",
+  "homepage": "https://obelisk.tech/downloads.html",
+  "main": "./main.js",
+  "author": {
+    "name": "Obelisk Inc.",
+    "email": "hello@obelisk.tech",
+    "url": "https://gitlab.com/NebulousLabs/obelisk-ob1"
+  },
+  "scripts": {
+    "postinstall": "npm rebuild --runtime=electron --target=1.6.6 --disturl=https://atom.io/download/atom-shell --build-from-source"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}

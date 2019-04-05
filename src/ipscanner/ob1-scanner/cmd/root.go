@@ -46,6 +46,12 @@ type UpgradeConfig struct {
 	uipass             string
 }
 
+type IdentifyConfig struct {
+	ipAddr             string
+	uiuser             string
+	uipass             string
+}
+
 var FlagJSON bool
 
 // JSONMachines defines the JSON payload for scan func
@@ -59,6 +65,9 @@ var ScanConf ScanConfig
 
 // UpgradeConf is a config for upgrade
 var UpgradeConf UpgradeConfig
+
+// IdentifyConf is a config for upgrade
+var IdentifyConf IdentifyConfig
 
 var rootCmd = &cobra.Command{
 	Use:   "ob1-scanner",
@@ -97,10 +106,17 @@ var upgradeGen1Cmd = &cobra.Command{
 }
 
 var upgradeGen2Cmd = &cobra.Command{
-	Use:   "upgrade-gen2 [ip]",
+	Use:   "upgrade-gen2",
 	Short: "Triggers a software update on the specified Gen 2 Obelisk.",
-	Long:  "Sends a POST to /api/softwareUpdate to trigger the machine to install any available updates.  The Obelisk downloads the update files.",
+	Long:  "Sends a POST to /api/action/softwareUpdate to trigger the machine to install any available updates.  The Obelisk downloads the update files.",
 	Run:   wrap(upgradeGen2Handler),
+}
+
+var identifyCmd = &cobra.Command{
+	Use:   "identify",
+	Short: "Causes the Obelisk to visually identify itself by alternately flashing the red and green LEDs.",
+	Long:  "Send a POST to /api/action/identifyWithLEDs to cause the Obelisk to visually identify itself by alternately flashing the red and green LEDs.",
+	Run:   wrap(identifyHandler),
 }
 
 func init() {
@@ -109,6 +125,7 @@ func init() {
 	rootCmd.AddCommand(mdnsCmd)
 	rootCmd.AddCommand(upgradeGen1Cmd)
 	rootCmd.AddCommand(upgradeGen2Cmd)
+	rootCmd.AddCommand(identifyCmd)
 
 	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.host, "host", "i", "", "set host")
 	upgradeGen1Cmd.PersistentFlags().StringVarP(&UpgradeConf.siaFirmwarePath, "siaFirmware", "s", "", "firmware path")
@@ -121,6 +138,9 @@ func init() {
 	upgradeGen2Cmd.PersistentFlags().StringVarP(&UpgradeConf.uipass, "password", "p", "admin", "GUI password")
 	upgradeGen2Cmd.PersistentFlags().StringVarP(&UpgradeConf.ipAddr, "ip", "i", "", "IP address")
 
+	identifyCmd.PersistentFlags().StringVarP(&IdentifyConf.uiuser, "user", "u", "admin", "GUI user")
+	identifyCmd.PersistentFlags().StringVarP(&IdentifyConf.uipass, "password", "p", "admin", "GUI password")
+	identifyCmd.PersistentFlags().StringVarP(&IdentifyConf.ipAddr, "ip", "i", "", "IP address")
 
 	// scan conf
 	scanCmd.PersistentFlags().StringVarP(&ScanConf.timeout, "timeout", "t", "2s", "timeout for port checks and RPC calls")
@@ -268,6 +288,11 @@ func upgradeGen2Handler() {
 	logrus.Infof("upgradeGen2Handler() called: %s/%s", UpgradeConf.uiuser, UpgradeConf.uipass)
 
 	scanner.TriggerGen2Update(UpgradeConf.ipAddr, UpgradeConf.uiuser, UpgradeConf.uipass)
+}
+
+func identifyHandler() {
+	logrus.Infof("identifyHandler() called!")
+	scanner.IdentifyObelisk(IdentifyConf.ipAddr, IdentifyConf.uiuser, IdentifyConf.uipass)
 }
 
 func moveFile(fileName, fromPath, toPath, hostname, port string, config *ssh.ClientConfig) error {
