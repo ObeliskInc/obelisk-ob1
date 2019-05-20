@@ -33,9 +33,11 @@ const (
 
 // Obelisk defines the fields for a found unit.
 type Obelisk struct {
-	IP               net.IP `json:"ip"`
-	Model            string `json:"model"`
 	MAC              string `json:"mac"`
+	IP               net.IP `json:"ip"`
+	// Older devices don't send hostname
+	Hostname         string `json:"hostname"`
+	Model            string `json:"model"`
 	Firmware         string `json:"firmwareVersion"`
 	FirmwareUpdate   string `json:"firmwareUpdate"`
 	FirmwareRollback string `json:"rollbackFirmwareVersion"`
@@ -64,6 +66,8 @@ type MinerBurninStatus struct {
 type APIResponseInfo struct {
 	MacAddress       string `json:"macAddress"`
 	IP               string `json:"ipAddress"`
+	// Older devices don't send hostname
+	Hostname         string `json:"hostname,omitempty"`
 	Model            string `json:"model"`
 	Vendor           string `json:"vendor"`
 	Firmware         string `json:"firmwareVersion,omitempty"`
@@ -144,7 +148,7 @@ func Scan(subnet string, timeout time.Duration, uiuser string, uipass string) ([
 
 	var wg sync.WaitGroup
 	jobChan := make(chan ScanJob)
-	// Sets default works to 256, which is the space for one-byte (0-255)
+	// Sets default workers to 256, which is the space for one-byte (0-255)
 	defaultWorkers := 256
 	wg.Add(defaultWorkers)
 	// Spin up workers to limit the number of spawned connections
@@ -157,8 +161,7 @@ func Scan(subnet string, timeout time.Duration, uiuser string, uipass string) ([
 				if err != nil {
 					logrus.Error(err)
 					return
-				}
-				if m != nil {
+				} else if m != nil {
 					miners = append(miners, m)
 				}
 			}
@@ -238,14 +241,17 @@ func identify(ip net.IP, timeout time.Duration, uiuser string, uipass string) (*
 		}
 
 		var info APIResponseInfo
+
 		err = json.Unmarshal(body, &info)
 		if err != nil {
 			logrus.Infof("Error unmarshalling JSON in from /api/info response")
-			return nil, nil
+			// logrus.Infof("body = " + string(body))
+			return nil, err
 		}
 		o := &Obelisk{
 			IP:       ip,
 			MAC:      info.MacAddress,
+			Hostname: info.Hostname,
 			Model:    info.Model,
 			Firmware: info.Firmware,
 			FirmwareUpdate: info.LatestFirmware,
@@ -255,7 +261,6 @@ func identify(ip net.IP, timeout time.Duration, uiuser string, uipass string) (*
 
 		if o.Model == "" {
 			logrus.Infof("No Model returned from /api/info")
-
 			return nil, nil
 		}
 

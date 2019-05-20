@@ -8,12 +8,19 @@ function splitAndClean(data: string) {
   return dArr.filter(s => s != "")
 }
 
+// This is weird.  If I make this a local inside the if (data) below, it gets reset to empty string after each exception.
+let jsonResult = ""
+
 ipcRenderer.on("obscanner", function(_: string, data: string) {
   if (data) {
-    try {
-      splitAndClean(data).forEach(d => {
-        console.log(d)
-        const parsedData = JSON.parse(d)
+    splitAndClean(data).forEach(d => {
+      try {
+        // Append the data
+        jsonResult += d
+
+        const parsedData = JSON.parse(jsonResult)
+        jsonResult = ""
+
         if ("level" in parsedData) {
           store.dispatch(actions.receiveLogAction(parsedData))
         } else if ("payload" in parsedData) {
@@ -41,10 +48,10 @@ ipcRenderer.on("obscanner", function(_: string, data: string) {
             store.dispatch(actions.receiveLogAction(logMsg))
           }
         }
-      })
-    } catch (e) {
-      console.warn("Error parsing JSON", data)
-    }
+      } catch (e) {
+        console.warn("Error parsing JSON: ", e)
+      }
+    })
   }
 })
 

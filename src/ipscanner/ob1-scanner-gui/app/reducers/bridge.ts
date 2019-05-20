@@ -11,6 +11,7 @@ export interface Miner {
   ip: string
   model: string
   mac: string
+  hostname: string
   firmwareVersion: string
   firmwareUpdate?: string
   isUpgradeInProgress?: boolean

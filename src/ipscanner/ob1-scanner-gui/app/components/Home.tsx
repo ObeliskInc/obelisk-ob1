@@ -227,6 +227,7 @@ export default class Home extends React.Component<IProps> {
     if (validateIP(customip)) {
       const miner: Miner = {
         ip: customip,
+        hostname: "",
         model: "SC1", // This just gets it into the Gen 1 path - works for both SC1 and DCR1
         firmwareVersion: "v1.0.0",
         mac: ""
@@ -274,6 +275,11 @@ export default class Home extends React.Component<IProps> {
           return undefined
         }
 
+        const firmwareVersion = getFirmwareVersion(miner)
+        if (firmwareVersion === availVersion) {
+          return undefined
+        }
+
         if (miner.isUpgradeInProgress) {
           return <span>Upgrading to {availVersion}...</span>
         }
@@ -317,6 +323,7 @@ export default class Home extends React.Component<IProps> {
               {miner.ip}
             </a>
           </td>
+          <td>{miner.hostname}</td>
           <td>{miner.mac}</td>
           <td>{miner.model}</td>
           <td>{firmwareVersion}</td>
@@ -579,6 +586,7 @@ export default class Home extends React.Component<IProps> {
               <thead>
                 <tr>
                   <th>IP ADDRESS</th>
+                  <th>HOSTNAME</th>
                   <th>MAC</th>
                   <th>MODEL</th>
                   <th>CURR. VERSION</th>
