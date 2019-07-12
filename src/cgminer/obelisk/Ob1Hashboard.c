@@ -185,14 +185,15 @@ int iSetBoardStatus(uint8_t uiBoard, int iStatus)
  */
 E_ASIC_TYPE_T eGetBoardType(uint8_t uiBoard)
 {
-    int iRetval = ERR_UNSUPPORTED_DEV;
-
-    if ((0 <= uiBoard) && (MAX_NUMBER_OF_HASH_BOARDS > uiBoard)) {
-        iRetval = saHashBoardInfo[uiBoard].eAsicType;
-    } else {
-        iRetval = ERR_UNSUPPORTED_DEV; // not in the acceptable range
-    }
-    return (iRetval);
+    // NOTE: Hardware detection is flaky and very frequently (20-30% of the time) reports
+    //       the hardware type incorrectly.
+    #if (MODEL == SC1)
+        return E_TYPE_SC1;
+    #elif (MODEL == DCR1)
+        return E_TYPE_DCR1;
+    #else
+        return ERR_UNSUPPORTED_DEV;
+    #endif
 } // eGetBoardType()
 
 bool isBoardPresent(uint8_t uiBoard)

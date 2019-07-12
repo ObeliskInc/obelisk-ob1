@@ -432,7 +432,12 @@ func mdnsHandler() {
 				MAC:   "Unknown/mDNS",
 				Model: "Unknown",
 			}
-			if strings.Contains(udpString, "SC1") {
+			logrus.Info("udpString=" + udpString)
+			if strings.Contains(udpString, "SC1 Slim") {
+				machine.Model = "SC1 Slim"
+			} else if strings.Contains(udpString, "DCR1 Slim") {
+				machine.Model = "DCR1 Slim"
+			} else if strings.Contains(udpString, "SC1") {
 				machine.Model = "SC1"
 			} else if strings.Contains(udpString, "DCR1") {
 				machine.Model = "DCR1"

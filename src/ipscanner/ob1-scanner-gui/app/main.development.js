@@ -98,8 +98,8 @@ app.on("ready", () =>
           ? join(process.resourcesPath, "firmware")
           : join(appRootDir.get(), "bin", "firmware")
         const detectpath = join(execPath, "detect")
-        const scpath = join(execPath, "sc1-v1.3.1.tar.gz")
-        const dcrpath = join(execPath, "dcr1-v1.3.1.tar.gz")
+        const scpath = join(execPath, "sc1-v1.3.2.tar.gz")
+        const dcrpath = join(execPath, "dcr1-v1.3.2.tar.gz")
 
         const cmd = [
           "upgrade-gen1",

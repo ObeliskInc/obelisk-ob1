@@ -11,7 +11,7 @@ import { Log, Miner, BeforeScan, BeforeUpdate } from "../reducers/bridge"
 const LogoSVG = require("../assets/svg/logo.svg")
 let styles = require("./Home.scss")
 
-const GEN1_LATEST_FIRMWARE_VERSION = "v1.3.1"
+const GEN1_LATEST_FIRMWARE_VERSION = "v1.3.2"
 
 export interface IProps extends RouteComponentProps<any> {
   startScan(payload: BeforeScan): void

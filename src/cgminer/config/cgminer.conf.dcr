@@ -1,9 +1,9 @@
 {
 "pools" : [
 	{
-		"url" : "stratum+tcp://dcr-us.luxor.tech:4445",
-		"user" : "DsiAncGCn72RZ62oeyWEbvKY3CN4TxkFWEz.obelisk",
-		"pass" : "x"
+		"url" : "",
+		"user" : "",
+		"pass" : ""
 	}
 ]
 ,
